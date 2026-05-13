@@ -25,6 +25,7 @@ import useDashboardCardDeletedHandlers from "@/controllers/socket/dashboard/card
 import useDashboardCardOrderChangedHandlers from "@/controllers/socket/dashboard/card/useDashboardCardOrderChangedHandlers";
 import useDashboardCardTitleChangedHandlers from "@/controllers/socket/dashboard/card/useDashboardCardTitleChangedHandlers";
 import useDashboardCheckitemCheckedChangedHandlers from "@/controllers/socket/dashboard/checkitem/useDashboardCheckitemCheckedChangedHandlers";
+import useDashboardCheckitemDeadlineChangedHandlers from "@/controllers/socket/dashboard/checkitem/useDashboardCheckitemDeadlineChangedHandlers";
 import useDashboardCheckitemDeletedHandlers from "@/controllers/socket/dashboard/checkitem/useDashboardCheckitemDeletedHandlers";
 import useDashboardCheckitemStatusChangedHandlers from "@/controllers/socket/dashboard/checkitem/useDashboardCheckitemStatusChangedHandlers";
 import useDashboardCheckitemTitleChangedHandlers from "@/controllers/socket/dashboard/checkitem/useDashboardCheckitemTitleChangedHandlers";
@@ -116,6 +117,7 @@ class Project extends BaseModel<IStore> {
                 useDashboardCardTitleChangedHandlers,
                 useDashboardCardDeletedHandlers,
                 useDashboardCheckitemTitleChangedHandlers,
+                useDashboardCheckitemDeadlineChangedHandlers,
                 useDashboardCheckitemStatusChangedHandlers,
                 useDashboardCheckitemCheckedChangedHandlers,
                 useDashboardCheckitemDeletedHandlers,

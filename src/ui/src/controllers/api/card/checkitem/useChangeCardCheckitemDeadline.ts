@@ -1,30 +1,28 @@
-import { sanitizeEditorValue } from "@/components/Editor/utils";
 import { Routing } from "@langboard/core/constants";
 import { api } from "@/core/helpers/Api";
 import { TMutationOptions, useQueryMutation } from "@/core/helpers/QueryMutation";
-import { IEditorContent } from "@/core/models/Base";
 import { Utils } from "@langboard/core/utils";
 
-export interface IUpdateCardCommentForm {
+export interface IChangeCardCheckitemDeadlineForm {
     project_uid: string;
     card_uid: string;
-    comment_uid: string;
-    content: IEditorContent;
+    checkitem_uid: string;
+    deadline_at: Date | "";
 }
 
-const useUpdateCardComment = (options?: TMutationOptions<IUpdateCardCommentForm>) => {
+const useChangeCardCheckitemDeadline = (options?: TMutationOptions<IChangeCardCheckitemDeadlineForm>) => {
     const { mutate } = useQueryMutation();
 
-    const updateCardComment = async (params: IUpdateCardCommentForm) => {
-        const url = Utils.String.format(Routing.API.BOARD.CARD.COMMENT.UPDATE, {
+    const changeCheckitemDeadline = async (params: IChangeCardCheckitemDeadlineForm) => {
+        const url = Utils.String.format(Routing.API.BOARD.CARD.CHECKITEM.CHANGE_DEADLINE, {
             uid: params.project_uid,
             card_uid: params.card_uid,
-            comment_uid: params.comment_uid,
+            checkitem_uid: params.checkitem_uid,
         });
         const res = await api.put(
             url,
             {
-                ...sanitizeEditorValue(params.content),
+                deadline_at: params.deadline_at,
             },
             {
                 env: {
@@ -33,12 +31,10 @@ const useUpdateCardComment = (options?: TMutationOptions<IUpdateCardCommentForm>
             }
         );
 
-        res.data.updated_at = new Date(res.data.updated_at);
-
         return res.data;
     };
 
-    const result = mutate(["update-card-comment"], updateCardComment, {
+    const result = mutate(["change-card-checkitem-deadline"], changeCheckitemDeadline, {
         ...options,
         retry: 0,
     });
@@ -46,4 +42,4 @@ const useUpdateCardComment = (options?: TMutationOptions<IUpdateCardCommentForm>
     return result;
 };
 
-export default useUpdateCardComment;
+export default useChangeCardCheckitemDeadline;

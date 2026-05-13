@@ -128,6 +128,25 @@ class CheckitemService(BaseDomainService):
 
         return True
 
+    def change_deadline(
+        self,
+        project: TProjectParam,
+        card: TCardParam,
+        checkitem: TCheckitemParam,
+        deadline_at: SafeDateTime | None,
+    ) -> bool | None:
+        params = self.__get_records_by_params(project, card, checkitem)
+        if not params:
+            return None
+        project, card, checkitem = params
+
+        checkitem.deadline_at = deadline_at
+        self.repo.checkitem.update(checkitem)
+
+        CheckitemPublisher.deadline_changed(project, card, checkitem)
+
+        return True
+
     def change_order(
         self,
         project: TProjectParam,

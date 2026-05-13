@@ -5,10 +5,12 @@ import Flex from "@/components/base/Flex";
 import Form from "@/components/base/Form";
 import Skeleton from "@/components/base/Skeleton";
 import SubmitButton from "@/components/base/SubmitButton";
+import Toast from "@/components/base/Toast";
 import UserAvatar from "@/components/UserAvatar";
 import { useTranslation } from "react-i18next";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlateEditor } from "@/components/Editor/plate-editor";
+import { isEmptyEditorContent, sanitizeEditorContent, sanitizeEditorValue } from "@/components/Editor/utils";
 import { IEditorContent } from "@/core/models/Base";
 import { useBoardCard, useBoardCardPanel } from "@/core/providers/BoardCardProvider";
 import useAddCardComment from "@/controllers/api/card/comment/useAddCardComment";
@@ -78,9 +80,9 @@ const BoardCommentForm = memo(({ variant = "mobile" }: IBoardCommentFormProps): 
                 return;
             }
 
-            const trimmed = content.trim();
-            if (trimmed.length > 0) {
-                window.sessionStorage.setItem(commentStorageKey, content);
+            const sanitizedContent = sanitizeEditorContent(content);
+            if (sanitizedContent.length > 0) {
+                window.sessionStorage.setItem(commentStorageKey, sanitizedContent);
                 return;
             }
 
@@ -264,22 +266,22 @@ const BoardCommentForm = memo(({ variant = "mobile" }: IBoardCommentFormProps): 
             return;
         }
 
-        setIsValidating(true);
+        const content = sanitizeEditorValue(valueRef.current);
 
+        if (isEmptyEditorContent(content.content)) {
+            Toast.Add.error(t("card.errors.Comment content cannot be empty."));
+            return;
+        }
+
+        setIsValidating(true);
         addCommentMutate(
             {
                 project_uid: projectUID,
                 card_uid: card.uid,
-                content: valueRef.current,
+                content,
             },
             {
-                onError: (error) => {
-                    const { handle } = setupApiErrorHandler({});
-
-                    handle(error);
-                },
-                onSettled: () => {
-                    setIsValidating(false);
+                onSuccess: () => {
                     setValue({ content: "" });
                     clearDraftFromStorage();
                     getEditorStore().setCurrentEditor(null);
@@ -293,6 +295,14 @@ const BoardCommentForm = memo(({ variant = "mobile" }: IBoardCommentFormProps): 
                     if (variant === "panel") {
                         setIsPanelEditorOpen(false);
                     }
+                },
+                onError: (error) => {
+                    const { handle } = setupApiErrorHandler({});
+
+                    handle(error);
+                },
+                onSettled: () => {
+                    setIsValidating(false);
                 },
             }
         );

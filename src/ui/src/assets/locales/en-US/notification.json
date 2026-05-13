@@ -63,6 +63,10 @@
       "is_checked": {
         "equals": "<Span>A checkitem checked state matched {{message_vars.value}}.</Span>"
       },
+      "deadline_at": {
+        "within_next_days": "<Span>A checkitem deadline is coming up.</Span>",
+        "overdue": "<Span>A checkitem deadline is overdue.</Span>"
+      },
       "created_at": {
         "older_than_days": "<Span>A checkitem is older than {{message_vars.days_delta}} day(s).</Span>"
       },
@@ -99,6 +103,10 @@
       },
       "is_checked": {
         "equals": "{{records.checkitem.title}} checked state is {{message_vars.value}}."
+      },
+      "deadline_at": {
+        "within_next_days": "{{records.checkitem.title}} is due in {{message_vars.days_delta}} day(s).",
+        "overdue": "{{records.checkitem.title}} is overdue by {{message_vars.days_delta}} day(s)."
       },
       "created_at": {
         "older_than_days": "{{records.checkitem.title}} was created {{message_vars.days_delta}} day(s) ago."

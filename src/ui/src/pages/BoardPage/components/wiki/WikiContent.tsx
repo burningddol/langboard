@@ -5,6 +5,7 @@ import Skeleton from "@/components/base/Skeleton";
 import Toast from "@/components/base/Toast";
 import { TEditor } from "@/components/Editor/editor-kit";
 import { PlateEditor } from "@/components/Editor/plate-editor";
+import { sanitizeEditorContent } from "@/components/Editor/utils";
 import useChangeWikiDetails from "@/controllers/api/wiki/useChangeWikiDetails";
 import useBoardUIWikiDeletedHandlers from "@/controllers/socket/wiki/useBoardUIWikiDeletedHandlers";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
@@ -101,8 +102,8 @@ const WikiContent = memo(({ wiki }: IWikiContentProps) => {
         [markSectionDirty]
     );
     const handleSave = useCallback(async () => {
-        const nextContent = editorRef.current?.api.markdown.serialize()?.trim() ?? content?.content?.trim() ?? "";
-        const originalContent = content?.content?.trim() ?? "";
+        const nextContent = sanitizeEditorContent(editorRef.current?.api.markdown.serialize() ?? content?.content ?? "");
+        const originalContent = sanitizeEditorContent(content?.content ?? "");
 
         if (nextContent === originalContent) {
             resetSection("content");

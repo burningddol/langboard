@@ -3,6 +3,7 @@ import Flex from "@/components/base/Flex";
 import Skeleton from "@/components/base/Skeleton";
 import type { TEditor } from "@/components/Editor/editor-kit";
 import { PlateEditor } from "@/components/Editor/plate-editor";
+import { sanitizeEditorContent } from "@/components/Editor/utils";
 import { BotModel, ProjectCard } from "@/core/models";
 import type { IEditorContent } from "@/core/models/Base";
 import type { TUserLikeModel } from "@/core/models/ModelRegistry";
@@ -73,8 +74,8 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     );
 
     const handleSave = useCallback(() => {
-        const nextContent = editorRef.current?.api.markdown.serialize()?.trim() ?? description?.content?.trim() ?? "";
-        const originalContent = description?.content?.trim() ?? "";
+        const nextContent = sanitizeEditorContent(editorRef.current?.api.markdown.serialize() ?? description?.content ?? "");
+        const originalContent = sanitizeEditorContent(description?.content ?? "");
 
         if (nextContent === originalContent) {
             resetSection("description");
@@ -252,7 +253,7 @@ const CollapsibleDescriptionContent = memo((props: ICollapsibleDescriptionConten
     const chunkContents = useMemo(() => {
         const content = description?.content ?? "";
 
-        if (!content.trim()) {
+        if (!sanitizeEditorContent(content)) {
             return [{ content: "" }];
         }
 

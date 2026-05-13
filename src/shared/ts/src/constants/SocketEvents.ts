@@ -18,6 +18,7 @@ const SERVER = {
         },
         CHECKITEM: {
             TITLE_CHANGED: "dashboard:checkitem:title:changed:{uid}",
+            DEADLINE_CHANGED: "dashboard:checkitem:deadline:changed:{uid}",
             STATUS_CHANGED: "dashboard:checkitem:status:changed:{uid}",
             CHECKED_CHANGED: "dashboard:checkitem:checked:changed:{uid}",
             DELETED: "dashboard:checkitem:deleted:{uid}",
@@ -84,6 +85,7 @@ const SERVER = {
             CHECKITEM: {
                 CREATED: "board:card:checkitem:created:{uid}",
                 TITLE_CHANGED: "board:card:checkitem:title:changed:{uid}",
+                DEADLINE_CHANGED: "board:card:checkitem:deadline:changed:{uid}",
                 ORDER_CHANGED: "board:card:checkitem:order:changed:{uid}",
                 STATUS_CHANGED: "board:card:checkitem:status:changed:{uid}",
                 CHECKED_CHANGED: "board:card:checkitem:checked:changed:{uid}",

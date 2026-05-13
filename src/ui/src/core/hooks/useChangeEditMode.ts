@@ -1,3 +1,4 @@
+import { sanitizeEditorContent } from "@/components/Editor/utils";
 import { IEditorContent } from "@/core/models/Base";
 import { getEditorStore, useIsCurrentEditor } from "@/core/stores/EditorStore";
 import { measureTextAreaHeight } from "@/core/utils/ComponentUtils";
@@ -150,8 +151,8 @@ const useChangeEditMode = <
                 value = trimValue(valueRef.current);
                 oldValue = trimValue(originalValue as unknown as string);
             } else if (Utils.Type.isObject<IEditorContent>(valueRef.current)) {
-                value = trimValue(valueRef.current.content);
-                oldValue = trimValue((originalValue as unknown as IEditorContent)?.content);
+                value = sanitizeEditorContent(valueRef.current.content);
+                oldValue = sanitizeEditorContent((originalValue as unknown as IEditorContent)?.content ?? "");
             }
 
             if ((!canEmpty && !value) || ((canEmpty || !!oldValue) && oldValue === value)) {

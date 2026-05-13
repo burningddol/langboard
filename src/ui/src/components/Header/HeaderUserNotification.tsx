@@ -358,8 +358,7 @@ const getNotificationScheduleRuleTranslationKey = (notification: UserNotificatio
         return null;
     }
 
-    const resolvedOperator =
-        target === "card" && field === "deadline_at" && Utils.Type.isString(messageVars.deadline_state) ? messageVars.deadline_state : operator;
+    const resolvedOperator = field === "deadline_at" && Utils.Type.isString(messageVars.deadline_state) ? messageVars.deadline_state : operator;
 
     return `${target}.${field}.${resolvedOperator}`;
 };
@@ -375,7 +374,7 @@ const getNotificationMessageVars = (notification: UserNotification.TModel) => {
         return messageVars;
     }
 
-    if (target === "card" && field === "deadline_at" && Utils.Type.isString(messageVars.deadline_at)) {
+    if (field === "deadline_at" && Utils.Type.isString(messageVars.deadline_at)) {
         const deadlineDate = new Date(messageVars.deadline_at);
         if (Number.isNaN(deadlineDate.getTime())) {
             return messageVars;

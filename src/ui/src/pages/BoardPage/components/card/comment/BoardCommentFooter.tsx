@@ -3,6 +3,7 @@ import Flex from "@/components/base/Flex";
 import Separator from "@/components/base/Separator";
 import SubmitButton from "@/components/base/SubmitButton";
 import Toast from "@/components/base/Toast";
+import { isEmptyEditorContent, sanitizeEditorContent, sanitizeEditorValue } from "@/components/Editor/utils";
 import useDeleteCardComment from "@/controllers/api/card/comment/useDeleteCardComment";
 import useUpdateCardComment from "@/controllers/api/card/comment/useUpdateCardComment";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
@@ -50,13 +51,15 @@ function BoardCommentFooterEditButtons() {
 
         setIsValidating(true);
 
-        if (!valueRef.current.content.trim().length) {
+        const content = sanitizeEditorValue(valueRef.current);
+
+        if (isEmptyEditorContent(content.content)) {
             Toast.Add.error(t("card.errors.Comment content cannot be empty."));
             setIsValidating(false);
             return;
         }
 
-        if (comment.content.content.trim() === valueRef.current.content.trim()) {
+        if (sanitizeEditorContent(comment.content.content) === content.content) {
             setIsValidating(false);
             return;
         }
@@ -66,11 +69,11 @@ function BoardCommentFooterEditButtons() {
                 project_uid: projectUID,
                 card_uid: card.uid,
                 comment_uid: comment.uid,
-                content: valueRef.current,
+                content,
             },
             {
                 onSuccess: () => {
-                    comment.content = { ...valueRef.current };
+                    comment.content = content;
                     Toast.Add.success(t("successes.Comment updated successfully."));
                     cancelEditing();
                 },

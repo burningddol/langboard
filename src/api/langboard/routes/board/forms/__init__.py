@@ -1,7 +1,13 @@
 from .Attachment import ChangeAttachmentNameForm
 from .Card import ChangeCardDetailsForm, CreateCardForm, UpdateCardLabelsForm, UpdateCardRelationshipsForm
 from .Chat import CreateChatTemplate, UpdateChatTemplate
-from .Check import CardChecklistNotifyForm, CardCheckRelatedForm, CardifyCheckitemForm, ChangeCardCheckitemStatusForm
+from .Check import (
+    CardChecklistNotifyForm,
+    CardCheckRelatedForm,
+    CardifyCheckitemForm,
+    ChangeCardCheckitemDeadlineForm,
+    ChangeCardCheckitemStatusForm,
+)
 from .Column import ColumnForm
 from .Comment import ToggleCardCommentReactionForm
 from .Project import (
@@ -41,6 +47,7 @@ __all__ = [
     "ChangeAttachmentNameForm",
     "ToggleCardCommentReactionForm",
     "CardCheckRelatedForm",
+    "ChangeCardCheckitemDeadlineForm",
     "ChangeCardCheckitemStatusForm",
     "CardChecklistNotifyForm",
     "CardifyCheckitemForm",

@@ -1,12 +1,20 @@
 from langboard_shared.core.filter import AuthFilter
 from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
+from langboard_shared.core.types import SafeDateTime
+from langboard_shared.core.utils.Converter import convert_python_data
 from langboard_shared.domain.models import Bot, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
 from langboard_shared.domain.services import DomainService
 from langboard_shared.filter import RoleFilter
 from langboard_shared.security import Auth, RoleFinder
-from .forms import CardCheckRelatedForm, CardifyCheckitemForm, ChangeCardCheckitemStatusForm, ChangeChildOrderForm
+from .forms import (
+    CardCheckRelatedForm,
+    CardifyCheckitemForm,
+    ChangeCardCheckitemDeadlineForm,
+    ChangeCardCheckitemStatusForm,
+    ChangeChildOrderForm,
+)
 
 
 @AppRouter.schema(form=CardCheckRelatedForm)
@@ -31,6 +39,35 @@ def change_checkitem_title(
         raise ApiException.NotFound_404(ApiErrorCode.NF2011)
 
     return JsonResponse()
+
+
+@AppRouter.schema(form=ChangeCardCheckitemDeadlineForm)
+@AppRouter.api.put(
+    "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/deadline",
+    tags=["Board.Card.Checkitem"],
+    description="Change checkitem deadline.",
+    responses=OpenApiSchema().auth().forbidden().err(404, ApiErrorCode.NF2011).get(),
+)
+@RoleFilter.add(ProjectRole, [ProjectRoleAction.CardUpdate], RoleFinder.project)
+@AuthFilter.add()
+def change_checkitem_deadline(
+    project_uid: str,
+    card_uid: str,
+    checkitem_uid: str,
+    form: ChangeCardCheckitemDeadlineForm,
+    service: DomainService = DomainService.scope(),
+) -> JsonResponse:
+    deadline_at = None
+    if form.deadline_at:
+        deadline_at = SafeDateTime.fromisoformat(form.deadline_at)
+        if deadline_at.tzinfo is None:
+            deadline_at = deadline_at.replace(tzinfo=SafeDateTime.now().astimezone().tzinfo)
+
+    result = service.checkitem.change_deadline(project_uid, card_uid, checkitem_uid, deadline_at)
+    if not result:
+        raise ApiException.NotFound_404(ApiErrorCode.NF2011)
+
+    return JsonResponse(content={"deadline_at": convert_python_data(deadline_at)})
 
 
 @AppRouter.schema(form=ChangeChildOrderForm)

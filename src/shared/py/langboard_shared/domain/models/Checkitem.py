@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
-from ...core.db import ApiField, Field, SnowflakeIDField
-from ...core.types import SnowflakeID
+from ...core.db import ApiField, DateTimeField, Field, SnowflakeIDField
+from ...core.types import SafeDateTime, SnowflakeID
 from .BaseNotificationScheduleModel import BaseNotificationScheduleModel
 from .Card import Card
 from .Checklist import Checklist
@@ -25,6 +25,7 @@ class Checkitem(BaseNotificationScheduleModel, table=True):
     order: int = Field(default=0, nullable=False, api_field=ApiField())
     accumulated_seconds: int = Field(default=0, nullable=False, api_field=ApiField())
     is_checked: bool = Field(default=False, nullable=False, api_field=ApiField())
+    deadline_at: SafeDateTime | None = DateTimeField(default=None, nullable=True, api_field=ApiField())
 
     def notification_data(self) -> dict[str, Any]:
         return {
@@ -32,6 +33,7 @@ class Checkitem(BaseNotificationScheduleModel, table=True):
             "title": self.title,
             "status": self.status.value,
             "is_checked": self.is_checked,
+            "deadline_at": self.deadline_at.isoformat() if self.deadline_at else None,
         }
 
     @classmethod
@@ -39,6 +41,7 @@ class Checkitem(BaseNotificationScheduleModel, table=True):
         return [
             {"key": "status", "operators": [cls.OPERATOR_EQUALS]},
             {"key": "is_checked", "operators": [cls.OPERATOR_EQUALS]},
+            {"key": "deadline_at", "operators": [cls.OPERATOR_WITHIN_NEXT_DAYS, cls.OPERATOR_OVERDUE]},
             {"key": "created_at", "operators": [cls.OPERATOR_OLDER_THAN_DAYS]},
             {"key": "accumulated_seconds", "operators": [cls.OPERATOR_GREATER_THAN_SECONDS]},
         ]
@@ -69,4 +72,5 @@ class Checkitem(BaseNotificationScheduleModel, table=True):
             "order",
             "accumulated_seconds",
             "is_checked",
+            "deadline_at",
         ]

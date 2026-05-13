@@ -134,6 +134,7 @@ const API = {
             CHECKITEM: {
                 CREATE: "/board/{uid}/card/{card_uid}/checklist/{checklist_uid}/checkitem",
                 CHANGE_TITLE: "/board/{uid}/card/{card_uid}/checkitem/{checkitem_uid}/title",
+                CHANGE_DEADLINE: "/board/{uid}/card/{card_uid}/checkitem/{checkitem_uid}/deadline",
                 CHANGE_ORDER: "/board/{uid}/card/{card_uid}/checkitem/{checkitem_uid}/order",
                 CHANGE_STATUS: "/board/{uid}/card/{card_uid}/checkitem/{checkitem_uid}/status",
                 TOGGLE_CHECKED: "/board/{uid}/card/{card_uid}/checkitem/{checkitem_uid}/toggle-checked",

@@ -1,3 +1,4 @@
+import { sanitizeEditorValue } from "@/components/Editor/utils";
 import { Routing } from "@langboard/core/constants";
 import { api } from "@/core/helpers/Api";
 import { TMutationOptions, useQueryMutation } from "@/core/helpers/QueryMutation";
@@ -31,7 +32,7 @@ const useChangeCardDetails = (options?: TMutationOptions<TChangeCardDetailsForm>
             details.title = params.title;
         }
         if ("description" in params) {
-            details.description = params.description;
+            details.description = params.description ? sanitizeEditorValue(params.description) : params.description;
         }
         if ("deadline_at" in params) {
             details.deadline_at = params.deadline_at;
