@@ -12,6 +12,7 @@ import type { Model as GlobalRelationshipTypeModel } from "@/core/models/GlobalR
 import type { Model as InternalBotModel } from "@/core/models/InternalBotModel";
 import type { Model as McpToolGroupModel } from "@/core/models/McpToolGroup";
 import type { Model as MetadataModel } from "@/core/models/MetadataModel";
+import type { Model as NotificationScheduleRuleModel } from "@/core/models/NotificationScheduleRuleModel";
 import type { Model as ProjectModel } from "@/core/models/Project";
 import type { Model as ProjectCardModel } from "@/core/models/ProjectCard";
 import type { Model as ProjectCardAttachmentModel } from "@/core/models/ProjectCardAttachment";
@@ -50,6 +51,7 @@ export interface IModelMap {
     InternalBotModel: IModelRegistry<typeof InternalBotModel>;
     McpToolGroup: IModelRegistry<typeof McpToolGroupModel>;
     MetadataModel: IModelRegistry<typeof MetadataModel>;
+    NotificationScheduleRuleModel: IModelRegistry<typeof NotificationScheduleRuleModel>;
     Project: IModelRegistry<typeof ProjectModel>;
     ProjectCard: IModelRegistry<typeof ProjectCardModel>;
     ProjectCardAttachment: IModelRegistry<typeof ProjectCardAttachmentModel>;

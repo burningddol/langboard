@@ -1,8 +1,9 @@
 import Box from "@/components/base/Box";
+import Button from "@/components/base/Button";
 import Flex from "@/components/base/Flex";
 import IconComponent from "@/components/base/IconComponent";
-import Input from "@/components/base/Input";
 import Toast from "@/components/base/Toast";
+import Collaborative from "@/components/Collaborative";
 import useUpdateBot from "@/controllers/api/settings/bots/useUpdateBot";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import useChangeEditMode from "@/core/hooks/useChangeEditMode";
@@ -14,6 +15,7 @@ import { ModelRegistry } from "@/core/models/ModelRegistry";
 import { SettingRole } from "@/core/models/roles";
 import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
+import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,7 +32,7 @@ const BotUniqueName = memo(() => {
     const editorName = `${bot.uid}-bot-unique-name`;
     const { mutateAsync } = useUpdateBot(bot, { interceptToast: true });
 
-    const { valueRef, isEditing, changeMode } = useChangeEditMode({
+    const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateBot,
         valueType: "input",
         editorName,
@@ -76,9 +78,13 @@ const BotUniqueName = memo(() => {
                     {canUpdateBot && <IconComponent icon="pencil" size="4" className="ml-2" />}
                 </Flex>
             ) : (
-                <>
+                <Flex items="center" gap="1" w="full">
                     <Box textSize="base">@{BotModel.Model.BOT_UNAME_PREFIX}</Box>
-                    <Input
+                    <Collaborative.Input
+                        collaborationType={EEditorCollaborationType.AppSettings}
+                        uid={bot.uid}
+                        section="bot"
+                        field="bot_uname"
                         ref={valueRef}
                         className={cn(
                             "ml-0 h-6 rounded-none border-x-0 border-t-0 bg-transparent p-0 text-base scrollbar-hide",
@@ -89,7 +95,6 @@ const BotUniqueName = memo(() => {
                             e.preventDefault();
                             e.stopPropagation();
                         }}
-                        onBlur={() => changeMode("view")}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") {
                                 e.preventDefault();
@@ -99,7 +104,13 @@ const BotUniqueName = memo(() => {
                             }
                         }}
                     />
-                </>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
+                        <IconComponent icon="check" size="4" />
+                    </Button>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                        <IconComponent icon="x" size="4" />
+                    </Button>
+                </Flex>
             )}
         </Flex>
     );

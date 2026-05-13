@@ -23,6 +23,7 @@ export enum ESettingSocketTopicID {
     InternalBot = "internal_bot",
     GlobalRelationship = "global_relationship",
     Webhook = "webhook",
+    NotificationSchedule = "notification_schedule",
     Ollama = "ollama",
 
     // MCP Server management

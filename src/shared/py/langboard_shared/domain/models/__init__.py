@@ -28,6 +28,7 @@ from .InternalBot import InternalBot
 from .McpRole import McpRole
 from .McpToolGroup import McpToolGroup
 from .McpToolGroupUsage import McpToolGroupUsage
+from .NotificationScheduleRule import NotificationScheduleRule
 from .Project import Project
 from .ProjectActivity import ProjectActivity
 from .ProjectAssignedInternalBot import ProjectAssignedInternalBot
@@ -99,6 +100,7 @@ __all__ = [
     "InternalBot",
     "McpToolGroup",
     "McpToolGroupUsage",
+    "NotificationScheduleRule",
     "Project",
     "ProjectActivity",
     "ProjectAssignedInternalBot",

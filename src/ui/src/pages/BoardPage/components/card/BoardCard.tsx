@@ -7,6 +7,7 @@ import ScrollArea from "@/components/base/ScrollArea";
 import ShineBorder from "@/components/base/ShineBorder";
 import Skeleton from "@/components/base/Skeleton";
 import Toast from "@/components/base/Toast";
+import useChangeCardDetails from "@/controllers/api/card/useChangeCardDetails";
 import useGetCardDetails from "@/controllers/api/card/useGetCardDetails";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { BoardCardProvider, useBoardCard, useBoardCardPanel } from "@/core/providers/BoardCardProvider";
@@ -314,12 +315,15 @@ function BoardCardCommentPanel(): React.JSX.Element {
 }
 
 function BoardCardFloatingNav(): React.JSX.Element {
+    const { projectUID, card } = useBoardCard();
+    const cardUID = card.uid;
     const { isCommentPanelOpen, toggleCommentPanel, isActionPanelOpen, toggleActionPanel } = useBoardCardPanel();
     const { hasRoleAction, canEditCard, isCardEditing, enterCardEditMode, leaveCardEditMode } = useBoardCard();
-    const { getHasUnsavedChanges, saveDirtySections, cancelDirtySections } = useBoardCardUnsavedActions();
+    const { getHasUnsavedChanges, saveDirtySections, cancelDirtySections, resetAll } = useBoardCardUnsavedActions();
     const [t] = useTranslation();
     const [isSaving, setIsSaving] = useState(false);
     const canAttachFile = hasRoleAction(ProjectRole.EAction.CardUpdate) && isCardEditing;
+    const { mutateAsync: changeCardDetailsMutateAsync } = useChangeCardDetails({ interceptToast: true });
 
     const handleCancelEditing = useCallback(() => {
         cancelDirtySections();
@@ -335,18 +339,46 @@ function BoardCardFloatingNav(): React.JSX.Element {
 
         try {
             if (getHasUnsavedChanges()) {
-                const isSaved = await saveDirtySections();
-                if (!isSaved || getHasUnsavedChanges()) {
+                const details = await saveDirtySections();
+                if (!details) {
                     Toast.Add.error(t("card.unsavedChanges.Keep editing"));
                     return;
                 }
+
+                if (Object.keys(details).length > 0) {
+                    const promise = changeCardDetailsMutateAsync({
+                        project_uid: projectUID,
+                        card_uid: cardUID,
+                        ...details,
+                    });
+
+                    Toast.Add.promise(promise, {
+                        loading: t("common.Changing..."),
+                        error: (error) => {
+                            const messageRef = { message: "" };
+                            const { handle } = setupApiErrorHandler({}, messageRef);
+
+                            handle(error);
+                            return messageRef.message;
+                        },
+                        success: () => t("successes.Card changed successfully."),
+                    });
+
+                    try {
+                        await promise;
+                    } catch {
+                        return;
+                    }
+                }
+
+                resetAll();
             }
 
             leaveCardEditMode();
         } finally {
             setIsSaving(false);
         }
-    }, [getHasUnsavedChanges, isSaving, leaveCardEditMode, saveDirtySections]);
+    }, [cardUID, changeCardDetailsMutateAsync, getHasUnsavedChanges, isSaving, leaveCardEditMode, projectUID, resetAll, saveDirtySections]);
 
     return (
         <Flex justify="center" className="pointer-events-none sticky bottom-3 z-[110] pb-1 sm:bottom-4 sm:pb-2">

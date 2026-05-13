@@ -3,6 +3,7 @@ import Label from "@/components/base/Label";
 import Skeleton from "@/components/base/Skeleton";
 import Switch from "@/components/base/Switch";
 import Toast from "@/components/base/Toast";
+import CollaborativeControlOverlay from "@/components/Collaborative/ControlOverlay";
 import { useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import { SkeletonUserAvatarList } from "@/components/UserAvatarList";
 import useChangeWikiPublic from "@/controllers/api/wiki/useChangeWikiPublic";
@@ -352,13 +353,12 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
                             }
 
                             return (
-                                <div className="relative w-full rounded-md border-2 px-2 py-1" style={{ borderColor: remoteMemberMeta.borderColor }}>
-                                    <div
-                                        className="pointer-events-none absolute -top-3 left-2 bg-popover px-1 text-[10px] font-medium leading-none"
-                                        style={{ color: remoteMemberMeta.borderColor }}
-                                    >
-                                        {remoteMemberMeta.actorName}
-                                    </div>
+                                <div className="relative w-full px-2 py-1">
+                                    <CollaborativeControlOverlay
+                                        color={remoteMemberMeta.borderColor}
+                                        labelClassName="absolute left-2 top-0 z-[9999] -translate-y-1/2"
+                                        name={remoteMemberMeta.actorName}
+                                    />
                                     <span>{label}</span>
                                 </div>
                             );

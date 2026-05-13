@@ -39,9 +39,7 @@ const WebhookRow = memo(({ webhook, selectedWebhooks, setSelectedWebhooks, ...pr
                 <Table.FlexCell className="w-1/6 truncate text-center">
                     <DateDistance date={createdAt} />
                 </Table.FlexCell>
-                <Table.FlexCell className="w-1/6 truncate text-center">
-                    <DateDistance date={lastUsedAt} />
-                </Table.FlexCell>
+                <Table.FlexCell className="w-1/6 truncate text-center">{lastUsedAt ? <DateDistance date={lastUsedAt} /> : "-"}</Table.FlexCell>
             </ModelRegistry.WebhookModel.Provider>
         </Table.FlexRow>
     );

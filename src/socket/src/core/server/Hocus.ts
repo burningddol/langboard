@@ -4,7 +4,7 @@ import EditorSyncStorage from "@/core/server/EditorSyncStorage";
 import ISocketClient from "@/core/server/ISocketClient";
 import Subscription from "@/core/server/Subscription";
 import User from "@/models/User";
-import { ESocketTopic } from "@langboard/core/enums";
+import { ESettingSocketTopicID, ESocketTopic } from "@langboard/core/enums";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import * as Y from "yjs";
 
@@ -70,6 +70,29 @@ const parseDocumentName = (documentName: string): IHocusDocumentName | null => {
     };
 };
 
+const getAppSettingsTopicID = (sectionName: string | null): ESettingSocketTopicID | null => {
+    switch (sectionName) {
+        case "bot":
+        case "bot-value":
+            return ESettingSocketTopicID.Bot;
+        case "global-relationship":
+            return ESettingSocketTopicID.GlobalRelationship;
+        case "internal-bot":
+        case "internal-bot-value":
+            return ESettingSocketTopicID.InternalBot;
+        case "mcp-tool-group":
+            return ESettingSocketTopicID.McpToolGroup;
+        case "notification-schedule-rule":
+            return ESettingSocketTopicID.NotificationSchedule;
+        case "user":
+            return ESettingSocketTopicID.User;
+        case "webhook":
+            return ESettingSocketTopicID.Webhook;
+        default:
+            return null;
+    }
+};
+
 const getDocumentAccess = (documentName: string): IHocusDocumentAccess | null => {
     const parsed = parseDocumentName(documentName);
     if (!parsed) {
@@ -77,6 +100,10 @@ const getDocumentAccess = (documentName: string): IHocusDocumentAccess | null =>
     }
 
     switch (parsed.type) {
+        case EEditorCollaborationType.AppSettings: {
+            const topicId = getAppSettingsTopicID(parsed.sectionName);
+            return topicId ? { topic: ESocketTopic.AppSettings, topicId } : null;
+        }
         case EEditorCollaborationType.Card:
         case EEditorCollaborationType.CardTitle:
         case EEditorCollaborationType.CardDescription:

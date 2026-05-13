@@ -1,20 +1,13 @@
 from typing import Any
 from sqlalchemy import TEXT
-from ...core.db import (
-    ApiField,
-    DateTimeField,
-    EditorContentModel,
-    Field,
-    ModelColumnType,
-    SnowflakeIDField,
-    SoftDeleteModel,
-)
+from ...core.db import ApiField, DateTimeField, EditorContentModel, Field, ModelColumnType, SnowflakeIDField
 from ...core.types import SafeDateTime, SnowflakeID
+from .BaseNotificationScheduleModel import BaseNotificationScheduleModel
 from .Project import Project
 from .ProjectColumn import ProjectColumn
 
 
-class Card(SoftDeleteModel, table=True):
+class Card(BaseNotificationScheduleModel, table=True):
     project_id: SnowflakeID = SnowflakeIDField(
         foreign_key=Project, nullable=False, index=True, api_field=ApiField(name="project_uid")
     )
@@ -49,6 +42,33 @@ class Card(SoftDeleteModel, table=True):
         return {
             "uid": self.get_uid(),
             "title": self.title,
+        }
+
+    @classmethod
+    def get_notification_schedule_rule_fields(cls) -> list[dict[str, Any]]:
+        return [
+            {"key": "deadline_at", "operators": [cls.OPERATOR_WITHIN_NEXT_DAYS, cls.OPERATOR_OVERDUE]},
+            {"key": "created_at", "operators": [cls.OPERATOR_OLDER_THAN_DAYS]},
+            {"key": "archived_at", "operators": [cls.OPERATOR_IS_EMPTY, cls.OPERATOR_IS_NOT_EMPTY]},
+        ]
+
+    @classmethod
+    def get_notification_schedule_rule_recipients(cls) -> list[str]:
+        return [cls.RECIPIENT_CARD_ASSIGNEES, cls.RECIPIENT_PROJECT_OWNER, cls.RECIPIENT_PROJECT_MEMBERS]
+
+    def get_notification_schedule_rule_message_vars(
+        self,
+        field: str | None,
+        operator: str | None,
+        now: SafeDateTime,
+    ) -> dict[str, Any] | None:
+        if field != "deadline_at" or operator not in [self.OPERATOR_WITHIN_NEXT_DAYS, self.OPERATOR_OVERDUE]:
+            return super().get_notification_schedule_rule_message_vars(field, operator, now)
+        if not self.deadline_at:
+            return None
+
+        return {
+            "deadline_at": self.deadline_at.isoformat(),
         }
 
     def _get_repr_keys(self) -> list[str | tuple[str, str]]:

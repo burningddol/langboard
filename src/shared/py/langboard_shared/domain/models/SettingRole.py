@@ -33,6 +33,12 @@ class SettingRoleAction(Enum):
     WebhookUpdate = "webhook_update"
     WebhookDelete = "webhook_delete"
 
+    # Notification Schedule Management
+    NotificationScheduleRead = "notification_schedule_read"
+    NotificationScheduleCreate = "notification_schedule_create"
+    NotificationScheduleUpdate = "notification_schedule_update"
+    NotificationScheduleDelete = "notification_schedule_delete"
+
     # Ollama Management
     OllamaRead = "ollama_read"
 
@@ -43,6 +49,7 @@ class SettingRoleCategory(Enum):
     InternalBot = "internal_bot"
     GlobalRelationship = "global_relationship"
     Webhook = "webhook"
+    NotificationSchedule = "notification_schedule"
     Ollama = "ollama"
 
 
@@ -60,6 +67,7 @@ class SettingRole(BaseRoleModel, table=True):
             SettingRoleAction.InternalBotRead,
             SettingRoleAction.GlobalRelationshipRead,
             SettingRoleAction.WebhookRead,
+            SettingRoleAction.NotificationScheduleRead,
             SettingRoleAction.OllamaRead,
         ]
 

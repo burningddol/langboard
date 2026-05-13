@@ -11,6 +11,7 @@ export * as ChatSessionModel from "@/core/models/ChatSessionModel";
 export * as ChatTemplateModel from "@/core/models/ChatTemplateModel";
 export * as GlobalRelationshipType from "@/core/models/GlobalRelationshipType";
 export * as MetadataModel from "@/core/models/MetadataModel";
+export * as NotificationScheduleRuleModel from "@/core/models/NotificationScheduleRuleModel";
 export * as Project from "@/core/models/Project";
 export * as ProjectCard from "@/core/models/ProjectCard";
 export * as ProjectCardAttachment from "@/core/models/ProjectCardAttachment";

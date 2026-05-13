@@ -5,6 +5,7 @@ import type { PlateElementProps } from "platejs/react";
 import { PlateElement, useFocused, useReadOnly, useSelected } from "platejs/react";
 import { cn } from "@/core/utils/ComponentUtils";
 import IconComponent from "@/components/base/IconComponent";
+import CollaborativeUserLabel from "@/components/Collaborative/UserLabel";
 import { MultiSelectPlugin } from "@platejs/tag/react";
 import { Utils } from "@langboard/core/utils";
 
@@ -49,12 +50,11 @@ export function TagElement(props: PlateElementProps<TTagElement> & TTagElementPr
             }
         >
             {badgeBorderColor && badgeActorName ? (
-                <div
-                    className="pointer-events-none absolute -top-3.5 left-0 max-w-full truncate whitespace-nowrap text-xs leading-none"
-                    style={{ color: badgeBorderColor }}
-                >
-                    {badgeActorName}
-                </div>
+                <CollaborativeUserLabel
+                    className="absolute left-0 top-0 max-w-full -translate-y-1/2 truncate whitespace-nowrap"
+                    color={badgeBorderColor}
+                    name={badgeActorName}
+                />
             ) : null}
             {createTagContent ? createTagContent({ ...element, readOnly }) : element.value}
             {!readOnly && <IconComponent icon="x" size="4" className="hover:text-secondary-foreground/70" onClick={() => removeItem(element)} />}

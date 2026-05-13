@@ -27,12 +27,9 @@ const useUpdateWebhook = (webhook: WebhookModel.TModel, options?: TMutationOptio
             }
         );
 
-        WebhookModel.Model.fromOne({
-            uid: webhook.uid,
-            ...res.data,
-        });
+        WebhookModel.Model.fromOne(res.data.webhook, true);
 
-        return res.data;
+        return res.data.webhook;
     };
 
     const result = mutate(["update-webhook"], updateWebhook, {

@@ -4,12 +4,15 @@ import { showableDefaultInputs } from "@/components/bots/BotValueInput/utils";
 import { API_URL, IS_OLLAMA_RUNNING } from "@/constants";
 import { Agent, EBotPlatform, EBotPlatformRunningType, TAgentFormInput, TAgentModelName } from "@langboard/core/ai";
 import { Utils } from "@langboard/core/utils";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface IBotValueDefaultInputContext {
+    collaborationType?: TSharedBotValueInputProps["collaborationType"];
     platform: EBotPlatform;
     platformRunningType: EBotPlatformRunningType;
+    section?: TSharedBotValueInputProps["section"];
+    uid?: TSharedBotValueInputProps["uid"];
     valuesRef: React.RefObject<Record<string, any>>;
     selectedProvider: TAgentModelName;
     setSelectedProvider: React.Dispatch<React.SetStateAction<TAgentModelName>>;
@@ -56,8 +59,11 @@ const initialContext = {
 const BotValueDefaultInputContext = createContext<IBotValueDefaultInputContext>(initialContext);
 
 export const BotValueDefaultInputProvider = ({
+    collaborationType,
     platform,
     platformRunningType,
+    section,
+    uid,
     value,
     newValueRef,
     isValidating,
@@ -72,13 +78,19 @@ export const BotValueDefaultInputProvider = ({
     const [inputs, setInputs] = useState<TAgentFormInput[]>([]);
     const inputsRef = useRef<Record<string, HTMLElement | null>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const syncValueRef = useCallback(() => {
+        newValueRef.current = JSON.stringify(valuesRef.current);
+    }, [newValueRef]);
     const setInputRef = (name: string) => (element: HTMLElement | null) => {
         inputsRef.current[name] = element;
     };
-    const setValue = (name: string) => (value: any) => {
-        valuesRef.current[name] = value;
-        newValueRef.current = JSON.stringify(valuesRef.current);
-    };
+    const setValue = useCallback(
+        (name: string) => (value: any) => {
+            valuesRef.current[name] = value;
+            syncValueRef();
+        },
+        [syncValueRef]
+    );
     const [apiList, setApiList] = useState<Record<string, string>>({});
     const showableInputs = useMemo(() => {
         return showableDefaultInputs[platform]?.[platformRunningType] ?? [];
@@ -147,6 +159,7 @@ export const BotValueDefaultInputProvider = ({
             setValue("agent_llm")(selectedProvider);
         } else {
             delete valuesRef.current["agent_llm"];
+            syncValueRef();
         }
 
         setInputs(
@@ -157,13 +170,16 @@ export const BotValueDefaultInputProvider = ({
                 envs: { IS_OLLAMA_RUNNING, API_URL },
             })
         );
-    }, [platform, platformRunningType, selectedProvider]);
+    }, [platform, platformRunningType, selectedProvider, setValue, showableInputs, syncValueRef]);
 
     return (
         <BotValueDefaultInputContext.Provider
             value={{
+                collaborationType,
                 platform,
                 platformRunningType,
+                section,
+                uid,
                 valuesRef,
                 selectedProvider,
                 setSelectedProvider,

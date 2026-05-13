@@ -2,6 +2,7 @@ import { Command as CommandPrimitive } from "cmdk";
 import React from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Command from "@/components/base/Command";
+import CollaborativeUserLabel from "@/components/Collaborative/UserLabel";
 import Popover from "@/components/base/Popover";
 import Skeleton from "@/components/base/Skeleton";
 import { cn } from "@/core/utils/ComponentUtils";
@@ -338,12 +339,11 @@ function RemoteCursors({ cursors, positions }: { cursors: ICollaborativeTextCurs
                                 top: position.top,
                             }}
                         >
-                            <span
-                                className="absolute -top-5 left-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-white"
-                                style={{ backgroundColor: cursor.color }}
-                            >
-                                {cursor.name}
-                            </span>
+                            <CollaborativeUserLabel
+                                className="absolute left-0 top-0 -translate-y-full whitespace-nowrap"
+                                color={cursor.color}
+                                name={cursor.name}
+                            />
                         </span>
                     </React.Fragment>
                 );

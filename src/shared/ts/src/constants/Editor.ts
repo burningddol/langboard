@@ -8,6 +8,7 @@ export enum EEditorType {
 export type TEditorType = EEditorType;
 
 export enum EEditorCollaborationType {
+    AppSettings = "app-settings",
     BoardSettings = "board-settings",
     Card = "card",
     CardTitle = "card-title",

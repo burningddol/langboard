@@ -16,6 +16,7 @@ import BotsPage from "@/pages/SettingsPage/BotsPage";
 import GlobalRelationshipsPage from "@/pages/SettingsPage/GlobalRelationshipsPage";
 import InternalBotsPage from "@/pages/SettingsPage/InternalBotsPage";
 import WebhooksPage from "@/pages/SettingsPage/WebhooksPage";
+import NotificationSchedulePage from "@/pages/SettingsPage/NotificationSchedulePage";
 import UsersPage from "@/pages/SettingsPage/UsersPage";
 import ApiKeysPage from "@/pages/SettingsPage/ApiKeysPage";
 import OllamaPage from "@/pages/SettingsPage/OllamaPage";
@@ -81,6 +82,9 @@ function SettingsProxy(): React.JSX.Element {
             skeletonContent = <></>;
             break;
         case ROUTES.SETTINGS.WEBHOOKS:
+            skeletonContent = <></>;
+            break;
+        case ROUTES.SETTINGS.NOTIFICATION_SCHEDULE:
             skeletonContent = <></>;
             break;
         case ROUTES.SETTINGS.MCP_TOOL_GROUPS:
@@ -166,6 +170,14 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
             },
             hidden: !hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.Webhook),
         },
+        [ROUTES.SETTINGS.NOTIFICATION_SCHEDULE]: {
+            icon: "bell",
+            name: t("settings.Notification schedule"),
+            onClick: () => {
+                navigate(ROUTES.SETTINGS.NOTIFICATION_SCHEDULE, { smooth: true });
+            },
+            hidden: !hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.NotificationSchedule),
+        },
         [ROUTES.SETTINGS.MCP_TOOL_GROUPS]: {
             icon: "package",
             name: t("mcp.MCP Server"),
@@ -211,6 +223,9 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
         case ROUTES.SETTINGS.WEBHOOKS:
             pageContent = <WebhooksPage />;
             break;
+        case ROUTES.SETTINGS.NOTIFICATION_SCHEDULE:
+            pageContent = <NotificationSchedulePage />;
+            break;
         case ROUTES.SETTINGS.MCP_TOOL_GROUPS:
             pageContent = <McpServerPage />;
             break;
@@ -249,6 +264,11 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
                 break;
             case ROUTES.SETTINGS.WEBHOOKS:
                 if (!hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.Webhook)) {
+                    navigate(foundAvailableRoute ?? ROUTES.DASHBOARD.PROJECTS.ALL, { replace: true });
+                }
+                break;
+            case ROUTES.SETTINGS.NOTIFICATION_SCHEDULE:
+                if (!hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.NotificationSchedule)) {
                     navigate(foundAvailableRoute ?? ROUTES.DASHBOARD.PROJECTS.ALL, { replace: true });
                 }
                 break;

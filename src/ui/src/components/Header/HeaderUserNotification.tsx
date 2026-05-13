@@ -234,7 +234,7 @@ interface IHeaderUserNotificationItemProps {
 
 const HeaderUserNotificationItem = memo(({ notification, updater }: IHeaderUserNotificationItemProps) => {
     const [_, forceUpdate] = updater;
-    const [t] = useTranslation();
+    const [t, i18n] = useTranslation();
     const navigate = usePageNavigateRef();
     const { send: sendReadUserNotification } = useReadUserNotificationHandlers();
     const { send: sendDeleteUserNotification } = useDeleteUserNotificationHandlers();
@@ -275,7 +275,16 @@ const HeaderUserNotificationItem = memo(({ notification, updater }: IHeaderUserN
         readNotification(false);
         navigate(route);
     };
-
+    const messageVars = getNotificationMessageVars(notification);
+    const ruleTranslationKey = getNotificationScheduleRuleTranslationKey(notification, messageVars);
+    const titleI18nKey =
+        ruleTranslationKey && i18n.exists(`notification.ruleTitles.${ruleTranslationKey}`)
+            ? `notification.ruleTitles.${ruleTranslationKey}`
+            : `notification.titles.${notification.type}`;
+    const subtitleI18nKey =
+        ruleTranslationKey && i18n.exists(`notification.ruleSubtitles.${ruleTranslationKey}`)
+            ? `notification.ruleSubtitles.${ruleTranslationKey}`
+            : `notification.subtitles.${notification.type}`;
     return (
         <Card.Root>
             <Card.Header className="p-3">
@@ -290,7 +299,8 @@ const HeaderUserNotificationItem = memo(({ notification, updater }: IHeaderUserN
                         onClick={movePage}
                     >
                         <Trans
-                            i18nKey={`notification.titles.${notification.type}`}
+                            i18nKey={titleI18nKey}
+                            values={{ records: notification.records, message_vars: messageVars }}
                             components={{
                                 Who: <UserAvatarComp userOrBot={notification.notifier_user ?? notification.notifier_bot} />,
                                 Span: <Box as="span" className="truncate" />,
@@ -325,7 +335,7 @@ const HeaderUserNotificationItem = memo(({ notification, updater }: IHeaderUserN
                     </Flex>
                 </Flex>
                 <Card.Description className={cn("truncate text-xs", !!readAt && "opacity-50")}>
-                    {t(`notification.subtitles.${notification.type}`, { records: notification.records })}
+                    {t(subtitleI18nKey, { records: notification.records, message_vars: messageVars })}
                 </Card.Description>
             </Card.Header>
             <HeaderUserNotificationItemContent notification={notification} className={readAt ? "opacity-50" : ""} />
@@ -337,6 +347,80 @@ const HeaderUserNotificationItem = memo(({ notification, updater }: IHeaderUserN
         </Card.Root>
     );
 });
+
+const getNotificationScheduleRuleTranslationKey = (notification: UserNotification.TModel, messageVars: Record<string, unknown>) => {
+    if (notification.type !== ENotificationType.ScheduledRule) {
+        return null;
+    }
+
+    const { target, field, operator } = notification.message_vars;
+    if (!Utils.Type.isString(target) || !Utils.Type.isString(field) || !Utils.Type.isString(operator)) {
+        return null;
+    }
+
+    const resolvedOperator =
+        target === "card" && field === "deadline_at" && Utils.Type.isString(messageVars.deadline_state) ? messageVars.deadline_state : operator;
+
+    return `${target}.${field}.${resolvedOperator}`;
+};
+
+const getNotificationMessageVars = (notification: UserNotification.TModel) => {
+    const messageVars = notification.message_vars;
+    if (notification.type !== ENotificationType.ScheduledRule) {
+        return messageVars;
+    }
+
+    const { target, field, operator } = messageVars;
+    if (!Utils.Type.isString(target) || !Utils.Type.isString(field) || !Utils.Type.isString(operator)) {
+        return messageVars;
+    }
+
+    if (target === "card" && field === "deadline_at" && Utils.Type.isString(messageVars.deadline_at)) {
+        const deadlineDate = new Date(messageVars.deadline_at);
+        if (Number.isNaN(deadlineDate.getTime())) {
+            return messageVars;
+        }
+
+        const isOverdue = deadlineDate.getTime() < Date.now();
+        return {
+            ...messageVars,
+            deadline_state: isOverdue ? "overdue" : "within_next_days",
+            days_delta: getCalendarDaysDelta(deadlineDate, new Date()),
+        };
+    }
+
+    if (operator === "older_than_days") {
+        const fieldDateValue = messageVars[field];
+        if (!Utils.Type.isString(fieldDateValue)) {
+            return {
+                ...messageVars,
+                days_delta: messageVars.value,
+            };
+        }
+
+        const fieldDate = new Date(fieldDateValue);
+        if (Number.isNaN(fieldDate.getTime())) {
+            return {
+                ...messageVars,
+                days_delta: messageVars.value,
+            };
+        }
+
+        return {
+            ...messageVars,
+            days_delta: getCalendarDaysDelta(fieldDate, new Date()),
+        };
+    }
+
+    return messageVars;
+};
+
+const getCalendarDaysDelta = (targetDate: Date, baseDate: Date) => {
+    const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const baseDateOnly = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+    return Math.abs(Math.round((targetDateOnly.getTime() - baseDateOnly.getTime()) / 86400000));
+};
 
 function HeaderUserNotificationItemContent({ notification, className }: { notification: UserNotification.TModel; className?: string }) {
     let content = null;
@@ -442,6 +526,11 @@ const getRoute = (notification: UserNotification.TModel) => {
             return ROUTES.BOARD.CARD(notification.records.project.uid, notification.records.card.uid);
         case ENotificationType.NotifiedFromChecklist:
             return ROUTES.BOARD.CARD(notification.records.project.uid, notification.records.card.uid);
+        case ENotificationType.ScheduledRule:
+            if (notification.records.card) {
+                return ROUTES.BOARD.CARD(notification.records.project.uid, notification.records.card.uid);
+            }
+            return ROUTES.BOARD.MAIN(notification.records.project.uid);
         default:
             throw new Error("Invalid notification type.");
     }

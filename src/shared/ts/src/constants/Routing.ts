@@ -277,6 +277,13 @@ const API = {
             DELETE: "/settings/webhook/{webhook_uid}",
             DELETE_SELECTED: "/settings/webhooks",
         },
+        NOTIFICATION_SCHEDULE: "/settings/notification-schedule",
+        NOTIFICATION_SCHEDULE_RULE: {
+            CREATE: "/settings/notification-schedule/rule",
+            UPDATE: "/settings/notification-schedule/rule/{rule_uid}",
+            DELETE: "/settings/notification-schedule/rule/{rule_uid}",
+            DELETE_SELECTED: "/settings/notification-schedule/rules",
+        },
     },
     GLOBAL: {
         INTERNAL_BOTS: {

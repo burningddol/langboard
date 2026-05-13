@@ -1,8 +1,8 @@
 from typing import Any
 from ..core.publisher import BaseSocketPublisher, SocketPublishModel
-from ..core.routing import SettingSocketTopicID, SocketTopic
+from ..core.routing import GLOBAL_TOPIC_ID, SettingSocketTopicID, SocketTopic
 from ..core.utils.decorators import staticclass
-from ..domain.models import McpToolGroup, WebhookSetting
+from ..domain.models import McpToolGroup, NotificationScheduleRule, WebhookSetting
 
 
 @staticclass
@@ -20,10 +20,21 @@ class AppSettingPublisher(BaseSocketPublisher):
         AppSettingPublisher.put_dispather(model, publish_model)
 
     @staticmethod
+    def user_created(model: dict[str, Any]):
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.User.value,
+            event="settings:user:created",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
     def global_relationship_created(model: dict[str, Any]):
         publish_model = SocketPublishModel(
             topic=SocketTopic.Global,
-            topic_id=SettingSocketTopicID.GlobalRelationship.value,
+            topic_id=GLOBAL_TOPIC_ID,
             event="global-relationship:created",
             data_keys=list(model.keys()),
         )
@@ -34,7 +45,7 @@ class AppSettingPublisher(BaseSocketPublisher):
     def global_relationship_updated(uid: str, model: dict[str, Any]):
         publish_model = SocketPublishModel(
             topic=SocketTopic.Global,
-            topic_id=SettingSocketTopicID.GlobalRelationship.value,
+            topic_id=GLOBAL_TOPIC_ID,
             event=f"global-relationship:updated:{uid}",
             data_keys=list(model.keys()),
         )
@@ -45,7 +56,7 @@ class AppSettingPublisher(BaseSocketPublisher):
     def global_relationship_deleted(uid: str):
         publish_model = SocketPublishModel(
             topic=SocketTopic.Global,
-            topic_id=SettingSocketTopicID.GlobalRelationship.value,
+            topic_id=GLOBAL_TOPIC_ID,
             event=f"global-relationship:deleted:{uid}",
         )
 
@@ -56,7 +67,7 @@ class AppSettingPublisher(BaseSocketPublisher):
         model = {"uids": uids}
         publish_model = SocketPublishModel(
             topic=SocketTopic.Global,
-            topic_id=SettingSocketTopicID.GlobalRelationship.value,
+            topic_id=GLOBAL_TOPIC_ID,
             event="global-relationship:deleted",
             data_keys=list(model.keys()),
         )
@@ -154,6 +165,51 @@ class AppSettingPublisher(BaseSocketPublisher):
             topic=SocketTopic.AppSettings,
             topic_id=SettingSocketTopicID.Webhook.value,
             event="settings:webhook:deleted",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def notification_schedule_rule_created(rule: NotificationScheduleRule):
+        model = {"notification_rule": rule.api_response()}
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.NotificationSchedule.value,
+            event="settings:notification-schedule:rule:created",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def notification_schedule_rule_updated(uid: str, model: dict[str, Any]):
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.NotificationSchedule.value,
+            event=f"settings:notification-schedule:rule:updated:{uid}",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def notification_schedule_rule_deleted(uid: str):
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.NotificationSchedule.value,
+            event=f"settings:notification-schedule:rule:deleted:{uid}",
+        )
+
+        AppSettingPublisher.put_dispather({}, publish_model)
+
+    @staticmethod
+    def selected_notification_schedule_rules_deleted(uids: list[str]):
+        model = {"uids": uids}
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.NotificationSchedule.value,
+            event="settings:notification-schedule:rule:deleted",
             data_keys=list(model.keys()),
         )
 

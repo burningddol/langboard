@@ -1,4 +1,5 @@
 import Input, { InputProps } from "@/components/base/Input";
+import CollaborativeUserLabel from "@/components/Collaborative/UserLabel";
 import { ICollaborativeTextCursor, useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import { composeRefs } from "@/core/utils/ComponentUtils";
 import { TEditorCollaborationType } from "@langboard/core/constants";
@@ -22,6 +23,8 @@ interface ICursorOverlayPosition {
     highlightWidth: number;
     top: number;
 }
+
+const PASSWORD_MASK_CHARACTER = "\u2022";
 
 const createMeasureMarker = () => {
     const marker = document.createElement("span");
@@ -68,6 +71,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             onValueChange,
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});
+        const [inputType, setInputType] = useState("text");
 
         const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
             updateValue(event.target.value);
@@ -111,6 +115,28 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
 
         useLayoutEffect(() => {
             const input = inputRef.current;
+            if (!input) {
+                return;
+            }
+
+            const updateInputType = () => {
+                setInputType(input.type);
+            };
+            const observer = new MutationObserver(updateInputType);
+
+            updateInputType();
+            observer.observe(input, {
+                attributeFilter: ["type"],
+                attributes: true,
+            });
+
+            return () => {
+                observer.disconnect();
+            };
+        }, []);
+
+        useLayoutEffect(() => {
+            const input = inputRef.current;
             if (!input || !remoteCursors.length) {
                 setCursorPositions({});
                 return;
@@ -129,6 +155,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
                 "paddingLeft",
                 "paddingRight",
                 "paddingTop",
+                "textAlign",
             ] as const;
 
             mirror.style.position = "absolute";
@@ -137,6 +164,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             mirror.style.top = "0";
             mirror.style.left = "-9999px";
             mirror.style.height = `${input.offsetHeight}px`;
+            mirror.style.width = `${input.offsetWidth}px`;
             mirror.style.whiteSpace = "pre";
             trackedStyles.forEach((styleName) => {
                 mirror.style[styleName] = styles[styleName];
@@ -148,6 +176,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             const lineHeight = Number.parseFloat(styles.lineHeight) || fontSize * 1.2;
             const contentHeight = input.clientHeight - paddingTop - paddingBottom;
             const top = paddingTop + Math.max((contentHeight - lineHeight) / 2, 0);
+            const measureValue = inputType === "password" ? PASSWORD_MASK_CHARACTER.repeat(value.length) : value;
 
             const nextPositions: Record<number, ICursorOverlayPosition> = {};
             document.body.appendChild(mirror);
@@ -158,10 +187,11 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
                 const startMarker = createMeasureMarker();
                 const endMarker = createMeasureMarker();
 
-                mirror.textContent = value.slice(0, selectionStart);
+                mirror.textContent = measureValue.slice(0, selectionStart);
                 mirror.appendChild(startMarker);
-                mirror.appendChild(document.createTextNode(value.slice(selectionStart, selectionEnd)));
+                mirror.appendChild(document.createTextNode(measureValue.slice(selectionStart, selectionEnd)));
                 mirror.appendChild(endMarker);
+                mirror.appendChild(document.createTextNode(measureValue.slice(selectionEnd)));
 
                 const startLeft = startMarker.offsetLeft - input.scrollLeft;
                 const endLeft = endMarker.offsetLeft - input.scrollLeft;
@@ -177,7 +207,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
 
             document.body.removeChild(mirror);
             setCursorPositions(nextPositions);
-        }, [remoteCursors, value]);
+        }, [inputType, remoteCursors, value]);
 
         return (
             <div className="relative w-full">
@@ -235,12 +265,11 @@ function RemoteCursors({ cursors, positions }: { cursors: ICollaborativeTextCurs
                                 top: position.top,
                             }}
                         >
-                            <span
-                                className="absolute -top-6 left-0 z-[21] whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-white shadow-sm"
-                                style={{ backgroundColor: cursor.color }}
-                            >
-                                {cursor.name}
-                            </span>
+                            <CollaborativeUserLabel
+                                className="absolute left-0 top-0 z-[21] -translate-y-full whitespace-nowrap"
+                                color={cursor.color}
+                                name={cursor.name}
+                            />
                         </span>
                     </React.Fragment>
                 );

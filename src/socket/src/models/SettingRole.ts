@@ -35,6 +35,12 @@ export enum ESettingRoleAction {
     WebhookUpdate = "webhook_update",
     WebhookDelete = "webhook_delete",
 
+    // Notification Schedule Management
+    NotificationScheduleRead = "notification_schedule_read",
+    NotificationScheduleCreate = "notification_schedule_create",
+    NotificationScheduleUpdate = "notification_schedule_update",
+    NotificationScheduleDelete = "notification_schedule_delete",
+
     // Ollama Management
     OllamaRead = "ollama_read",
 }
@@ -46,6 +52,7 @@ export enum ESettingCategory {
     InternalBot = "internal_bot",
     GlobalRelationship = "global_relationship",
     Webhook = "webhook",
+    NotificationSchedule = "notification_schedule",
     Ollama = "ollama",
 }
 

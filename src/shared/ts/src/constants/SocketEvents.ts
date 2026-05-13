@@ -168,6 +168,7 @@ const SERVER = {
     },
     SETTINGS: {
         USERS: {
+            CREATED: "settings:user:created",
             SELECTIONS_DELETED: "user:deleted",
         },
         BOTS: {
@@ -194,6 +195,14 @@ const SERVER = {
             UPDATED: "settings:webhook:updated:{uid}",
             DELETED: "settings:webhook:deleted:{uid}",
             SELECTIONS_DELETED: "settings:webhook:deleted",
+        },
+        NOTIFICATION_SCHEDULE: {
+            RULE: {
+                CREATED: "settings:notification-schedule:rule:created",
+                UPDATED: "settings:notification-schedule:rule:updated:{uid}",
+                DELETED: "settings:notification-schedule:rule:deleted:{uid}",
+                SELECTIONS_DELETED: "settings:notification-schedule:rule:deleted",
+            },
         },
     },
 } as const;

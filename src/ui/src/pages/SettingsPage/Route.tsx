@@ -53,6 +53,10 @@ const routes: RouteObject[] = [
                 element: <></>,
             },
             {
+                path: ROUTES.SETTINGS.NOTIFICATION_SCHEDULE,
+                element: <></>,
+            },
+            {
                 path: ROUTES.SETTINGS.OLLAMA,
                 element: <></>,
             },

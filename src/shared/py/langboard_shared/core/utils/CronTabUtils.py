@@ -20,16 +20,14 @@ class CronTabUtils:
     def reload_cron(self):
         if Env.ENVIRONMENT == "development":
             return
-        try:
-            for process in process_iter(["pid", "name"]):
-                if process.name() != "cron":
-                    continue
-                process.kill()
-            subprocess_run(["crontab", "-r"])
-            subprocess_run(["crontab", str(self.file_path)])
-            subprocess_run(["cron"])
-        except Exception:
-            pass
+        for process in process_iter(["pid", "name"]):
+            if process.name() != "cron":
+                continue
+            process.terminate()
+            process.kill()
+        subprocess_run(["crontab", "-r"])
+        subprocess_run(["crontab", str(self.file_path)], check=True)
+        subprocess_run(["cron"], check=True)
 
     def convert_valid_interval_str(self, interval_str: str) -> str:
         """Convert a string to a valid cron interval string.
@@ -83,22 +81,23 @@ class CronTabUtils:
         cron.remove_all(comment=filterable_comment)
 
     def save_cron(self, cron: CronTab):
-        if Env.ENVIRONMENT == "development":
-            return
         cron.write()
         self.reload_cron()
 
     def adjust_interval_for_utc(self, interval_str: str, tz: str | float) -> str:
         if isinstance(tz, str):
             try:
-                info = ZoneInfo(tz)
-                delta = info.utcoffset(SafeDateTime.now())
-                if delta is None:
-                    tz = 0.0
-                else:
-                    tz = delta.total_seconds() / 3600.0
+                tz = float(tz)
             except Exception:
-                tz = 0.0
+                try:
+                    info = ZoneInfo(tz)
+                    delta = info.utcoffset(SafeDateTime.now())
+                    if delta is None:
+                        tz = 0.0
+                    else:
+                        tz = delta.total_seconds() / 3600.0
+                except Exception:
+                    tz = 0.0
 
         if tz == 0.0:
             return interval_str

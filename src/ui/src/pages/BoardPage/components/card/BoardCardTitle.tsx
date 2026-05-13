@@ -3,10 +3,7 @@ import Flex from "@/components/base/Flex";
 import IconComponent from "@/components/base/IconComponent";
 import Skeleton from "@/components/base/Skeleton";
 import Button from "@/components/base/Button";
-import Toast from "@/components/base/Toast";
 import Collaborative from "@/components/Collaborative";
-import useChangeCardDetails from "@/controllers/api/card/useChangeCardDetails";
-import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { usePageHeader } from "@/core/providers/PageHeaderProvider";
 import { cn, measureTextAreaHeight, setElementStyles } from "@/core/utils/ComponentUtils";
@@ -26,10 +23,9 @@ export function SkeletonBoardCardTitle() {
 
 function BoardCardTitle(): React.JSX.Element {
     const { setPageAliasRef } = usePageHeader();
-    const { projectUID, card, isCardEditing, canEditCard } = useBoardCard();
+    const { card, isCardEditing, canEditCard } = useBoardCard();
     const [t] = useTranslation();
     const { markSectionDirty, resetSection, registerSectionSaveHandler, registerSectionCancelHandler } = useBoardCardUnsavedActions();
-    const { mutateAsync: changeCardDetailsMutateAsync } = useChangeCardDetails("title", { interceptToast: true });
     const title = card.useField("title");
     const titleSpanRef = useRef<HTMLSpanElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -86,34 +82,17 @@ function BoardCardTitle(): React.JSX.Element {
         e.stopPropagation();
     }, []);
 
-    const saveTitle = useCallback(async () => {
+    const saveTitle = useCallback(() => {
         const nextTitle = draftTitle.trim();
         const originalTitle = title.trim();
         if (!nextTitle || nextTitle === originalTitle) {
             setDraftTitle(title);
             resetSection("title");
-            return;
+            return null;
         }
 
-        const promise = changeCardDetailsMutateAsync({
-            project_uid: projectUID,
-            card_uid: card.uid,
-            title: nextTitle,
-        });
-
-        await Toast.Add.promise(promise, {
-            loading: t("common.Changing..."),
-            error: (error) => {
-                const messageRef = { message: "" };
-                const { handle } = setupApiErrorHandler({}, messageRef);
-
-                handle(error);
-                return messageRef.message;
-            },
-            success: () => t("successes.Title changed successfully."),
-        });
-        resetSection("title");
-    }, [changeCardDetailsMutateAsync, draftTitle, projectUID, resetSection, title]);
+        return { title: nextTitle };
+    }, [draftTitle, resetSection, title]);
 
     const cancelTitleEdit = useCallback(() => {
         setDraftTitle(title);

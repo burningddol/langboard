@@ -25,7 +25,7 @@ const useCreateWebhook = (options?: TMutationOptions<ICreateWebhookForm>) => {
             }
         );
 
-        WebhookModel.Model.fromOne(res.data.setting, true);
+        WebhookModel.Model.fromOne(res.data.webhook, true);
 
         return {
             revealed_value: res.data.revealed_value,

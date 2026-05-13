@@ -214,9 +214,11 @@ uploads
 
 bundler
 
-# Claude Code and Specify
+# AI tools
+.agents
 .claude
 .specify
 .serena
+.playwright-cli
 
 graph/

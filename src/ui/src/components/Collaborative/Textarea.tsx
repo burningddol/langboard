@@ -1,4 +1,5 @@
 import Textarea, { TextareaProps } from "@/components/base/Textarea";
+import CollaborativeUserLabel from "@/components/Collaborative/UserLabel";
 import { ICollaborativeTextCursor, useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import { cn, composeRefs } from "@/core/utils/ComponentUtils";
 import { TEditorCollaborationType } from "@langboard/core/constants";
@@ -63,6 +64,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             onMouseUp,
             onValueChange,
             className,
+            children,
             ...props
         },
         ref
@@ -252,6 +254,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
                     onMouseUp={handleMouseUp}
                     onSelect={handleSelect}
                 />
+                {children}
                 <RemoteCursors cursors={remoteCursors} positions={cursorPositions} />
             </div>
         );
@@ -298,12 +301,11 @@ function RemoteCursors({ cursors, positions }: { cursors: ICollaborativeTextCurs
                                 top: position.caretTop,
                             }}
                         >
-                            <span
-                                className="absolute -top-6 left-0 z-[21] whitespace-nowrap rounded px-1.5 py-0.5 text-xs text-white shadow-sm"
-                                style={{ backgroundColor: cursor.color }}
-                            >
-                                {cursor.name}
-                            </span>
+                            <CollaborativeUserLabel
+                                className="absolute left-0 top-0 z-[21] -translate-y-full whitespace-nowrap"
+                                color={cursor.color}
+                                name={cursor.name}
+                            />
                         </span>
                     </React.Fragment>
                 );

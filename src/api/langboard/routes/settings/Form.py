@@ -1,4 +1,5 @@
 from re import match
+from typing import Any
 from langboard_shared.ai import BaseSharedBotForm
 from langboard_shared.core.routing import BaseFormModel, form_model
 from langboard_shared.core.routing.Exception import MissingException, ValidationFailureException, ValidationFailureInfo
@@ -8,7 +9,7 @@ from langboard_shared.domain.models.BaseBotModel import BotPlatform, BotPlatform
 from langboard_shared.domain.models.InternalBot import InternalBotType
 from langboard_shared.domain.models.McpRole import McpRoleAction
 from langboard_shared.domain.models.SettingRole import SettingRoleAction
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from ...Constants import EMAIL_REGEX
 
 
@@ -239,3 +240,36 @@ class UpdateWebhookForm(BaseFormModel):
 @form_model
 class DeleteSelectedWebhooksForm(BaseFormModel):
     webhook_uids: list[str]
+
+
+@form_model
+class CreateNotificationScheduleRuleForm(BaseFormModel):
+    name: str
+    is_enabled: bool = False
+    interval_str: str = "0 9 * * *"
+    timezone: str | float = "UTC"
+    target: str
+    field: str
+    operator: str
+    value: Any | None = None
+    recipients: list[str] = Field(default_factory=list)
+    repeat_after_hours: int = 24
+
+
+@form_model
+class UpdateNotificationScheduleRuleForm(BaseFormModel):
+    name: str | None = None
+    is_enabled: bool | None = None
+    interval_str: str | None = None
+    timezone: str | float | None = None
+    target: str | None = None
+    field: str | None = None
+    operator: str | None = None
+    value: Any | None = None
+    recipients: list[str] | None = None
+    repeat_after_hours: int | None = None
+
+
+@form_model
+class DeleteSelectedNotificationScheduleRulesForm(BaseFormModel):
+    rule_uids: list[str]

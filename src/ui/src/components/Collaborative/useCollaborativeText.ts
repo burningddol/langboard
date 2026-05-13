@@ -50,12 +50,31 @@ interface IAwarenessTextMeta<TValue = unknown> {
     value: TValue;
 }
 
+interface ISharedProviderState {
+    isConnected: bool;
+    isSynced: bool;
+}
+
+interface ISharedProviderEntry {
+    document: Y.Doc;
+    provider: HocuspocusProvider;
+    refCount: number;
+    state: ISharedProviderState;
+    stateListeners: Set<(state: ISharedProviderState) => void>;
+}
+
+const sharedProviderEntries = new Map<string, ISharedProviderEntry>();
+
 const normalizeValue = (value: IUseCollaborativeTextProps["defaultValue"]) => {
     if (Array.isArray(value)) {
         return value.join("");
     }
 
     return value?.toString() ?? "";
+};
+
+const notifySharedProviderState = (entry: ISharedProviderEntry) => {
+    entry.stateListeners.forEach((listener) => listener(entry.state));
 };
 
 export const useCollaborativeText = ({
@@ -146,69 +165,107 @@ export const useCollaborativeText = ({
         }
 
         const token = new URL(url).searchParams.get("authorization");
+        const providerKey = `${resolvedDocumentID}:${token || ""}`;
+        let sharedEntry = sharedProviderEntries.get(providerKey);
 
-        const document = new Y.Doc();
+        if (!sharedEntry) {
+            const document = new Y.Doc();
+            sharedEntry = {
+                document,
+                provider: null as unknown as HocuspocusProvider,
+                refCount: 0,
+                state: {
+                    isConnected: false,
+                    isSynced: false,
+                },
+                stateListeners: new Set(),
+            };
+
+            const provider = new HocuspocusProvider({
+                document,
+                name: resolvedDocumentID,
+                token,
+                url,
+                onAuthenticated: () => {},
+                onConnect: () => {
+                    sharedEntry!.state = {
+                        ...sharedEntry!.state,
+                        isConnected: true,
+                    };
+                    notifySharedProviderState(sharedEntry!);
+                },
+                onDisconnect: () => {
+                    sharedEntry!.state = {
+                        isConnected: false,
+                        isSynced: false,
+                    };
+                    notifySharedProviderState(sharedEntry!);
+                },
+                onAuthenticationFailed: () => {
+                    sharedEntry!.state = {
+                        isConnected: false,
+                        isSynced: false,
+                    };
+                    notifySharedProviderState(sharedEntry!);
+                },
+                onSynced: () => {
+                    sharedEntry!.state = {
+                        ...sharedEntry!.state,
+                        isSynced: true,
+                    };
+                    notifySharedProviderState(sharedEntry!);
+                },
+                onClose: () => {
+                    sharedEntry!.state = {
+                        isConnected: false,
+                        isSynced: false,
+                    };
+                    notifySharedProviderState(sharedEntry!);
+                },
+            });
+
+            sharedEntry.provider = provider;
+            sharedProviderEntries.set(providerKey, sharedEntry);
+        }
+
+        sharedEntry.refCount += 1;
+        const document = sharedEntry.document;
+        const provider = sharedEntry.provider;
         const text = document.getText(field);
         ytextRef.current = text;
-
-        const provider = new HocuspocusProvider({
-            document,
-            name: resolvedDocumentID,
-            token,
-            url,
-            onAuthenticated: () => {
-                if (disposed) {
-                    return;
-                }
-            },
-            onConnect: () => {
-                if (disposed) {
-                    return;
-                }
-                setIsConnected(true);
-            },
-            onDisconnect: () => {
-                if (disposed) {
-                    return;
-                }
-
-                setIsConnected(false);
-                setIsSynced(false);
-            },
-            onAuthenticationFailed: () => {
-                if (disposed) {
-                    return;
-                }
-
-                setIsConnected(false);
-                setIsSynced(false);
-            },
-            onSynced: () => {
-                if (disposed) {
-                    return;
-                }
-
-                setIsSynced(true);
-                if (text.length === 0 && fallbackValueRef.current) {
-                    text.insert(0, fallbackValueRef.current);
-                    return;
-                }
-
-                const nextValue = text.toString();
-                valueRef.current = nextValue;
-                setValue(nextValue);
-                onValueChangeRef.current?.(nextValue);
-            },
-            onClose: () => {
-                if (disposed) {
-                    return;
-                }
-
-                setIsConnected(false);
-                setIsSynced(false);
-            },
-        });
         providerRef.current = provider;
+
+        const applySyncedText = () => {
+            if (disposed) {
+                return;
+            }
+
+            setIsSynced(true);
+            if (text.length === 0 && fallbackValueRef.current) {
+                text.insert(0, fallbackValueRef.current);
+                return;
+            }
+
+            const nextValue = text.toString();
+            valueRef.current = nextValue;
+            setValue(nextValue);
+            onValueChangeRef.current?.(nextValue);
+        };
+
+        const handleSharedProviderStateChange = (state: ISharedProviderState) => {
+            if (disposed) {
+                return;
+            }
+
+            setIsConnected(state.isConnected);
+            setIsSynced(state.isSynced);
+            if (state.isSynced) {
+                applySyncedText();
+            }
+        };
+
+        sharedEntry.stateListeners.add(handleSharedProviderStateChange);
+        handleSharedProviderStateChange(sharedEntry.state);
 
         const updateRemoteCursors = () => {
             if (disposed) {
@@ -283,10 +340,23 @@ export const useCollaborativeText = ({
             disposed = true;
             text.unobserve(handleTextChange);
             provider.awareness?.off("change", updateRemoteCursors);
-            provider.setAwarenessField("collaborativeTextSelection", null);
-            provider.setAwarenessField("collaborativeTextMeta", null);
-            provider.destroy();
-            document.destroy();
+            const localAwarenessState = provider.awareness?.getLocalState();
+            const currentSelection = localAwarenessState?.collaborativeTextSelection as IAwarenessTextSelection | undefined;
+            const currentMeta = localAwarenessState?.collaborativeTextMeta as IAwarenessTextMeta | undefined;
+
+            if (currentSelection?.field === field) {
+                provider.setAwarenessField("collaborativeTextSelection", null);
+            }
+            if (currentMeta?.field === field) {
+                provider.setAwarenessField("collaborativeTextMeta", null);
+            }
+            sharedEntry!.stateListeners.delete(handleSharedProviderStateChange);
+            sharedEntry!.refCount -= 1;
+            if (sharedEntry!.refCount <= 0) {
+                provider.destroy();
+                document.destroy();
+                sharedProviderEntries.delete(providerKey);
+            }
             providerRef.current = null;
             ytextRef.current = null;
         };

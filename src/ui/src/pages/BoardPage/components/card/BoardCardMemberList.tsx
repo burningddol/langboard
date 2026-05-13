@@ -1,4 +1,5 @@
 import MultiSelectAssignee, { IFormProps, TSaveHandler } from "@/components/MultiSelectAssignee";
+import CollaborativeControlOverlay from "@/components/Collaborative/ControlOverlay";
 import { useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import Toast from "@/components/base/Toast";
 import useUpdateCardAssignedUsers from "@/controllers/api/card/useUpdateCardAssignedUsers";
@@ -230,13 +231,12 @@ const BoardCardMemberList = memo(() => {
                     }
 
                     return (
-                        <div className="relative w-full rounded-md border-2 px-2 py-1" style={{ borderColor: remoteMemberMeta.borderColor }}>
-                            <div
-                                className="pointer-events-none absolute -top-3 left-2 bg-popover px-1 text-[10px] font-medium leading-none"
-                                style={{ color: remoteMemberMeta.borderColor }}
-                            >
-                                {remoteMemberMeta.actorName}
-                            </div>
+                        <div className="relative w-full px-2 py-1">
+                            <CollaborativeControlOverlay
+                                color={remoteMemberMeta.borderColor}
+                                labelClassName="absolute left-2 top-0 z-[9999] -translate-y-1/2"
+                                name={remoteMemberMeta.actorName}
+                            />
                             <span>{label}</span>
                         </div>
                     );

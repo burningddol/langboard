@@ -4,7 +4,6 @@ from typing import Any, cast
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from langboard_shared.ai import BotScheduleHelper
 from langboard_shared.core.routing import AppExceptionHandlingRoute, AppRouter, BaseMiddleware
 from langboard_shared.core.security import AuthSecurity, KeyVault
 from langboard_shared.Env import Env
@@ -35,7 +34,6 @@ class App:
 
     def create(self):
         AppRouter.set_app(self.api)
-        BotScheduleHelper.utils.reload_cron()
         self.app_config.set_restarting(True)
         return self.api
 

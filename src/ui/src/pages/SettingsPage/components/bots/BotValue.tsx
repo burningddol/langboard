@@ -12,6 +12,7 @@ import { memo, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import { EHttpStatus } from "@langboard/core/enums";
+import { EEditorCollaborationType } from "@langboard/core/constants";
 import { getValueType } from "@/components/bots/BotValueInput/utils";
 import { EBotPlatformRunningType } from "@langboard/core/ai";
 import BotValueInput from "@/components/bots/BotValueInput";
@@ -33,6 +34,7 @@ const BotValue = memo(() => {
     const newValueRef = useRef<string>(value);
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | TBotValueDefaultInputRefLike | null>(null);
     const [isValidating, setIsValidating] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const change = () => {
         const input = inputRef.current;
@@ -50,8 +52,11 @@ const BotValue = memo(() => {
         const newValue = newValueRef.current.trim();
         if (value.trim() === newValue || !newValue) {
             newValueRef.current = newValue;
+            setIsEditing(false);
             return;
         }
+
+        setIsValidating(true);
 
         const promise = mutateAsync({
             value: newValue,
@@ -82,8 +87,27 @@ const BotValue = memo(() => {
             },
             finally: () => {
                 setIsValidating(false);
+                setIsEditing(false);
             },
         });
+    };
+
+    const startEditing = () => {
+        if (!canUpdateBot || isValidating) {
+            return;
+        }
+
+        newValueRef.current = value;
+        setIsEditing(true);
+    };
+
+    const cancelEditing = () => {
+        if (isValidating) {
+            return;
+        }
+
+        newValueRef.current = value;
+        setIsEditing(false);
     };
 
     return (
@@ -94,6 +118,9 @@ const BotValue = memo(() => {
                 </Alert>
             )}
             <BotValueInput
+                collaborationType={EEditorCollaborationType.AppSettings}
+                uid={internalBot.uid}
+                section="bot-value"
                 platform={platform}
                 platformRunningType={platformRunningType}
                 value={value}
@@ -101,9 +128,12 @@ const BotValue = memo(() => {
                 valueType={valueType}
                 newValueRef={newValueRef}
                 isValidating={isValidating}
+                isEditing={isEditing}
+                startEditing={startEditing}
+                cancelEditing={cancelEditing}
                 change={change}
                 required
-                disabled={!canUpdateBot}
+                disabled={!canUpdateBot || !isEditing}
                 ref={inputRef}
             />
         </Box>

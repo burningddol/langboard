@@ -4,9 +4,6 @@ import DateTimePicker from "@/components/base/DateTimePicker";
 import Flex from "@/components/base/Flex";
 import IconComponent from "@/components/base/IconComponent";
 import Skeleton from "@/components/base/Skeleton";
-import Toast from "@/components/base/Toast";
-import useChangeCardDetails from "@/controllers/api/card/useChangeCardDetails";
-import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
@@ -45,12 +42,10 @@ const parseDeadline = (value: string) => {
 };
 
 const BoardCardDeadline = memo(() => {
-    const { projectUID, card, hasRoleAction, isCardEditing } = useBoardCard();
+    const { card, hasRoleAction, isCardEditing } = useBoardCard();
     const [t] = useTranslation();
     const { markSectionDirty, resetSection, registerSectionSaveHandler, registerSectionCancelHandler } = useBoardCardUnsavedActions();
-    const { mutateAsync: changeCardDetailsMutateAsync } = useChangeCardDetails("deadline_at", { interceptToast: true });
     const deadline = card.useField("deadline_at");
-    const [isSaving, setIsSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [draftDeadline, setDraftDeadline] = useState<Date | undefined>(deadline);
     const canStartEditing = hasRoleAction(ProjectRole.EAction.CardUpdate) && isCardEditing;
@@ -117,43 +112,20 @@ const BoardCardDeadline = memo(() => {
         updateCollaborativeDeadline("");
     }, [updateCollaborativeDeadline]);
 
-    const saveDeadline = useCallback(async () => {
+    const saveDeadline = useCallback(() => {
         const nextDeadline = draftDeadline ? new Date(draftDeadline) : undefined;
         nextDeadline?.setSeconds(0, 0);
 
         if (getNormalizedTime(nextDeadline) === getNormalizedTime(deadline)) {
             resetSection("deadline");
             setIsEditing(false);
-            return;
+            return null;
         }
 
-        setIsSaving(true);
+        const deadlineAt: Date | "" = nextDeadline || "";
 
-        const promise = changeCardDetailsMutateAsync({
-            project_uid: projectUID,
-            card_uid: card.uid,
-            deadline_at: nextDeadline ?? "",
-        });
-
-        try {
-            await Toast.Add.promise(promise, {
-                loading: t("common.Changing..."),
-                error: (error) => {
-                    const messageRef = { message: "" };
-                    const { handle } = setupApiErrorHandler({}, messageRef);
-
-                    handle(error);
-                    return messageRef.message;
-                },
-                success: () => t("successes.Deadline changed successfully."),
-            });
-
-            resetSection("deadline");
-            setIsEditing(false);
-        } finally {
-            setIsSaving(false);
-        }
-    }, [changeCardDetailsMutateAsync, deadline, draftDeadline, getNormalizedTime, projectUID, resetSection]);
+        return { deadline_at: deadlineAt };
+    }, [deadline, draftDeadline, getNormalizedTime, resetSection]);
 
     const cancelDeadlineEdit = useCallback(() => {
         setDraftDeadline(deadline);
@@ -191,7 +163,6 @@ const BoardCardDeadline = memo(() => {
                         value={draftDeadline}
                         min={new Date(new Date().setMinutes(new Date().getMinutes() + 30))}
                         onChange={handleChange}
-                        disabled={isSaving}
                         timePicker={{
                             hour: true,
                             minute: true,
@@ -203,7 +174,6 @@ const BoardCardDeadline = memo(() => {
                                 variant={draftDeadline ? "default" : "outline"}
                                 className={cn("h-8 gap-2 px-3 lg:h-10", draftDeadline && "rounded-r-none")}
                                 title={t("card.Set deadline")}
-                                disabled={isSaving}
                             >
                                 <IconComponent icon="calendar" size="4" />
                                 {draftDeadline ? Utils.String.formatDateLocale(draftDeadline) : t("card.Set deadline")}
@@ -215,7 +185,6 @@ const BoardCardDeadline = memo(() => {
                             variant="default"
                             className="h-8 gap-2 rounded-l-none border-l border-l-secondary/70 px-2 lg:h-10"
                             onClick={handleClearDeadline}
-                            disabled={isSaving}
                         >
                             <IconComponent icon="trash-2" size="4" />
                         </Button>

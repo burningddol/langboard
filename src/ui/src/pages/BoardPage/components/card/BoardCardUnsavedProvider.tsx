@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import type { IEditorContent } from "@/core/models/Base";
 
 type TBoardCardUnsavedSection = "deadline" | "description" | "title";
-type TSectionHandler = () => void | Promise<void>;
+export interface IBoardCardDetailsPatch {
+    deadline_at?: Date | "";
+    description?: IEditorContent;
+    title?: string;
+}
+
+type TSectionHandler = () => IBoardCardDetailsPatch | null | void | Promise<IBoardCardDetailsPatch | null | void>;
 
 interface IBoardCardUnsavedActionsContext {
     markSectionDirty: (section: TBoardCardUnsavedSection, dirty: bool) => void;
@@ -10,7 +17,7 @@ interface IBoardCardUnsavedActionsContext {
     getHasUnsavedChanges: () => bool;
     registerSectionSaveHandler: (section: TBoardCardUnsavedSection, handler: TSectionHandler) => () => void;
     registerSectionCancelHandler: (section: TBoardCardUnsavedSection, handler: TSectionHandler) => () => void;
-    saveDirtySections: () => Promise<bool>;
+    saveDirtySections: () => Promise<IBoardCardDetailsPatch | false>;
     cancelDirtySections: () => void;
 }
 
@@ -84,30 +91,26 @@ export const BoardCardUnsavedProvider = ({ children }: { children: React.ReactNo
 
     const saveDirtySections = useCallback(async () => {
         const dirtySections = Object.keys(sectionStateRef.current) as TBoardCardUnsavedSection[];
-        let isSaved = true;
+        const details: IBoardCardDetailsPatch = {};
 
         for (const section of dirtySections) {
             const handler = saveHandlersRef.current[section];
             if (!handler) {
-                isSaved = false;
-                continue;
+                return false;
             }
 
             try {
-                await handler();
+                const result = await handler();
+                if (result) {
+                    Object.assign(details, result);
+                }
             } catch {
-                isSaved = false;
-                continue;
-            }
-
-            if (sectionStateRef.current[section]) {
-                isSaved = false;
+                return false;
             }
         }
 
-        updateDirtyFlag();
-        return isSaved;
-    }, [updateDirtyFlag]);
+        return details;
+    }, []);
 
     const cancelDirtySections = useCallback(() => {
         const dirtySections = Object.keys(sectionStateRef.current) as TBoardCardUnsavedSection[];

@@ -14,6 +14,7 @@ class NotificationType(Enum):
     AssignedToCard = "assigned_to_card"
     ReactedToComment = "reacted_to_comment"
     NotifiedFromChecklist = "notified_from_checklist"
+    ScheduledRule = "scheduled_rule"
 
 
 class UserNotification(BaseSqlModel, table=True):

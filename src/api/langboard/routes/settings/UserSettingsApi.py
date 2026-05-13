@@ -12,6 +12,7 @@ from langboard_shared.domain.models.SettingRole import SettingRoleAction
 from langboard_shared.domain.services import DomainService
 from langboard_shared.Env import Env
 from langboard_shared.filter import RoleFilter
+from langboard_shared.publishers import AppSettingPublisher
 from langboard_shared.security import Auth, RoleFinder
 from .Form import (
     CreateUserForm,
@@ -96,7 +97,16 @@ def create_user_in_settings(form: CreateUserForm, service: DomainService = Domai
         form_dict["updated_at"] = now
         form_dict["activated_at"] = now
 
-    user, _ = service.user.create(form_dict)
+    user, user_profile = service.user.create(form_dict)
+    api_user = user.api_response()
+    api_user.update(user_profile.api_response())
+    api_user["created_at"] = user.created_at
+    api_user["activated_at"] = user.activated_at
+    api_user["is_admin"] = user.is_admin
+    api_user["setting_role_actions"] = []
+    api_user["api_key_role_actions"] = []
+    api_user["mcp_role_actions"] = []
+    AppSettingPublisher.user_created({"user": api_user})
 
     return JsonResponse(status_code=status.HTTP_201_CREATED)
 

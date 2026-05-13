@@ -333,7 +333,7 @@ class Env:
 
     @property
     def CRON_TAB_FILE(self) -> Path:
-        cron_tab_file = self.DATA_DIR / "cron.tab"
+        cron_tab_file = Path(self.get_from_env("CRON_TAB_FILE", self.DATA_DIR / "cron.tab"))
         return cron_tab_file
 
     @property

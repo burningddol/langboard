@@ -202,3 +202,7 @@ class Repository(Factory):
     @property
     def webhook_setting(self):
         return self._create_or_get_product(factory.WebhookSettingRepository)
+
+    @property
+    def notification_schedule_rule(self):
+        return self._create_or_get_product(factory.NotificationScheduleRuleRepository)

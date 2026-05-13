@@ -15,6 +15,7 @@ from ...models import (
     Bot,
     Card,
     CardComment,
+    Checkitem,
     Checklist,
     Project,
     ProjectColumn,
@@ -23,12 +24,13 @@ from ...models import (
     User,
     UserNotification,
 )
+from ...models.BaseNotificationScheduleModel import BaseNotificationScheduleModel
 from ...models.UserNotification import NotificationType
 
 
 _TModel = TypeVar(
     "_TModel",
-    bound=User | Bot | Project | ProjectInvitation | ProjectWiki | Card | CardComment | Checklist,
+    bound=User | Bot | Project | ProjectInvitation | ProjectWiki | Card | CardComment | Checklist | Checkitem,
 )
 
 
@@ -281,6 +283,51 @@ class NotificationService(BaseDomainService):
             {"url": self.__create_redirect_url(project, card)},
         )
 
+    def notify_notification_schedule_rule(
+        self,
+        notifier: TUserOrBot,
+        target_user: TUserParam | None,
+        notification_type: NotificationType,
+        project: Project,
+        rule_name: str,
+        target_model: BaseNotificationScheduleModel,
+        message_vars: dict[str, Any],
+        now: SafeDateTime,
+    ) -> bool:
+        references: list = [project]
+        scope_models: list[BaseSqlModel] = [project]
+        if isinstance(target_model, Card):
+            column = self.__get_column_by_card(target_model)
+            references.append(target_model)
+            scope_models.extend([column, target_model])
+        elif isinstance(target_model, Checkitem):
+            card = self.__get_card_by_checkitem(target_model)
+            column = self.__get_column_by_card(card)
+            references.extend([card, target_model])
+            scope_models.extend([column, card, target_model])
+
+        target_message_vars = target_model.get_notification_schedule_rule_message_vars(
+            str(message_vars.get("field") or ""),
+            str(message_vars.get("operator") or ""),
+            now,
+        )
+        if target_message_vars is None:
+            return False
+
+        return self.__notify(
+            notifier,
+            target_user,
+            notification_type,
+            scope_models,
+            references,
+            {
+                **message_vars,
+                **target_message_vars,
+                "rule_name": rule_name,
+            },
+            allow_self=True,
+        )
+
     def create_record_list(self, record_list: list[_TModel]) -> list[tuple[str, SnowflakeID]]:
         return [(type(record).__tablename__, record.id) for record in record_list]
 
@@ -344,9 +391,10 @@ class NotificationService(BaseDomainService):
         message_vars: dict[str, Any] | None = None,
         email_template_name: TEmailTemplateName | None = None,
         email_formats: dict[str, str] | None = None,
+        allow_self: bool = False,
     ) -> bool:
         target_user = InfraHelper.get_by_id_like(User, target_user)
-        if not target_user or target_user.id == notifier.id:
+        if not target_user or (target_user.id == notifier.id and not allow_self):
             return False
 
         raw_record_list = self.create_record_list(references)
@@ -415,3 +463,7 @@ class NotificationService(BaseDomainService):
     def __get_column_by_card(self, card: Card):
         column = InfraHelper.get_by_id_like(ProjectColumn, card.project_column_id)
         return cast(ProjectColumn, column)
+
+    def __get_card_by_checkitem(self, checkitem: Checkitem):
+        checklist = InfraHelper.get_by_id_like(Checklist, checkitem.checklist_id)
+        return cast(Card, InfraHelper.get_by_id_like(Card, checklist.card_id if checklist else None))

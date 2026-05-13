@@ -75,6 +75,7 @@ export const ROUTES = {
         CREATE_GLOBAL_RELATIONSHIP: "/settings/global-relationships/create",
         WEBHOOKS: "/settings/webhooks",
         CREATE_WEBHOOK: "/settings/webhooks/create",
+        NOTIFICATION_SCHEDULE: "/settings/notification-schedule",
         OLLAMA: "/settings/ollama",
         PULL_OLLAMA: "/settings/ollama/pull",
         MCP_TOOL_GROUPS: "/settings/mcp",

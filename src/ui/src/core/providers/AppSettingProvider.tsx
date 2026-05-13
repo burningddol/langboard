@@ -1,7 +1,11 @@
+/* eslint-disable @/max-len */
 import useBotSettingCreatedHandlers from "@/controllers/socket/settings/bots/useBotSettingCreatedHandlers";
 import useMcpToolGroupCreatedHandlers from "@/controllers/socket/settings/mcpToolGroups/useMcpToolGroupCreatedHandlers";
 import useSelectedMcpToolGroupsDeletedHandlers from "@/controllers/socket/settings/mcpToolGroups/useSelectedMcpToolGroupsDeletedHandlers";
+import useNotificationScheduleRuleCreatedHandlers from "@/controllers/socket/settings/notificationSchedule/useNotificationScheduleRuleCreatedHandlers";
+import useSelectedNotificationScheduleRulesDeletedHandlers from "@/controllers/socket/settings/notificationSchedule/useSelectedNotificationScheduleRulesDeletedHandlers";
 import useWebhookCreatedHandlers from "@/controllers/socket/settings/webhooks/useWebhookCreatedHandlers";
+import useUserCreatedHandlers from "@/controllers/socket/settings/users/useUserCreatedHandlers";
 import useSelectedUsersDeletedHandlers from "@/controllers/socket/settings/users/useSelectedUsersDeletedHandlers";
 import useSelectedWebhooksDeletedHandlers from "@/controllers/socket/settings/webhooks/useSelectedWebhooksDeletedHandlers";
 import useSwitchSocketHandlers from "@/core/hooks/useSwitchSocketHandlers";
@@ -36,28 +40,37 @@ export const AppSettingProvider = ({ currentUser, children }: IAppSettingProvide
     const webhookCreatedHandlers = useWebhookCreatedHandlers({});
     const selectedWebhooksDeletedHandlers = useSelectedWebhooksDeletedHandlers({});
     const botSettingCreatedHandlers = useBotSettingCreatedHandlers({});
+    const userCreatedHandlers = useUserCreatedHandlers({});
     const selectedUsersDeletedHandlers = useSelectedUsersDeletedHandlers({
         currentUser,
         signOut,
     });
     const mcpToolGroupCreatedHandlers = useMcpToolGroupCreatedHandlers({});
     const selectedMcpToolGroupsDeletedHandlers = useSelectedMcpToolGroupsDeletedHandlers({});
+    const notificationScheduleRuleCreatedHandlers = useNotificationScheduleRuleCreatedHandlers({});
+    const selectedNotificationScheduleRulesDeletedHandlers = useSelectedNotificationScheduleRulesDeletedHandlers({});
     const handlers = useMemo(
         () => [
             webhookCreatedHandlers,
             selectedWebhooksDeletedHandlers,
             botSettingCreatedHandlers,
+            userCreatedHandlers,
             selectedUsersDeletedHandlers,
             mcpToolGroupCreatedHandlers,
             selectedMcpToolGroupsDeletedHandlers,
+            notificationScheduleRuleCreatedHandlers,
+            selectedNotificationScheduleRulesDeletedHandlers,
         ],
         [
             webhookCreatedHandlers,
             selectedWebhooksDeletedHandlers,
             botSettingCreatedHandlers,
+            userCreatedHandlers,
             selectedUsersDeletedHandlers,
             mcpToolGroupCreatedHandlers,
             selectedMcpToolGroupsDeletedHandlers,
+            notificationScheduleRuleCreatedHandlers,
+            selectedNotificationScheduleRulesDeletedHandlers,
         ]
     );
 

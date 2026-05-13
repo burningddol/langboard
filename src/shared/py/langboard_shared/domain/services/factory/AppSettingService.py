@@ -1,11 +1,17 @@
 from typing import Any, Literal, Sequence
+from ....ai import BotScheduleHelper
 from ....core.domain import BaseDomainService
 from ....core.domain.BaseDomainService import TMutableValidatorMap
 from ....core.types.ParamTypes import TGlobalCardRelationshipTypeParam
 from ....core.utils.Converter import convert_python_data
-from ....helpers import InfraHelper
+from ....helpers import InfraHelper, ModelHelper
 from ....publishers import AppSettingPublisher
-from ...models import GlobalCardRelationshipType, WebhookSetting
+from ...models import GlobalCardRelationshipType, NotificationScheduleRule, WebhookSetting
+from ...models.BaseNotificationScheduleModel import BaseNotificationScheduleModel
+
+
+CRON_COMMENT = "notification-schedule"
+CRON_COMMAND = "/app/scripts/run_notification_cron.sh"
 
 
 class AppSettingService(BaseDomainService):
@@ -126,20 +132,24 @@ class AppSettingService(BaseDomainService):
 
     def update_webhook_setting(
         self, webhook_setting_uid: str, name: str | None = None, url: str | None = None
-    ) -> WebhookSetting | Literal[True] | None:
+    ) -> WebhookSetting | None:
         setting = InfraHelper.get_by_id_like(WebhookSetting, webhook_setting_uid)
         if not setting:
             return None
 
-        if name:
+        if name is not None:
             setting.name = name
-        if url:
+        if url is not None:
             setting.url = url.strip()
 
-        model = setting.changes_dict
+        model = {}
+        if name is not None:
+            model["name"] = setting.name
+        if url is not None:
+            model["url"] = setting.url
 
         if not setting.has_changes():
-            return True
+            return setting
 
         self.repo.webhook_setting.update(setting)
 
@@ -167,3 +177,208 @@ class AppSettingService(BaseDomainService):
         AppSettingPublisher.selected_webhook_settings_deleted(uids)
 
         return True
+
+    def get_api_notification_schedule_rules(self) -> list[dict[str, Any]]:
+        return [rule.api_response() for rule in self.repo.notification_schedule_rule.get_all()]
+
+    def get_notification_schedule_rule(self, rule_uid: str) -> NotificationScheduleRule | None:
+        return InfraHelper.get_by_id_like(NotificationScheduleRule, rule_uid)
+
+    def create_notification_schedule_rule(self, form: dict[str, Any]) -> NotificationScheduleRule:
+        rules = self.repo.notification_schedule_rule.get_all()
+        display_order = max([rule.display_order for rule in rules], default=-1) + 1
+        interval_str = BotScheduleHelper.utils.convert_valid_interval_str(str(form.get("interval_str") or "0 9 * * *"))
+        timezone = form.get("timezone", "UTC")
+        interval_str = BotScheduleHelper.utils.adjust_interval_for_utc(interval_str, timezone)
+        rule = NotificationScheduleRule(
+            name=str(form.get("name") or ""),
+            is_enabled=bool(form.get("is_enabled")),
+            interval_str=interval_str,
+            target=str(form.get("target") or ""),
+            field=str(form.get("field") or ""),
+            operator=str(form.get("operator") or ""),
+            value=form.get("value"),
+            recipients=[str(recipient) for recipient in form.get("recipients") or [] if str(recipient)],
+            repeat_after_hours=max(int(form.get("repeat_after_hours") or 24), 1),
+            display_order=display_order,
+        )
+
+        self.repo.notification_schedule_rule.insert(rule)
+        if rule.is_enabled:
+            cron = BotScheduleHelper.utils.get_cron()
+            has_changed = self.__create_notification_schedule_cron_job(cron, rule.interval_str)
+            if has_changed:
+                BotScheduleHelper.utils.save_cron(cron)
+        AppSettingPublisher.notification_schedule_rule_created(rule)
+        return rule
+
+    def update_notification_schedule_rule(
+        self,
+        rule_uid: str,
+        form: dict[str, Any],
+    ) -> NotificationScheduleRule | Literal[True] | None:
+        rule = InfraHelper.get_by_id_like(NotificationScheduleRule, rule_uid)
+        if not rule:
+            return None
+
+        old_is_enabled = rule.is_enabled
+        old_interval_str = rule.interval_str
+
+        timezone = form.pop("timezone", "UTC")
+        if "interval_str" in form and form["interval_str"] is not None:
+            interval_str = BotScheduleHelper.utils.convert_valid_interval_str(str(form["interval_str"]))
+            form["interval_str"] = BotScheduleHelper.utils.adjust_interval_for_utc(interval_str, timezone)
+        if "recipients" in form and form["recipients"] is not None:
+            form["recipients"] = [str(recipient) for recipient in form.get("recipients") or [] if str(recipient)]
+        if "repeat_after_hours" in form and form["repeat_after_hours"] is not None:
+            form["repeat_after_hours"] = max(int(form.get("repeat_after_hours") or 24), 1)
+
+        validators: TMutableValidatorMap = {
+            "name": "not_empty",
+            "is_enabled": "default",
+            "interval_str": "not_empty",
+            "target": "not_empty",
+            "field": "not_empty",
+            "operator": "not_empty",
+            "value": "nullable",
+            "recipients": "default",
+            "repeat_after_hours": "default",
+        }
+
+        old_record = self.apply_mutates(rule, form, validators)
+        if not old_record:
+            return True
+
+        self.repo.notification_schedule_rule.update(rule)
+        new_interval_str = rule.interval_str
+        cron = None
+        has_cron_changed = False
+
+        if rule.is_enabled:
+            cron = BotScheduleHelper.utils.get_cron()
+            has_cron_changed = self.__create_notification_schedule_cron_job(cron, new_interval_str)
+
+        if old_is_enabled and (not rule.is_enabled or old_interval_str != new_interval_str):
+            if not self.__has_notification_schedule_interval(old_interval_str):
+                if not cron:
+                    cron = BotScheduleHelper.utils.get_cron()
+                BotScheduleHelper.utils.remove_job(
+                    cron, self.__get_notification_schedule_cron_comment(old_interval_str)
+                )
+                has_cron_changed = True
+
+        if cron and has_cron_changed:
+            BotScheduleHelper.utils.save_cron(cron)
+
+        AppSettingPublisher.notification_schedule_rule_updated(
+            rule.get_uid(), {"notification_rule": rule.api_response()}
+        )
+        return rule
+
+    def delete_notification_schedule_rule(self, rule_uid: str) -> bool:
+        rule = InfraHelper.get_by_id_like(NotificationScheduleRule, rule_uid)
+        if not rule:
+            return False
+
+        deleted_rule_uid = rule.get_uid()
+        old_is_enabled = rule.is_enabled
+        old_interval_str = rule.interval_str
+
+        self.repo.notification_schedule_rule.delete([deleted_rule_uid])
+        if old_is_enabled and not self.__has_notification_schedule_interval(old_interval_str):
+            cron = BotScheduleHelper.utils.get_cron()
+            BotScheduleHelper.utils.remove_job(cron, self.__get_notification_schedule_cron_comment(old_interval_str))
+            BotScheduleHelper.utils.save_cron(cron)
+        AppSettingPublisher.notification_schedule_rule_deleted(deleted_rule_uid)
+        return True
+
+    def delete_selected_notification_schedule_rules(self, rule_uids: Sequence[str]) -> bool:
+        rule_uid_set = {InfraHelper.convert_uid(rule_uid) for rule_uid in rule_uids}
+        existing_rules = [
+            rule for rule in self.repo.notification_schedule_rule.get_all() if rule.get_uid() in rule_uid_set
+        ]
+        existing_rule_uids = {rule.get_uid() for rule in existing_rules}
+        if not existing_rule_uids:
+            return False
+
+        old_interval_strs = {rule.interval_str for rule in existing_rules if rule.is_enabled}
+
+        self.repo.notification_schedule_rule.delete(list(existing_rule_uids))
+        cron = None
+        has_cron_changed = False
+        for interval_str in old_interval_strs:
+            if self.__has_notification_schedule_interval(interval_str):
+                continue
+            if not cron:
+                cron = BotScheduleHelper.utils.get_cron()
+            BotScheduleHelper.utils.remove_job(cron, self.__get_notification_schedule_cron_comment(interval_str))
+            has_cron_changed = True
+
+        if cron and has_cron_changed:
+            BotScheduleHelper.utils.save_cron(cron)
+
+        AppSettingPublisher.selected_notification_schedule_rules_deleted(list(existing_rule_uids))
+        return True
+
+    def get_notification_schedule_rule_schema(self) -> dict[str, Any]:
+        target_models: list[type[BaseNotificationScheduleModel]] = ModelHelper.get_models_by_base_class(
+            BaseNotificationScheduleModel
+        )
+        values: dict[str, list[Any]] = {}
+        for target_model in target_models:
+            target = str(target_model.__tablename__)
+            for field, field_values in target_model.get_notification_schedule_rule_field_values().items():
+                values[f"{target}.{field}"] = field_values
+
+        return {
+            "targets": [
+                {
+                    "key": str(target_model.__tablename__),
+                    "fields": target_model.get_notification_schedule_rule_fields(),
+                    "recipients": target_model.get_notification_schedule_rule_recipients(),
+                }
+                for target_model in target_models
+            ],
+            "operators": {
+                BaseNotificationScheduleModel.OPERATOR_WITHIN_NEXT_DAYS: {"value_type": "number", "min": 0},
+                BaseNotificationScheduleModel.OPERATOR_OVERDUE: {"value_type": "none"},
+                BaseNotificationScheduleModel.OPERATOR_OLDER_THAN_DAYS: {"value_type": "number", "min": 0},
+                BaseNotificationScheduleModel.OPERATOR_GREATER_THAN_SECONDS: {"value_type": "number", "min": 0},
+                BaseNotificationScheduleModel.OPERATOR_EQUALS: {"value_type": "dynamic"},
+                BaseNotificationScheduleModel.OPERATOR_IS_EMPTY: {"value_type": "none"},
+                BaseNotificationScheduleModel.OPERATOR_IS_NOT_EMPTY: {"value_type": "none"},
+            },
+            "values": values,
+        }
+
+    def __has_notification_schedule_interval(self, interval_str: str) -> bool:
+        return any(rule.interval_str == interval_str for rule in self.repo.notification_schedule_rule.get_enabled())
+
+    def __create_notification_schedule_cron_job(self, cron: Any, interval_str: str) -> bool:
+        comment = self.__get_notification_schedule_cron_comment(interval_str)
+        command = self.__get_notification_schedule_cron_command(interval_str)
+        existing_jobs = list(cron.find_comment(comment))
+        matching_jobs = [
+            job for job in existing_jobs if str(job.command) == command and str(job.slices) == interval_str
+        ]
+        if len(existing_jobs) == 1 and matching_jobs:
+            return False
+
+        if existing_jobs:
+            BotScheduleHelper.utils.remove_job(cron, comment)
+
+        return BotScheduleHelper.utils.create_job(cron, interval_str, command, comment)
+
+    def __get_notification_schedule_cron_comment(self, rule_or_interval: NotificationScheduleRule | str) -> str:
+        if isinstance(rule_or_interval, NotificationScheduleRule):
+            interval_str = rule_or_interval.interval_str
+        else:
+            interval_str = rule_or_interval
+        return f"{CRON_COMMENT}:{interval_str}"
+
+    def __get_notification_schedule_cron_command(self, rule_or_interval: NotificationScheduleRule | str) -> str:
+        if isinstance(rule_or_interval, NotificationScheduleRule):
+            interval_str = rule_or_interval.interval_str
+        else:
+            interval_str = rule_or_interval
+        return f"{CRON_COMMAND} '{interval_str}'"

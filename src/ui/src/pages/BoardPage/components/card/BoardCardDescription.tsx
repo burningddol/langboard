@@ -1,14 +1,11 @@
 import Box from "@/components/base/Box";
 import Flex from "@/components/base/Flex";
 import Skeleton from "@/components/base/Skeleton";
-import Toast from "@/components/base/Toast";
-import { TEditor } from "@/components/Editor/editor-kit";
+import type { TEditor } from "@/components/Editor/editor-kit";
 import { PlateEditor } from "@/components/Editor/plate-editor";
-import useChangeCardDetails from "@/controllers/api/card/useChangeCardDetails";
-import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { BotModel, ProjectCard } from "@/core/models";
-import { IEditorContent } from "@/core/models/Base";
-import { TUserLikeModel } from "@/core/models/ModelRegistry";
+import type { IEditorContent } from "@/core/models/Base";
+import type { TUserLikeModel } from "@/core/models/ModelRegistry";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
@@ -37,7 +34,6 @@ export function SkeletonBoardCardDescription() {
 const BoardCardDescription = memo((): React.JSX.Element => {
     const { projectUID, card, currentUser, hasRoleAction, isCardEditing } = useBoardCard();
     const [t] = useTranslation();
-    const { mutateAsync: changeCardDetailsMutateAsync, isPending } = useChangeCardDetails("description", { interceptToast: true });
     const editorRef = useRef<TEditor>(null);
     const projectMembers = card.useForeignFieldArray("project_members");
     const bots = BotModel.Model.useModels(() => true);
@@ -49,7 +45,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         useBoardCardUnsavedActions();
     const canEdit = hasRoleAction(ProjectRole.EAction.CardUpdate);
     const canStartEditing = canEdit && isCardEditing;
-    const stopEditing = () => {
+    const stopEditing = useCallback(() => {
         if (!editorRef.current) {
             return;
         }
@@ -59,7 +55,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         aiChatApi.aiChat.stop();
         aiTransforms.ai.undo();
         aiChatApi.aiChat.hide();
-    };
+    }, []);
 
     const contentLines = description?.content?.split("\n").length ?? 0;
     const shouldCollapse = !isEditing && contentLines > MAX_COLLAPSE_LINES;
@@ -76,45 +72,23 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         [markSectionDirty]
     );
 
-    const handleSave = useCallback(async () => {
-        if (isPending) {
-            return;
-        }
-
+    const handleSave = useCallback(() => {
         const nextContent = editorRef.current?.api.markdown.serialize()?.trim() ?? description?.content?.trim() ?? "";
         const originalContent = description?.content?.trim() ?? "";
 
         if (nextContent === originalContent) {
             resetSection("description");
             setIsEditing(false);
-            return;
+            return null;
         }
 
-        const promise = changeCardDetailsMutateAsync({
-            project_uid: projectUID,
-            card_uid: card.uid,
+        return {
             description: {
                 ...(description ?? {}),
                 content: nextContent,
             },
-        });
-
-        await Toast.Add.promise(promise, {
-            loading: t("common.Changing..."),
-            error: (error) => {
-                const messageRef = { message: "" };
-                const { handle } = setupApiErrorHandler({}, messageRef);
-
-                handle(error);
-                return messageRef.message;
-            },
-            success: () => {
-                resetSection("description");
-                setIsEditing(false);
-                return t("successes.Description changed successfully.");
-            },
-        });
-    }, [changeCardDetailsMutateAsync, description, isPending, projectUID, resetSection]);
+        };
+    }, [description, resetSection]);
 
     const handleCancel = useCallback(() => {
         if (!isEditing) {
@@ -131,7 +105,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
             stopEditing();
             setIsEditing(false);
         }
-    }, [getHasUnsavedChanges, isCardEditing, isEditing]);
+    }, [getHasUnsavedChanges, isCardEditing, isEditing, stopEditing]);
 
     useEffect(() => {
         if (!isEditing) {

@@ -58,7 +58,7 @@ def create_webhook(form: CreateWebhookForm, service: DomainService = DomainServi
 @AppRouter.api.put(
     "/settings/webhook/{webhook_uid}",
     tags=["AppSettings.Webhook"],
-    responses=OpenApiSchema().auth().forbidden().err(404, ApiErrorCode.NF3002).get(),
+    responses=OpenApiSchema().suc({"webhook": WebhookSetting}).auth().forbidden().err(404, ApiErrorCode.NF3002).get(),
 )
 @RoleFilter.add(SettingRole, [SettingRoleAction.WebhookUpdate], RoleFinder.setting, allowed_all_admin=False)
 @AuthFilter.add("admin")
@@ -69,7 +69,7 @@ def update_webhook(
     if not result:
         raise ApiException.NotFound_404(ApiErrorCode.NF3002)
 
-    return JsonResponse()
+    return JsonResponse(content={"webhook": result.api_response()})
 
 
 @AppRouter.api.delete(
