@@ -13,6 +13,7 @@ export enum EEditorCollaborationType {
     Card = "card",
     CardTitle = "card-title",
     BoardColumnName = "board-column-name",
+    BotSchedule = "bot-schedule",
     Wiki = "wiki",
     WikiTitle = "wiki-title",
     CardDescription = EEditorType.CardDescription,

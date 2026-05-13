@@ -113,6 +113,7 @@ const getDocumentAccess = (documentName: string): IHocusDocumentAccess | null =>
         case EEditorCollaborationType.BoardColumnName:
             return { topic: ESocketTopic.Board, topicId: parsed.entityId };
         case EEditorCollaborationType.BoardSettings:
+        case EEditorCollaborationType.BotSchedule:
             return { topic: ESocketTopic.BoardSettings, topicId: parsed.entityId };
         case EEditorCollaborationType.Wiki:
         case EEditorCollaborationType.WikiTitle:
