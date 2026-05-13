@@ -91,6 +91,7 @@
   "Bot App API token generated successfully.": "Bot App API token generated successfully.",
   "Bot trigger condition changed successfully.": "Bot trigger condition changed successfully.",
   "Bot default triggers changed successfully.": "Bot default triggers changed successfully.",
+  "Bot default triggers applied successfully.": "Bot default triggers applied successfully.",
   "Bot default triggers added successfully.": "Bot default triggers added successfully.",
   "Bot default triggers replaced successfully.": "Bot default triggers replaced successfully.",
   "Bot default trigger conditions updated successfully.": "Bot default trigger conditions updated successfully.",
