@@ -117,21 +117,23 @@ class BotScopeHelper:
                 )
 
                 if default_scopes:
-                    model.conditions = [*default_scopes[0].conditions]
+                    conditions = [*default_scopes[0].conditions]
                 else:
-                    model.conditions = []
+                    conditions = []
 
                 model.default_scope_branch_id = None
             else:
-                model.conditions = []
+                conditions = []
         else:
-            model.conditions = [*model.conditions]
+            conditions = [*model.conditions]
 
-        should_enable = condition not in model.conditions
+        should_enable = condition not in conditions
         if should_enable:
-            model.conditions.append(condition)
+            conditions.append(condition)
         else:
-            model.conditions.remove(condition)
+            conditions.remove(condition)
+
+        model.conditions = conditions
 
         with DbSession.use(readonly=False) as db:
             db.update(model)

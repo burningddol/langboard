@@ -220,5 +220,6 @@ bundler
 .specify
 .serena
 .playwright-cli
+.playwright-mcp
 
 graph/

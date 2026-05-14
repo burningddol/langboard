@@ -43,15 +43,17 @@ class LangflowRequest extends BaseRequest {
             };
         }
 
-        const component = new LangboardCalledVariablesComponent(
-            "chat",
-            oneTimeToken,
-            "user",
-            { uid: new SnowflakeID(requestModel.userId).toShortCode() },
-            requestModel.projectUID,
-            [],
-            requestModel.restData
-        );
+        const components = [
+            new LangboardCalledVariablesComponent(
+                "chat",
+                oneTimeToken,
+                "user",
+                { uid: new SnowflakeID(requestModel.userId).toShortCode() },
+                requestModel.projectUID,
+                [],
+                requestModel.restData
+            ),
+        ];
 
         const reqData = {
             input_value: requestModel.message,
@@ -63,8 +65,7 @@ class LangflowRequest extends BaseRequest {
             uid: this.internalBot.uid,
             tweaks: {
                 ...requestModel.tweaks,
-                ...component.toTweaks(),
-                ...component.toData(),
+                ...components.reduce((acc, component) => ({ ...acc, ...component.toTweaks(), ...component.toData() }), {}),
             },
         };
 

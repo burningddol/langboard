@@ -70,7 +70,11 @@ class Env:
 
     @property
     def API_URL(self) -> str:
-        return self.__get_from_cache("API_URL", f"http://localhost:{self.API_PORT}")
+        return (
+            self.__get_from_cache("API_URL", f"http://localhost:{self.API_PORT}")
+            if self.ENVIRONMENT != "development"
+            else f"http://localhost:{self.API_PORT}"
+        )
 
     @property
     def PUBLIC_UI_URL(self) -> str:

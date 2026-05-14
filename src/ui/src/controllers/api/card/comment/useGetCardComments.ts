@@ -31,7 +31,7 @@ const useGetCardComments = (params: IGetCardCommentsForm, options?: TQueryOption
         );
 
         return {
-            comments: ProjectCardComment.Model.fromArray(res.data.comments),
+            comments,
         };
     };
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IRequestData, IRequestExecuteParams } from "@/core/ai/requests/BaseRequest";
-import { LangboardCalledVariablesComponent } from "@/core/ai/helpers/TweaksComponent";
+import { LangboardCalledAPIToolsComponent, LangboardCalledVariablesComponent } from "@/core/ai/helpers/TweaksComponent";
 import { IBotRequestModel } from "@/core/ai/types";
 import { Utils } from "@langboard/core/utils";
 import { OLLAMA_API_URL } from "@/Constants";
@@ -83,8 +83,10 @@ class DefaultRequest extends LangflowRequest {
 
                 if (agentData.api_names) {
                     const apiNames = agentData.api_names;
+                    const apiToolsComponent = new LangboardCalledAPIToolsComponent(apiNames);
                     delete agentData.api_names;
                     tweaks[LangboardCalledVariablesComponent.name].api_names = apiNames;
+                    tweaks = { ...tweaks, ...apiToolsComponent.toTweaks(), ...apiToolsComponent.toData() };
                 }
             }
         } catch {

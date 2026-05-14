@@ -51,6 +51,7 @@ export const providerIconMap: Record<TAgentModelName, keyof TSVGIconMap> = {
     "Azure OpenAI": "Azure",
     Groq: "Groq",
     Anthropic: "Anthropic",
+    "IBM Watson": "IBMWatson",
     NVIDIA: "Nvidia",
     "Amazon Bedrock": "AWS",
     "Google Generative AI": "GoogleGenerativeAI",

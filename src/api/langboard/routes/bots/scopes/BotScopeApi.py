@@ -47,7 +47,8 @@ def create_bot_scope_in_project(
         if project:
             ProjectBotPublisher.scope_created(project, bot_scope)
 
-    return JsonResponse()
+    scope_table = BotHelper.get_target_table_by_bot_model("scope", bot_scope.__class__)
+    return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
 @AppRouter.schema(form=ToggleBotTriggerConditionForm)
@@ -87,7 +88,8 @@ def toggle_bot_trigger_condition(
         if project:
             ProjectBotPublisher.scope_conditions_updated(project, bot_scope)
 
-    return JsonResponse()
+    scope_table = BotHelper.get_target_table_by_bot_model("scope", bot_scope.__class__)
+    return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
 @AppRouter.schema(form=DeleteBotScopeForm)
@@ -125,7 +127,8 @@ def delete_bot_scope(
         if project:
             ProjectBotPublisher.scope_deleted(project, bot_scope)
 
-    return JsonResponse()
+    scope_table = BotHelper.get_target_table_by_bot_model("scope", bot_scope.__class__)
+    return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
 @AppRouter.schema(form=ApplyDefaultBotScopeForm)

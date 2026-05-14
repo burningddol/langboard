@@ -1,8 +1,9 @@
 import { SocketEvents } from "@langboard/core/constants";
 import useSocketHandler, { IBaseUseSocketHandlersProps } from "@/core/helpers/SocketHandler";
+import { consumePendingLocalCommentCount } from "@/controllers/socket/card/comment/commentCountSync";
 import { ProjectCard, ProjectCardComment } from "@/core/models";
-import { Utils } from "@langboard/core/utils";
 import { ESocketTopic } from "@langboard/core/enums";
+import { Utils } from "@langboard/core/utils";
 
 export interface ICardCommentAddedRawResponse {
     comment: ProjectCardComment.IStore;
@@ -24,12 +25,11 @@ const useCardCommentAddedHandlers = ({ callback, projectUID, cardUID }: IUseCard
             callback,
             responseConverter: (data) => {
                 const card = ProjectCard.Model.getModel(cardUID);
-                if (card) {
-                    if (Utils.Type.isNumber(card.count_comment)) {
-                        card.count_comment = card.count_comment + 1;
-                    }
-                }
+                const comment = ProjectCardComment.Model.getModel(data.comment.uid);
                 ProjectCardComment.Model.fromOne(data.comment, true);
+                if (!comment && !consumePendingLocalCommentCount(cardUID) && card && Utils.Type.isNumber(card.count_comment)) {
+                    card.count_comment = card.count_comment + 1;
+                }
                 return {};
             },
         },

@@ -1,7 +1,7 @@
 from json import dumps as json_dumps
 from json import loads as json_loads
 from typing import Any
-from .....ai import LangboardCalledVariablesComponent
+from .....ai import LangboardCalledAPIToolsComponent, LangboardCalledVariablesComponent
 from .....core.logger import Logger
 from .....domain.models import BotLog
 from .....domain.models.BaseBotModel import BotPlatformRunningType
@@ -56,8 +56,12 @@ class DefaultRequest(LangflowRequest):
 
                 if "api_names" in agent_data:
                     api_names = agent_data.pop("api_names", [])
+                    api_tools_component = LangboardCalledAPIToolsComponent(api_names=api_names)
+
                     tweaks["api_names"] = api_names
                     tweaks[LangboardCalledVariablesComponent.__name__]["api_names"] = api_names
+                    tweaks.update(api_tools_component.to_data())
+                    tweaks.update(api_tools_component.to_tweaks())
         except Exception:
             pass
 

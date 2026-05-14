@@ -28,6 +28,7 @@ export const AGENT_MODELS = [
     "Groq",
     "Anthropic",
     "NVIDIA",
+    "IBM Watson",
     "Amazon Bedrock",
     "Google Generative AI",
     "SambaNova",
