@@ -216,6 +216,7 @@ const API = {
         BOTS: {
             GET_LIST: "/settings/bots",
             CREATE: "/settings/bot",
+            COPY: "/settings/bot/{bot_uid}/copy",
             UPDATE: "/settings/bot/{bot_uid}",
             UPDATE_DEFAULT_TRIGGER_CONDITIONS: "/settings/bot/{bot_uid}/default-trigger-conditions",
             GENERATE_NEW_API_TOKEN: "/settings/bot/{bot_uid}/new-api-token",
@@ -238,6 +239,7 @@ const API = {
         INTERNAL_BOTS: {
             GET_LIST: "/settings/internal-bots",
             CREATE: "/settings/internal-bot",
+            COPY: "/settings/internal-bot/{bot_uid}/copy",
             UPDATE: "/settings/internal-bot/{bot_uid}",
             CHANGE_DEFAULT: "/settings/internal-bot/{bot_uid}/default",
             DELETE: "/settings/internal-bot/{bot_uid}",

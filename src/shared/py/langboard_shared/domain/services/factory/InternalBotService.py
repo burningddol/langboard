@@ -54,6 +54,29 @@ class InternalBotService(BaseDomainService):
 
         return internal_bot
 
+    def copy(self, internal_bot: TInternalBotParam | None) -> InternalBot | None:
+        source_internal_bot = InfraHelper.get_by_id_like(InternalBot, internal_bot)
+        if not source_internal_bot:
+            return None
+
+        copied_internal_bot = InternalBot(
+            bot_type=source_internal_bot.bot_type,
+            display_name=f"{source_internal_bot.display_name} Copy",
+            platform=source_internal_bot.platform,
+            platform_running_type=source_internal_bot.platform_running_type,
+            api_url=source_internal_bot.api_url,
+            api_key=source_internal_bot.api_key,
+            value=source_internal_bot.value,
+            is_default=False,
+            avatar=source_internal_bot.avatar,
+        )
+
+        self.repo.internal_bot.insert(copied_internal_bot)
+
+        InternalBotPublisher.created(copied_internal_bot)
+
+        return copied_internal_bot
+
     def update(self, internal_bot: TInternalBotParam | None, form: dict) -> InternalBot | Literal[True] | None:
         internal_bot = InfraHelper.get_by_id_like(InternalBot, internal_bot)
         if not internal_bot:

@@ -65,6 +65,31 @@ def create_internal_bot(
     )
 
 
+@AppRouter.api.post(
+    "/settings/internal-bot/{internal_bot_uid}/copy",
+    tags=["AppSettings.InternalBot"],
+    responses=(
+        OpenApiSchema()
+        .suc({"internal_bot": (InternalBot, {"is_setting": True})}, 201)
+        .auth()
+        .forbidden()
+        .err(404, ApiErrorCode.NF3004)
+        .get()
+    ),
+)
+@RoleFilter.add(SettingRole, [SettingRoleAction.InternalBotCreate], RoleFinder.setting, allowed_all_admin=False)
+@AuthFilter.add("admin")
+def copy_internal_bot(internal_bot_uid: str, service: DomainService = DomainService.scope()) -> JsonResponse:
+    internal_bot = service.internal_bot.copy(internal_bot_uid)
+    if not internal_bot:
+        raise ApiException.NotFound_404(ApiErrorCode.NF3004)
+
+    return JsonResponse(
+        content={"internal_bot": internal_bot.api_response(is_setting=True)},
+        status_code=status.HTTP_201_CREATED,
+    )
+
+
 @AppRouter.api.put(
     "/settings/internal-bot/{internal_bot_uid}",
     tags=["AppSettings.InternalBot"],

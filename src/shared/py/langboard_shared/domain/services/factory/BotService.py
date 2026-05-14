@@ -2,14 +2,15 @@ from typing import Any
 from ....core.domain import BaseDomainService
 from ....core.domain.BaseDomainService import TMutableValidatorMap
 from ....core.storage import FileModel
+from ....core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
 from ....core.types.ParamTypes import TBotParam
 from ....core.utils.Converter import convert_python_data
 from ....core.utils.IpAddress import ALLOWED_ALL_IPS, is_valid_ipv4_address_or_range, make_valid_ipv4_range
 from ....core.utils.String import generate_random_string
-from ....helpers import InfraHelper
+from ....helpers import BotHelper, InfraHelper
 from ....publishers import BotPublisher
 from ....tasks.bots import BotDefaultTask
-from ...models import Bot
+from ...models import Bot, BotDefaultScopeBranch, Card, Project, ProjectColumn
 from ...models.BaseBotModel import BotPlatform, BotPlatformRunningType
 
 
@@ -66,6 +67,31 @@ class BotService(BaseDomainService):
         BotDefaultTask.bot_created(bot)
 
         return bot
+
+    def copy(self, bot: TBotParam | None) -> Bot | None:
+        source_bot = InfraHelper.get_by_id_like(Bot, bot)
+        if not source_bot:
+            return None
+
+        copied_bot = Bot(
+            name=f"{source_bot.name} Copy",
+            bot_uname=self.generate_copied_bot_uname(source_bot.bot_uname),
+            platform=source_bot.platform,
+            platform_running_type=source_bot.platform_running_type,
+            avatar=source_bot.avatar,
+            api_url=source_bot.api_url,
+            api_key=source_bot.api_key,
+            app_api_token=self.generate_api_key(),
+            ip_whitelist=[*source_bot.ip_whitelist],
+            value=source_bot.value,
+        )
+
+        self.repo.bot.insert(copied_bot)
+        BotPublisher.bot_created(copied_bot)
+        self.copy_default_scope_branches(source_bot, copied_bot)
+        BotDefaultTask.bot_created(copied_bot)
+
+        return copied_bot
 
     def update(self, bot: TBotParam | None, form: dict) -> bool | tuple[Bot, dict[str, Any]] | None:
         bot = InfraHelper.get_by_id_like(Bot, bot)
@@ -197,6 +223,53 @@ class BotService(BaseDomainService):
                 break
             api_key = f"sk-{generate_random_string(53)}"
         return api_key
+
+    def generate_copied_bot_uname(self, bot_uname: str) -> str:
+        base_uname = bot_uname
+        candidate = f"{base_uname}-copy"
+        index = 2
+
+        while InfraHelper.get_by(Bot, "bot_uname", candidate):
+            candidate = f"{base_uname}-copy-{index}"
+            index += 1
+
+        return candidate
+
+    def copy_default_scope_branches(self, source_bot: Bot, copied_bot: Bot) -> None:
+        source_branches = InfraHelper.get_all_by(BotDefaultScopeBranch, "bot_id", source_bot.id)
+
+        for source_branch in source_branches:
+            copied_branch = BotDefaultScopeBranch(bot_id=copied_bot.id, name=source_branch.name)
+            self.repo.bot_default_scope_branch.insert(copied_branch)
+
+            for target_table in AVAILABLE_BOT_TARGET_TABLES:
+                default_scope_model = BotHelper.get_default_scope_model_class(target_table)
+                default_scope_repo = self.get_default_scope_repo(target_table)
+                if not default_scope_model or not default_scope_repo:
+                    continue
+
+                source_default_scopes = InfraHelper.get_all_by(
+                    default_scope_model, "bot_default_scope_branch_id", source_branch.id
+                )
+                if not source_default_scopes:
+                    continue
+
+                copied_default_scope = default_scope_model(
+                    bot_default_scope_branch_id=copied_branch.id,
+                    conditions=[*source_default_scopes[0].conditions],
+                )
+                default_scope_repo.insert(copied_default_scope)
+
+            BotPublisher.default_scope_branch_created(copied_branch)
+
+    def get_default_scope_repo(self, target_table: str):
+        if target_table == Project.__tablename__:
+            return self.repo.project_bot_default_scope
+        if target_table == ProjectColumn.__tablename__:
+            return self.repo.project_column_bot_default_scope
+        if target_table == Card.__tablename__:
+            return self.repo.card_bot_default_scope
+        return None
 
     def filter_valid_ip_whitelist(self, ip_whitelist: list[str]) -> list[str]:
         valid_ip_whitelist = []

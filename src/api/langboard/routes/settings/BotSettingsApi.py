@@ -93,6 +93,43 @@ def create_bot(
     )
 
 
+@AppRouter.api.post(
+    "/settings/bot/{bot_uid}/copy",
+    tags=["AppSettings.Bot"],
+    responses=(
+        OpenApiSchema()
+        .suc(
+            {
+                "bot": (
+                    Bot,
+                    {"schema": {"default_scope_branches": [BotDefaultScopeBranch]}, "is_setting": True},
+                ),
+                "revealed_app_api_token": "string",
+            },
+            201,
+        )
+        .auth()
+        .forbidden()
+        .err(404, ApiErrorCode.NF3001)
+        .get()
+    ),
+)
+@RoleFilter.add(SettingRole, [SettingRoleAction.BotCreate], RoleFinder.setting, allowed_all_admin=False)
+@AuthFilter.add("admin")
+def copy_bot(bot_uid: str, service: DomainService = DomainService.scope()) -> JsonResponse:
+    bot = service.bot.copy(bot_uid)
+    if not bot:
+        raise ApiException.NotFound_404(ApiErrorCode.NF3001)
+
+    response = bot.api_response(is_setting=True)
+    response["default_scope_branches"] = service.bot_default_scope_branch.get_api_list_by_bot(bot)
+
+    return JsonResponse(
+        content={"bot": response, "revealed_app_api_token": bot.app_api_token},
+        status_code=status.HTTP_201_CREATED,
+    )
+
+
 @AppRouter.api.put(
     "/settings/bot/{bot_uid}",
     tags=["AppSettings.Bot"],
