@@ -32,8 +32,18 @@ function ChatInput({ height, setHeight }: IChatInputProps) {
 }
 
 function ChatInputDisplay() {
-    const { projectUID, isSending, setIsSending, isUploading, setIsUploading, currentSessionUID, selectedScope, setSelectedScope, chatTaskIdRef } =
-        useBoardChat();
+    const {
+        projectUID,
+        isSending,
+        setIsSending,
+        isUploading,
+        setIsUploading,
+        currentSessionUID,
+        selectedScope,
+        setSelectedScope,
+        lockedScope,
+        chatTaskIdRef,
+    } = useBoardChat();
     const { chatAttachmentRef, chatInputRef, height, setFile, setHeight } = useChatInput();
     const [t] = useTranslation();
     const { mutateAsync: uploadProjectChatAttachmentMutateAsync } = useUploadProjectChatAttachment();
@@ -129,7 +139,7 @@ function ChatInputDisplay() {
 
             chatTaskIdRef.current = Utils.String.Token.uuid();
 
-            const [scopeTable, scopeUID] = selectedScope || [undefined, undefined];
+            const [scopeTable, scopeUID] = selectedScope || lockedScope || [undefined, undefined];
 
             return sendChat({
                 message: chatMessage,
@@ -156,7 +166,7 @@ function ChatInputDisplay() {
         if (!trySendChat()) {
             triedTimeout = setTimeout(trySendChatWrapper, 1000);
         }
-    }, [updateHeight, isSending, setIsSending, isUploading, setIsUploading, currentSessionUID, setSelectedScope]);
+    }, [updateHeight, isSending, setIsSending, isUploading, setIsUploading, currentSessionUID, selectedScope, lockedScope, setSelectedScope]);
 
     const handleTextAreaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.shiftKey && e.key === "Enter") {

@@ -43,7 +43,7 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
     const [isSelectRelationshipDialogOpened, setIsSelectRelationshipDialogOpened] = useState(false);
     const selectedRelationship = useMemo(
         () => (selectCardViewType ? selectedRelationshipUIDs.find(([selectedCardUID]) => selectedCardUID === card.uid)?.[1] : undefined),
-        [selectCardViewType, selectedRelationshipUIDs]
+        [card, selectCardViewType, selectedRelationshipUIDs]
     );
     const openCard = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -62,7 +62,7 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
 
             navigateWithFilters(ROUTES.BOARD.CARD(project.uid, card.uid));
         },
-        [isDragging, selectCardViewType, isDisabledCard, setIsSelectRelationshipDialogOpened]
+        [card, isDragging, isDisabledCard, navigateWithFilters, project, selectCardViewType]
     );
 
     const handleOpenCollapsible = useCallback(
@@ -71,7 +71,7 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
             e.stopPropagation();
             updateCollapsed(card.uid, !isCollapsed);
         },
-        [isCollapsed, updateCollapsed]
+        [card, isCollapsed, updateCollapsed]
     );
     const presentableRelationships = useMemo(() => {
         const relationships: [string, string][] = [];
@@ -115,19 +115,19 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
         }
 
         return relationships;
-    }, [globalRelationshipTypes, filters, cardRelationships, selectedRelationship]);
+    }, [card, cardsMap, cardRelationships, filters, globalRelationshipTypes, selectCardViewType, selectedRelationship]);
 
     useEffect(() => {
         if (selectCardViewType && selectedRelationship) {
             updateCollapsed(card.uid, false);
         }
-    }, [selectCardViewType]);
+    }, [card, selectCardViewType, selectedRelationship, updateCollapsed]);
 
     useEffect(() => {
         if (presentableRelationships.length) {
             updateCollapsed(card.uid, false);
         }
-    }, [filters]);
+    }, [card, filters, presentableRelationships.length, updateCollapsed]);
 
     const attributes = {
         [DISABLE_DRAGGING_ATTR]: "",

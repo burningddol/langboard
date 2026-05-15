@@ -20,7 +20,7 @@ const BoardCardActionRelationshipList = memo(({ type, relationships: flatRelatio
 
     useEffect(() => {
         setRelationships(() => filterRelationships(card.uid, flatRelationships, isParent));
-    }, [flatRelationships]);
+    }, [card, filterRelationships, flatRelationships, isParent]);
 
     return (
         <ScrollArea.Root className="border">

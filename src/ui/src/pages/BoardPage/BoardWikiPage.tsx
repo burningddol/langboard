@@ -54,7 +54,7 @@ const BoardWikiPage = memo(({ project, currentUser }: IBoardRelatedPageProps) =>
                 data.wikis.map((wiki) => wiki.uid)
             );
         };
-    }, [isFetching]);
+    }, [data, isFetching, project]);
 
     return (
         <>

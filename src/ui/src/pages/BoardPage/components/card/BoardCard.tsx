@@ -11,6 +11,7 @@ import useChangeCardDetails from "@/controllers/api/card/useChangeCardDetails";
 import useGetCardDetails from "@/controllers/api/card/useGetCardDetails";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { BoardCardProvider, useBoardCard, useBoardCardPanel } from "@/core/providers/BoardCardProvider";
+import { useBoardController } from "@/core/providers/BoardController";
 import { ROUTES } from "@/core/routing/constants";
 import BoardCardActionList, { SkeletonBoardCardActionList } from "@/pages/BoardPage/components/card/action/BoardCardActionList";
 import BoardCardActionAttachFile from "@/pages/BoardPage/components/card/action/file/BoardCardActionAttachFile";
@@ -39,73 +40,79 @@ import { getEditorStore } from "@/core/stores/EditorStore";
 import { useHasRunningBot } from "@/core/stores/BotStatusStore";
 import { ProjectRole } from "@/core/models/roles";
 import { cn } from "@/core/utils/ComponentUtils";
+import { useBoardChat } from "@/core/providers/BoardChatProvider";
 
 export interface IBoardCardProps {
     projectUID: string;
     cardUID: string;
     currentUser: AuthUser.TModel;
     viewportRef: React.RefObject<HTMLDivElement | null>;
+    isExpanded?: bool;
+    setIsExpanded?: React.Dispatch<React.SetStateAction<bool>>;
+    onClose?: () => void;
 }
 
-const BoardCard = memo(({ projectUID, cardUID, currentUser, viewportRef }: IBoardCardProps): React.JSX.Element => {
-    const { setPageAliasRef } = usePageHeader();
-    const { data: cardData, isFetching, error } = useGetCardDetails({ project_uid: projectUID, card_uid: cardUID });
-    const [t] = useTranslation();
-    const socket = useSocket();
-    const navigate = usePageNavigateRef();
-    const { on: onCardDeletedHandlers } = useCardDeletedHandlers({
-        projectUID,
-        cardUID,
-        callback: () => {
-            Toast.Add.error(t("project.errors.Card deleted."));
-            navigate(ROUTES.BOARD.MAIN(projectUID), { replace: true });
-        },
-    });
-
-    useEffect(() => {
-        if (!error) {
-            return;
-        }
-
-        const { handle } = setupApiErrorHandler({
-            [EHttpStatus.HTTP_403_FORBIDDEN]: {
-                after: () => navigate(ROUTES.ERROR(EHttpStatus.HTTP_403_FORBIDDEN), { replace: true }),
-            },
-            [EHttpStatus.HTTP_404_NOT_FOUND]: {
-                after: () => navigate(ROUTES.ERROR(EHttpStatus.HTTP_404_NOT_FOUND), { replace: true }),
+const BoardCard = memo(
+    ({ projectUID, cardUID, currentUser, viewportRef, isExpanded = false, setIsExpanded, onClose }: IBoardCardProps): React.JSX.Element => {
+        const { setPageAliasRef } = usePageHeader();
+        const { data: cardData, isFetching, error } = useGetCardDetails({ project_uid: projectUID, card_uid: cardUID });
+        const [t] = useTranslation();
+        const socket = useSocket();
+        const navigate = usePageNavigateRef();
+        const { on: onCardDeletedHandlers } = useCardDeletedHandlers({
+            projectUID,
+            cardUID,
+            callback: () => {
+                Toast.Add.error(t("project.errors.Card deleted."));
+                navigate(ROUTES.BOARD.MAIN(projectUID), { replace: true });
             },
         });
 
-        handle(error);
-    }, [error]);
+        useEffect(() => {
+            if (!error) {
+                return;
+            }
 
-    useEffect(() => {
-        setPageAliasRef.current(cardData?.card?.title || "");
-        if (!cardData || isFetching) {
-            return;
-        }
+            const { handle } = setupApiErrorHandler({
+                [EHttpStatus.HTTP_403_FORBIDDEN]: {
+                    after: () => navigate(ROUTES.ERROR(EHttpStatus.HTTP_403_FORBIDDEN), { replace: true }),
+                },
+                [EHttpStatus.HTTP_404_NOT_FOUND]: {
+                    after: () => navigate(ROUTES.ERROR(EHttpStatus.HTTP_404_NOT_FOUND), { replace: true }),
+                },
+            });
 
-        socket.subscribe(ESocketTopic.BoardCard, [cardUID], () => {
-            onCardDeletedHandlers();
-        });
+            handle(error);
+        }, [error]);
 
-        return () => {
-            socket.unsubscribe(ESocketTopic.BoardCard, [cardUID]);
-        };
-    }, [isFetching]);
+        useEffect(() => {
+            setPageAliasRef.current(cardData?.card?.title || "");
+            if (!cardData || isFetching) {
+                return;
+            }
 
-    return (
-        <>
-            {!cardData || isFetching ? (
-                <SkeletonBoardCard />
-            ) : (
-                <BoardCardProvider projectUID={projectUID} card={cardData.card} currentUser={currentUser} viewportRef={viewportRef}>
-                    <BoardCardResult />
-                </BoardCardProvider>
-            )}
-        </>
-    );
-});
+            socket.subscribe(ESocketTopic.BoardCard, [cardUID], () => {
+                onCardDeletedHandlers();
+            });
+
+            return () => {
+                socket.unsubscribe(ESocketTopic.BoardCard, [cardUID]);
+            };
+        }, [cardData, cardUID, isFetching]);
+
+        return (
+            <>
+                {!cardData || isFetching ? (
+                    <SkeletonBoardCard />
+                ) : (
+                    <BoardCardProvider projectUID={projectUID} card={cardData.card} currentUser={currentUser} viewportRef={viewportRef}>
+                        <BoardCardResult isExpanded={isExpanded} setIsExpanded={setIsExpanded} onClose={onClose} />
+                    </BoardCardProvider>
+                )}
+            </>
+        );
+    }
+);
 
 export function SkeletonBoardCard(): React.JSX.Element {
     return (
@@ -178,9 +185,17 @@ export function SkeletonBoardCard(): React.JSX.Element {
     );
 }
 
-function BoardCardResult(): React.JSX.Element {
+interface IBoardCardResultProps {
+    isExpanded: bool;
+    setIsExpanded?: React.Dispatch<React.SetStateAction<bool>>;
+    onClose?: () => void;
+}
+
+function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResultProps): React.JSX.Element {
     const { card } = useBoardCard();
     const { isActionPanelOpen } = useBoardCardPanel();
+    const { boardChat } = useBoardController();
+    const [t] = useTranslation();
     const attachments = ProjectCardAttachment.Model.useModels((model) => model.card_uid === card.uid);
     const checklists = ProjectChecklist.Model.useModels((model) => model.card_uid === card.uid);
     const hasRunningBot = useHasRunningBot({ type: "card", targetUID: card.uid });
@@ -195,67 +210,108 @@ function BoardCardResult(): React.JSX.Element {
     return (
         <>
             {hasRunningBot && <ShineBorder className="z-[999999]" />}
-            <Flex direction="col" className="h-full min-h-0 gap-4">
-                <Box className="relative min-h-0 flex-1 rounded-2xl border bg-background px-4 py-4 shadow-2xl sm:px-6 sm:py-6">
-                    <Box className="hidden sm:block">
-                        <BoardCardActionRelationship buttonClassName="" />
-                    </Box>
-                    <Box className="relative flex h-full min-h-0 flex-col overflow-visible">
-                        <Dialog.Header className="sticky top-0 z-[100] mb-3 shrink-0 border-b-2 bg-background pb-3 text-left sm:-top-2">
-                            <BoardCardTitle key={`board-card-title-${card.uid}`} />
-                            <Flex gap="3">
-                                <Dialog.Description>
-                                    <BoardCardColumnName key={`board-card-column-name-${card.uid}`} />
-                                </Dialog.Description>
-                                <BoardCardLabelList key={`board-card-label-list-${card.uid}`} />
-                            </Flex>
-                            <Dialog.CloseButton className="absolute right-0" />
-                        </Dialog.Header>
-                        <Flex gap="3" direction={{ initial: "col-reverse", sm: "row" }} className="min-h-0 flex-1">
-                            <Box ref={contentViewportRef} className="min-h-0 flex-1 overflow-y-auto">
-                                <Flex direction="col" gap="4" className="min-w-0 pb-6 pr-1">
-                                    <Flex direction={{ initial: "col", sm: "row" }} gap="4">
-                                        <BoardCardSection title="card.Members" className="sm:w-1/2" contentClassName="flex gap-1">
-                                            <BoardCardMemberList key={`board-card-member-list-${card.uid}`} />
-                                        </BoardCardSection>
-                                        <BoardCardSection title="card.Deadline" className="sm:w-1/2">
-                                            <BoardCardDeadline key={`board-card-deadline-${card.uid}`} />
-                                        </BoardCardSection>
-                                    </Flex>
-                                    <BoardCardSection title="card.Description" className="relative min-h-56">
-                                        <BoardCardDescription key={`board-card-description-${card.uid}`} />
-                                    </BoardCardSection>
-                                    {checklists.length > 0 && (
-                                        <BoardCardSection title="card.Checklists">
-                                            <BoardCardChecklistGroup key={`board-card-checklist-${card.uid}`} />
-                                        </BoardCardSection>
+            <Flex direction="col" className={cn("h-full min-h-0", isExpanded ? "gap-0" : "gap-4")}>
+                <Flex className="min-h-0 min-w-0 flex-1 overflow-hidden">
+                    <Box
+                        className={cn(
+                            "relative min-h-0 min-w-0 max-w-full flex-1 overflow-hidden border bg-background px-4 py-4 sm:px-6 sm:py-6",
+                            isExpanded ? "border-0 pb-20 shadow-none" : "rounded-2xl shadow-2xl"
+                        )}
+                    >
+                        {!isExpanded && (
+                            <Box className="hidden sm:block">
+                                <BoardCardActionRelationship buttonClassName="" />
+                            </Box>
+                        )}
+                        <Box className="relative flex h-full min-h-0 min-w-0 flex-col overflow-visible">
+                            <Dialog.Header className="sticky top-0 z-[100] mb-3 shrink-0 border-b-2 bg-background pb-3 text-left sm:-top-2">
+                                <BoardCardTitle key={`board-card-title-${card.uid}`} />
+                                <Flex gap="3">
+                                    {isExpanded ? (
+                                        <Box textSize="sm" className="text-muted">
+                                            <BoardCardColumnName key={`board-card-column-name-${card.uid}`} />
+                                        </Box>
+                                    ) : (
+                                        <Dialog.Description>
+                                            <BoardCardColumnName key={`board-card-column-name-${card.uid}`} />
+                                        </Dialog.Description>
                                     )}
-                                    {attachments.length > 0 && (
-                                        <BoardCardSection title="card.Attached files">
-                                            <BoardCardAttachmentList key={`board-card-attachment-list-${card.uid}`} />
-                                        </BoardCardSection>
-                                    )}
-                                    <Box className={cn("sm:hidden", !isActionPanelOpen && "hidden")}>
-                                        <BoardCardSection title="card.Actions" titleClassName="mb-2">
-                                            <BoardCardActionList key={`board-card-action-list-mobile-${card.uid}`} />
-                                        </BoardCardSection>
-                                    </Box>
-                                    <BoardCardMobileComments scrollableRef={contentViewportRef} />
+                                    <BoardCardLabelList key={`board-card-label-list-${card.uid}`} />
                                 </Flex>
+                                <Flex items="center" gap="1" className="absolute right-0 top-0">
+                                    {isExpanded && (
+                                        <Box className="hidden sm:flex sm:items-center sm:gap-1">
+                                            <BoardCardActionRelationship buttonClassName="" isExpanded />
+                                        </Box>
+                                    )}
+                                    {!!setIsExpanded && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            title={t(isExpanded ? "common.Collapse" : "common.Expand")}
+                                            onClick={() => setIsExpanded((value) => !value)}
+                                        >
+                                            <IconComponent icon={isExpanded ? "minimize-2" : "maximize-2"} size="4" />
+                                        </Button>
+                                    )}
+                                    {isExpanded ? (
+                                        <Button type="button" variant="ghost" size="icon" title={t("common.Close")} onClick={onClose}>
+                                            <IconComponent icon="x" size="4" />
+                                        </Button>
+                                    ) : (
+                                        <Dialog.CloseButton />
+                                    )}
+                                </Flex>
+                            </Dialog.Header>
+                            <Flex gap="3" direction={{ initial: "col-reverse", sm: "row" }} className="min-h-0 flex-1">
+                                <Box ref={contentViewportRef} className="min-h-0 flex-1 overflow-y-auto">
+                                    <Flex direction="col" gap="4" className="min-w-0 pb-6 pr-1">
+                                        <Flex direction={{ initial: "col", sm: "row" }} gap="4">
+                                            <BoardCardSection title="card.Members" className="sm:w-1/2" contentClassName="flex gap-1">
+                                                <BoardCardMemberList key={`board-card-member-list-${card.uid}`} />
+                                            </BoardCardSection>
+                                            <BoardCardSection title="card.Deadline" className="sm:w-1/2">
+                                                <BoardCardDeadline key={`board-card-deadline-${card.uid}`} />
+                                            </BoardCardSection>
+                                        </Flex>
+                                        <BoardCardSection title="card.Description" className="relative min-h-56">
+                                            <BoardCardDescription key={`board-card-description-${card.uid}`} />
+                                        </BoardCardSection>
+                                        {checklists.length > 0 && (
+                                            <BoardCardSection title="card.Checklists">
+                                                <BoardCardChecklistGroup key={`board-card-checklist-${card.uid}`} />
+                                            </BoardCardSection>
+                                        )}
+                                        {attachments.length > 0 && (
+                                            <BoardCardSection title="card.Attached files">
+                                                <BoardCardAttachmentList key={`board-card-attachment-list-${card.uid}`} />
+                                            </BoardCardSection>
+                                        )}
+                                        <Box className={cn("sm:hidden", !isActionPanelOpen && "hidden")}>
+                                            <BoardCardSection title="card.Actions" titleClassName="mb-2">
+                                                <BoardCardActionList key={`board-card-action-list-mobile-${card.uid}`} />
+                                            </BoardCardSection>
+                                        </Box>
+                                        <BoardCardMobileComments scrollableRef={contentViewportRef} />
+                                    </Flex>
+                                </Box>
+                                <BoardCardCommentPanel />
+                                {!!boardChat && <BoardCardExpandedChatScope isExpanded={isExpanded} />}
+                                <Box w="full" maxW={{ sm: "40" }} className={cn("hidden shrink-0 sm:block", !isActionPanelOpen && "sm:hidden")}>
+                                    <BoardCardSection title="card.Actions" titleClassName="mb-2">
+                                        <BoardCardActionList key={`board-card-action-list-${card.uid}`} />
+                                    </BoardCardSection>
+                                </Box>
+                            </Flex>
+                            <Box className="pt-3 sm:hidden">
+                                <BoardCommentForm variant="mobile" />
                             </Box>
-                            <BoardCardCommentPanel />
-                            <Box w="full" maxW={{ sm: "40" }} className={cn("hidden shrink-0 sm:block", !isActionPanelOpen && "sm:hidden")}>
-                                <BoardCardSection title="card.Actions" titleClassName="mb-2">
-                                    <BoardCardActionList key={`board-card-action-list-${card.uid}`} />
-                                </BoardCardSection>
-                            </Box>
-                        </Flex>
-                        <Box className="pt-3 sm:hidden">
-                            <BoardCommentForm variant="mobile" />
                         </Box>
+                        {isExpanded && <BoardCardFloatingNav isExpanded={isExpanded} />}
                     </Box>
-                </Box>
-                <BoardCardFloatingNav />
+                </Flex>
+                {!isExpanded && <BoardCardFloatingNav isExpanded={isExpanded} />}
             </Flex>
         </>
     );
@@ -314,9 +370,36 @@ function BoardCardCommentPanel(): React.JSX.Element {
     );
 }
 
-function BoardCardFloatingNav(): React.JSX.Element {
+function BoardCardExpandedChatScope({ isExpanded }: { isExpanded: bool }): null {
+    const { card } = useBoardCard();
+    const { bot, projectUID, setLockedScope } = useBoardChat();
+    const canUseChat = !!projectUID && !!bot?.uid;
+
+    useEffect(() => {
+        if (!isExpanded || !canUseChat) {
+            return;
+        }
+
+        const cardUID = card.uid;
+
+        setLockedScope(["card", cardUID]);
+
+        return () => {
+            setLockedScope((value) => {
+                if (!value || value[0] !== "card" || value[1] !== cardUID) {
+                    return value;
+                }
+
+                return undefined;
+            });
+        };
+    }, [canUseChat, card, isExpanded]);
+
+    return null;
+}
+
+function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.Element {
     const { projectUID, card } = useBoardCard();
-    const cardUID = card.uid;
     const { isCommentPanelOpen, toggleCommentPanel, isActionPanelOpen, toggleActionPanel } = useBoardCardPanel();
     const { hasRoleAction, canEditCard, isCardEditing, enterCardEditMode, leaveCardEditMode } = useBoardCard();
     const { getHasUnsavedChanges, saveDirtySections, cancelDirtySections, resetAll } = useBoardCardUnsavedActions();
@@ -348,7 +431,7 @@ function BoardCardFloatingNav(): React.JSX.Element {
                 if (Object.keys(details).length > 0) {
                     const promise = changeCardDetailsMutateAsync({
                         project_uid: projectUID,
-                        card_uid: cardUID,
+                        card_uid: card.uid,
                         ...details,
                     });
 
@@ -378,10 +461,16 @@ function BoardCardFloatingNav(): React.JSX.Element {
         } finally {
             setIsSaving(false);
         }
-    }, [cardUID, changeCardDetailsMutateAsync, getHasUnsavedChanges, isSaving, leaveCardEditMode, projectUID, resetAll, saveDirtySections]);
+    }, [card, changeCardDetailsMutateAsync, getHasUnsavedChanges, isSaving, leaveCardEditMode, projectUID, resetAll, saveDirtySections]);
 
     return (
-        <Flex justify="center" className="pointer-events-none sticky bottom-3 z-[110] pb-1 sm:bottom-4 sm:pb-2">
+        <Flex
+            justify="center"
+            className={cn(
+                "pointer-events-none z-[110]",
+                isExpanded ? "absolute bottom-4 left-0 right-0" : "sticky bottom-3 pb-1 sm:bottom-4 sm:pb-2"
+            )}
+        >
             <Flex items="center" gap="1" className={cn("pointer-events-auto rounded-full border bg-background shadow-lg backdrop-blur")}>
                 {canEditCard && (
                     <>

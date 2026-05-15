@@ -1,7 +1,6 @@
 import Dialog from "@/components/base/Dialog";
 import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import { useAuth } from "@/core/providers/AuthProvider";
-import { useBoardController } from "@/core/providers/BoardController";
 import { ROUTES } from "@/core/routing/constants";
 import { getEditorStore } from "@/core/stores/EditorStore";
 import { cn } from "@/core/utils/ComponentUtils";
@@ -22,14 +21,32 @@ import {
 } from "@/components/plate-ui/alert-dialog";
 import { useTranslation } from "react-i18next";
 
-const BoardCardPageComponent = () => {
+interface IBoardCardPageProps {
+    projectUID?: string;
+    cardUID?: string;
+    embedded?: bool;
+    isExpanded?: bool;
+    setIsExpanded?: React.Dispatch<React.SetStateAction<bool>>;
+}
+
+const BoardCardPageComponent = ({
+    projectUID: projectUIDProp,
+    cardUID: cardUIDProp,
+    embedded = false,
+    isExpanded: controlledIsExpanded,
+    setIsExpanded: controlledSetIsExpanded,
+}: IBoardCardPageProps) => {
     const navigate = usePageNavigateRef();
     const { currentUser } = useAuth();
-    const { projectUID, cardUID } = useParams();
-    const { selectCardViewType } = useBoardController();
+    const params = useParams();
+    const projectUID = projectUIDProp ?? params.projectUID;
+    const cardUID = cardUIDProp ?? params.cardUID;
     const viewportRef = useRef<HTMLDivElement | null>(null);
     const [isDirtyAlertOpen, setIsDirtyAlertOpen] = useState(false);
     const [isComposing, setIsComposing] = useState(false);
+    const [localIsExpanded, setLocalIsExpanded] = useState(false);
+    const isExpanded = controlledIsExpanded ?? localIsExpanded;
+    const setIsExpanded = controlledSetIsExpanded ?? setLocalIsExpanded;
     const { resetAll, getHasUnsavedChanges } = useBoardCardUnsavedActions();
     const [t] = useTranslation();
 
@@ -78,34 +95,61 @@ const BoardCardPageComponent = () => {
 
     return (
         <>
-            {currentUser && cardUID && !selectCardViewType && (
-                <Dialog.Root open={true} onOpenChange={(isOpen) => !isOpen && handleCloseRequest()}>
-                    <Dialog.Content
-                        className={cn(
-                            "h-[calc(100dvh-theme(spacing.8))] max-h-[calc(100dvh-theme(spacing.8))] max-w-[100vw] overflow-visible",
-                            "border-0 bg-transparent p-0 shadow-none",
-                            "sm:h-[calc(100dvh-theme(spacing.12))] sm:max-h-[calc(100dvh-theme(spacing.12))] sm:max-w-[90vw] lg:max-w-[1120px]"
-                        )}
-                        aria-describedby=""
-                        withCloseButton={false}
-                        viewportRef={viewportRef}
-                        onOverlayInteract={(event) => {
-                            if (getHasUnsavedChanges()) {
-                                requestClose();
-                                return;
+            {currentUser && cardUID && (
+                <>
+                    <Dialog.Root modal={false} open={true} onOpenChange={(isOpen) => !isOpen && handleCloseRequest()}>
+                        <Dialog.Content
+                            className={cn(
+                                "border-0 p-0 shadow-none",
+                                isExpanded
+                                    ? embedded
+                                        ? "pointer-events-auto absolute inset-0 z-[1] h-full w-full max-w-none overflow-hidden rounded-none bg-background"
+                                        : "pointer-events-auto fixed bottom-0 left-0 right-0 top-16 w-auto max-w-none overflow-hidden rounded-none bg-background md:left-[var(--board-chat-sidebar-width,0px)]"
+                                    : "h-[calc(100dvh-theme(spacing.8))] max-h-[calc(100dvh-theme(spacing.8))] max-w-[100vw] overflow-visible bg-transparent sm:h-[calc(100dvh-theme(spacing.12))] sm:max-h-[calc(100dvh-theme(spacing.12))] sm:max-w-[90vw] lg:max-w-[1120px]"
+                            )}
+                            overlayClassName={
+                                isExpanded ? "!pointer-events-none !absolute !inset-0 !z-[1] bg-transparent backdrop-blur-none" : undefined
                             }
-
-                            if (getEditorStore().isInCurrentEditor()) {
-                                event.preventDefault();
-                                event.stopPropagation();
-
-                                getEditorStore().setCurrentEditor(null);
+                            overlayContentClassName={isExpanded ? "pointer-events-none" : undefined}
+                            contentWrapperClassName={
+                                isExpanded ? "pointer-events-none [&_[data-dialog-content=true]]:pointer-events-auto" : undefined
                             }
-                        }}
-                    >
-                        <BoardCard projectUID={projectUID} cardUID={cardUID} currentUser={currentUser} viewportRef={viewportRef} />
-                    </Dialog.Content>
-                </Dialog.Root>
+                            aria-describedby=""
+                            withCloseButton={false}
+                            nonModalOverlay
+                            disablePortal={embedded}
+                            viewportRef={viewportRef}
+                            onInteractOutside={(event) => {
+                                if (isExpanded) {
+                                    event.preventDefault();
+                                }
+                            }}
+                            onOverlayInteract={(event) => {
+                                if (getHasUnsavedChanges()) {
+                                    requestClose();
+                                    return;
+                                }
+
+                                if (getEditorStore().isInCurrentEditor()) {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+
+                                    getEditorStore().setCurrentEditor(null);
+                                }
+                            }}
+                        >
+                            <BoardCard
+                                projectUID={projectUID}
+                                cardUID={cardUID}
+                                currentUser={currentUser}
+                                viewportRef={viewportRef}
+                                isExpanded={isExpanded}
+                                setIsExpanded={setIsExpanded}
+                                onClose={handleCloseRequest}
+                            />
+                        </Dialog.Content>
+                    </Dialog.Root>
+                </>
             )}
             <AlertDialog open={isDirtyAlertOpen} onOpenChange={setIsDirtyAlertOpen}>
                 <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -133,10 +177,10 @@ const BoardCardPageComponent = () => {
     );
 };
 
-const BoardCardPage = memo(() => {
+const BoardCardPage = memo((props: IBoardCardPageProps) => {
     return (
         <BoardCardUnsavedProvider>
-            <BoardCardPageComponent />
+            <BoardCardPageComponent {...props} />
         </BoardCardUnsavedProvider>
     );
 });

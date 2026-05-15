@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Box from "@/components/base/Box";
 import Button from "@/components/base/Button";
 import Floating from "@/components/base/Floating";
@@ -18,6 +18,7 @@ export interface IResizableSidebarProps {
     floatingTitle?: string;
     floatingFullScreen?: bool;
     hidden?: bool;
+    widthCssVariable?: string;
 }
 
 function ResizableSidebar({
@@ -30,6 +31,7 @@ function ResizableSidebar({
     floatingTitle = "common.Actions",
     floatingFullScreen = false,
     hidden,
+    widthCssVariable,
 }: IResizableSidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
     const [isMobile, setIsMobile] = useState(window.innerWidth < ScreenMap.size.md);
@@ -49,6 +51,18 @@ function ResizableSidebar({
         [setIsMobile]
     );
 
+    useEffect(() => {
+        if (!widthCssVariable) {
+            return;
+        }
+
+        document.documentElement.style.setProperty(widthCssVariable, hidden ? "0px" : `${defaultCollapsed ? collapsedWidth : initialWidth}px`);
+
+        return () => {
+            document.documentElement.style.removeProperty(widthCssVariable);
+        };
+    }, [defaultCollapsed, hidden, initialWidth, widthCssVariable]);
+
     const sidebarId = `resizable-sidebar-${Utils.String.Token.shortUUID()}`;
     const setCollapsedAttr = (collapsed: bool, sidebar?: HTMLElement, widthSize?: number) => {
         sidebar = sidebar ?? document.getElementById(sidebarId)!;
@@ -61,6 +75,9 @@ function ResizableSidebar({
         }
 
         sidebar.style.maxWidth = `${widthSize}px`;
+        if (widthCssVariable) {
+            document.documentElement.style.setProperty(widthCssVariable, hidden ? "0px" : `${widthSize}px`);
+        }
 
         sidebar.setAttribute("data-collapsed", collapsed ? "true" : "false");
     };

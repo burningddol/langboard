@@ -21,7 +21,7 @@ export function SkeletonBoardCardTitle() {
     );
 }
 
-function BoardCardTitle(): React.JSX.Element {
+function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): React.JSX.Element {
     const { setPageAliasRef } = usePageHeader();
     const { card, isCardEditing, canEditCard } = useBoardCard();
     const [t] = useTranslation();
@@ -161,8 +161,10 @@ function BoardCardTitle(): React.JSX.Element {
     useEffect(() => registerSectionSaveHandler("title", saveTitle), [registerSectionSaveHandler, saveTitle]);
     useEffect(() => registerSectionCancelHandler("title", cancelTitleEdit), [cancelTitleEdit, registerSectionCancelHandler]);
 
+    const Title = useDialogTitle ? Dialog.Title : "div";
+
     return (
-        <Dialog.Title className="mr-7 text-2xl">
+        <Title className="mr-7 text-2xl">
             {!isEditing ? (
                 <Flex>
                     <span
@@ -202,7 +204,7 @@ function BoardCardTitle(): React.JSX.Element {
                     onKeyDown={handleTitleKeyDown}
                 />
             )}
-        </Dialog.Title>
+        </Title>
     );
 }
 

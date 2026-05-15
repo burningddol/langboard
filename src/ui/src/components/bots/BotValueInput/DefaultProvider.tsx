@@ -78,18 +78,18 @@ export const BotValueDefaultInputProvider = ({
     const [inputs, setInputs] = useState<TAgentFormInput[]>([]);
     const inputsRef = useRef<Record<string, HTMLElement | null>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const syncValueRef = useCallback(() => {
+    const syncValue = useCallback(() => {
         newValueRef.current = JSON.stringify(valuesRef.current);
-    }, [newValueRef]);
+    }, []);
     const setInputRef = (name: string) => (element: HTMLElement | null) => {
         inputsRef.current[name] = element;
     };
     const setValue = useCallback(
         (name: string) => (value: any) => {
             valuesRef.current[name] = value;
-            syncValueRef();
+            syncValue();
         },
-        [syncValueRef]
+        [syncValue]
     );
     const [apiList, setApiList] = useState<Record<string, string>>({});
     const showableInputs = useMemo(() => {
@@ -159,7 +159,7 @@ export const BotValueDefaultInputProvider = ({
             setValue("agent_llm")(selectedProvider);
         } else {
             delete valuesRef.current["agent_llm"];
-            syncValueRef();
+            syncValue();
         }
 
         setInputs(
@@ -170,7 +170,7 @@ export const BotValueDefaultInputProvider = ({
                 envs: { IS_OLLAMA_RUNNING, API_URL },
             })
         );
-    }, [platform, platformRunningType, selectedProvider, setValue, showableInputs, syncValueRef]);
+    }, [platform, platformRunningType, selectedProvider, setValue, showableInputs, syncValue]);
 
     return (
         <BotValueDefaultInputContext.Provider

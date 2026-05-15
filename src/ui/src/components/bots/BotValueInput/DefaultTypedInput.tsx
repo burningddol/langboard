@@ -58,7 +58,7 @@ function DefaultStringInput({ input, disabled }: { input: IStringAgentFormInput;
         if (Utils.Type.isNullOrUndefined(valuesRef.current[input.name]) && !Utils.Type.isNullOrUndefined(input.defaultValue)) {
             setValue(input.name)(input.defaultValue);
         }
-    }, [input.defaultValue, input.name, setValue, valuesRef]);
+    }, [input.defaultValue, input.name, setValue]);
 
     const inputComp = (
         <Collaborative.Input
@@ -112,7 +112,7 @@ function DefaultStringInput({ input, disabled }: { input: IStringAgentFormInput;
 function DefaultSelectInput({ input, disabled }: { input: ISelectAgentFormInput; disabled?: bool }) {
     const [t] = useTranslation();
     const { selectedProvider, valuesRef, setInputRef, setValue, isValidating, required, collaborationType, uid, section } = useBotValueDefaultInput();
-    const getInitialValue = useCallback(() => valuesRef.current[input.name] ?? input.defaultValue ?? input.options[0], [input, valuesRef]);
+    const getInitialValue = useCallback(() => valuesRef.current[input.name] ?? input.defaultValue ?? input.options[0], [input]);
     const collaborationField = `${selectedProvider}:${input.name}`;
     const [currentValue, setCurrentValue] = useState(getInitialValue);
     const [options, setOptions] = useState<string[]>(input.options);
@@ -184,7 +184,7 @@ function DefaultSelectInput({ input, disabled }: { input: ISelectAgentFormInput;
         if (!newOptions.includes(currentValue)) {
             changeCurrentValue(newOptions[0]);
         }
-    }, [changeCurrentValue, currentValue, input, valuesRef]);
+    }, [changeCurrentValue, currentValue, input]);
 
     useEffect(() => {
         if (!input.options.length) {
@@ -264,7 +264,7 @@ function DefaultIntegerInput({ input, disabled }: { input: IIntegerAgentFormInpu
         if (Utils.Type.isNullOrUndefined(valuesRef.current[input.name])) {
             setValue(input.name)(defaultValue);
         }
-    }, [defaultValue, input.name, setValue, valuesRef]);
+    }, [defaultValue, input.name, setValue]);
 
     return (
         <Collaborative.Input

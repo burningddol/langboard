@@ -25,6 +25,8 @@ export interface IBoardChatContext {
     setIsSessionListOpened: React.Dispatch<React.SetStateAction<bool>>;
     selectedScope?: [TChatScope, string] | undefined;
     setSelectedScope: React.Dispatch<React.SetStateAction<[TChatScope, string] | undefined>>;
+    lockedScope?: [TChatScope, string] | undefined;
+    setLockedScope: React.Dispatch<React.SetStateAction<[TChatScope, string] | undefined>>;
     chatSessions: ChatSessionModel.TModel[];
     currentSessionUID?: string;
     setCurrentSessionUID: React.Dispatch<React.SetStateAction<string | undefined>>;
@@ -51,6 +53,8 @@ const initialContext = {
     setIsSessionListOpened: () => {},
     selectedScope: undefined,
     setSelectedScope: () => {},
+    lockedScope: undefined,
+    setLockedScope: () => {},
     chatSessions: [],
     currentSessionUID: undefined,
     setCurrentSessionUID: () => {},
@@ -68,6 +72,7 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
     const [isUploading, setIsUploadingState] = useState(false);
     const [isSessionListOpened, setIsSessionListOpened] = useState(false);
     const [selectedScope, setSelectedScope] = useState<[TChatScope, string] | undefined>(undefined);
+    const [lockedScope, setLockedScope] = useState<[TChatScope, string] | undefined>(undefined);
     const chatTaskIdRef = useRef<string | null>(null);
     const scrollToBottomRef = useRef<() => void>(() => {});
     const isAtBottomRef = useRef(true);
@@ -252,6 +257,8 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
                 setIsSessionListOpened,
                 selectedScope,
                 setSelectedScope,
+                lockedScope,
+                setLockedScope,
                 chatSessions,
                 currentSessionUID,
                 setCurrentSessionUID,

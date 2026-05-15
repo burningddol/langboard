@@ -316,23 +316,24 @@ const CollapsibleDescriptionContent = memo((props: ICollapsibleDescriptionConten
             const chunkContent = chunkContents[chunkIndex] ?? { content: "" };
 
             return (
-                <PlateEditor
-                    key={chunkIndex}
-                    value={chunkContent}
-                    mentionables={mentionables}
-                    linkables={cards}
-                    currentUser={currentUser}
-                    containerClassName="overflow-y-visible"
-                    className="h-full min-h-0"
-                    readOnly
-                    editorType={EEditorType.CardDescription}
-                    form={{
-                        project_uid: projectUID,
-                        card_uid: card.uid,
-                    }}
-                    placeholder={chunkIndex === 0 ? t("card.No description") : undefined}
-                    setValue={() => {}}
-                />
+                <Box key={chunkIndex} className="[contain-intrinsic-size:auto_160px] [content-visibility:auto]">
+                    <PlateEditor
+                        value={chunkContent}
+                        mentionables={mentionables}
+                        linkables={cards}
+                        currentUser={currentUser}
+                        containerClassName="overflow-y-visible"
+                        className="h-full min-h-0"
+                        readOnly
+                        editorType={EEditorType.CardDescription}
+                        form={{
+                            project_uid: projectUID,
+                            card_uid: card.uid,
+                        }}
+                        placeholder={chunkIndex === 0 ? t("card.No description") : undefined}
+                        setValue={() => {}}
+                    />
+                </Box>
             );
         },
         [chunkContents, mentionables, cards, currentUser, projectUID, card]

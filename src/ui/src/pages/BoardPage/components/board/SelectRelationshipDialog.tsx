@@ -29,7 +29,7 @@ const SelectRelationshipDialog = memo(({ isOpened, setIsOpened }: ISelectRelatio
 
     useEffect(() => {
         setSelectedRelationshipUID(selectedRelationshipUIDs.find(([selectedCardUID]) => selectedCardUID === card.uid)?.[1]);
-    }, [selectedRelationshipUIDs]);
+    }, [card, selectedRelationshipUIDs]);
 
     if (!selectCardViewType) {
         return null;

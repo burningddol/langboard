@@ -1,7 +1,8 @@
 import { memo, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { DashboardStyledLayout } from "@/components/Layout";
+import Box from "@/components/base/Box";
 import Toast from "@/components/base/Toast";
 import { ROUTES } from "@/core/routing/constants";
 import ChatSidebar from "@/pages/BoardPage/components/chat/ChatSidebar";
@@ -11,10 +12,10 @@ import { useSocket } from "@/core/providers/SocketProvider";
 import { useAuth } from "@/core/providers/AuthProvider";
 import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import BoardPage from "@/pages/BoardPage/BoardPage";
+import BoardCardPage from "@/pages/BoardPage/BoardCardPage";
 import { IHeaderNavItem } from "@/components/Header/types";
 import BoardWikiPage, { SkeletonBoardWikiPage } from "@/pages/BoardPage/BoardWikiPage";
 import BoardSettingsPage, { SkeletonBoardSettingsPage } from "@/pages/BoardPage/BoardSettingsPage";
-import { BoardChatProvider } from "@/core/providers/BoardChatProvider";
 import { TBoardViewType, useBoardController } from "@/core/providers/BoardController";
 import useBoardAssignedUsersUpdatedHandlers from "@/controllers/socket/board/useBoardAssignedUsersUpdatedHandlers";
 import useProjectDeletedHandlers from "@/controllers/socket/shared/useProjectDeletedHandlers";
@@ -29,6 +30,7 @@ import useBoardBotStatusMapHandlers from "@/controllers/socket/board/useBoardBot
 import BoardBotScope from "@/pages/BoardPage/components/board/BoardBotScope";
 import useGetProject from "@/controllers/api/board/useGetProject";
 import BoardActivityDialog from "@/pages/BoardPage/components/board/BoardActivityDialog";
+import { cn } from "@/core/utils/ComponentUtils";
 
 const getCurrentPage = (pageRoute?: string): TBoardViewType => {
     switch (pageRoute) {
@@ -47,6 +49,7 @@ const BoardProxy = memo((): React.JSX.Element => {
     const { setPageAliasRef } = usePageHeader();
     const socket = useSocket();
     const navigate = usePageNavigateRef();
+    const location = useLocation();
     const [projectUID, pageRoute] = location.pathname.split("/").slice(2);
     if (!projectUID) {
         return <Navigate to={ROUTES.ERROR(EHttpStatus.HTTP_404_NOT_FOUND)} replace />;
@@ -98,7 +101,7 @@ const BoardProxy = memo((): React.JSX.Element => {
             socket.unsubscribe(ESocketTopic.Board, [projectUID]);
             socket.unsubscribe(ESocketTopic.BoardSettings, [projectUID]);
         };
-    }, [isFetching]);
+    }, [data, isFetching, pageRoute, projectUID]);
 
     return <>{data && <BoardProxyDisplay project={data.project} pageRoute={pageRoute} isFetching={isFetching} />}</>;
 });
@@ -116,6 +119,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     const { currentUser } = useAuth();
     const navigate = usePageNavigateRef();
     const [isReady, setIsReady] = useState(false);
+    const [isCardExpanded, setIsCardExpanded] = useState(false);
     const [isActivityDialogOpened, setIsActivityDialogOpened] = useState(false);
     const [isBotScopeOpened, setIsBotScopeOpened] = useState(false);
     const openActivityDialog = useCallback(() => {
@@ -124,8 +128,9 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     const openBotScope = useCallback(() => {
         setIsBotScopeOpened(true);
     }, [setIsBotScopeOpened]);
-    const { boardViewType, selectCardViewType, chatResizableSidebar, chatSidebarRef, setBoardViewType, setChatResizableSidebar } =
+    const { boardViewType, selectCardViewType, chatResizableSidebar, chatSidebarRef, setBoardViewType, setChatResizableSidebar, setBoardChat } =
         useBoardController();
+    const isCardPage = !!pageRoute && !["wiki", "settings"].includes(pageRoute);
     const projectTitle = project.useField("title");
     const isBoardChatAvailableHandlers = useMemo(
         () =>
@@ -133,12 +138,14 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                 projectUID: project.uid,
                 callback: (result) => {
                     if (result.available) {
+                        setBoardChat({
+                            bot: result.bot,
+                            projectUID: project.uid,
+                        });
                         setChatResizableSidebar(() => ({
                             children: (
                                 <Suspense>
-                                    <BoardChatProvider projectUID={project.uid} bot={result.bot}>
-                                        <ChatSidebar ref={chatSidebarRef} />
-                                    </BoardChatProvider>
+                                    <ChatSidebar ref={chatSidebarRef} />
                                 </Suspense>
                             ),
                             initialWidth: 280,
@@ -146,8 +153,10 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                             floatingIcon: "message-circle",
                             floatingTitle: t("project.Chat with AI"),
                             floatingFullScreen: true,
+                            widthCssVariable: "--board-chat-sidebar-width",
                         }));
                     } else {
+                        setBoardChat(undefined);
                         setChatResizableSidebar(() => ({
                             children: <></>,
                             initialWidth: 280,
@@ -158,7 +167,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                     setIsReady(() => true);
                 },
             }),
-        [project, setChatResizableSidebar, setIsReady]
+        [project, setBoardChat, setChatResizableSidebar, setIsReady]
     );
     const boardAssignedUsersUpdatedHandlers = useMemo(
         () =>
@@ -258,6 +267,10 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
         setBoardViewType(getCurrentPage(pageRoute));
     }, [pageRoute]);
 
+    useEffect(() => {
+        setIsCardExpanded(false);
+    }, [pageRoute]);
+
     const headerNavs: IHeaderNavItem[] = [
         {
             name: t("board.Board"),
@@ -327,7 +340,29 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                 }
                 className="!p-0"
             >
-                {isReady && currentUser && project ? <PageComponent project={project} currentUser={currentUser} /> : <SkeletonComponent />}
+                {isReady && currentUser && project ? (
+                    <Box className="relative size-full min-h-[calc(100dvh_-_theme(spacing.16))]">
+                        <Box
+                            className={cn(
+                                "relative size-full",
+                                isCardPage && isCardExpanded && "pointer-events-none absolute inset-0 -z-[9999] overflow-hidden"
+                            )}
+                        >
+                            <PageComponent project={project} currentUser={currentUser} />
+                        </Box>
+                        {isCardPage && (
+                            <BoardCardPage
+                                projectUID={project.uid}
+                                cardUID={pageRoute}
+                                embedded
+                                isExpanded={isCardExpanded}
+                                setIsExpanded={setIsCardExpanded}
+                            />
+                        )}
+                    </Box>
+                ) : (
+                    <SkeletonComponent />
+                )}
             </DashboardStyledLayout>
             {isReady && !!currentUser && !!project && (
                 <BoardBotScope project={project} currentUser={currentUser} isOpened={isBotScopeOpened} setIsOpened={setIsBotScopeOpened} />

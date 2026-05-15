@@ -1,7 +1,8 @@
 import { TDashboardStyledLayoutProps } from "@/components/Layout/DashboardStyledLayout";
 import { useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
-import { ProjectCardRelationship } from "@/core/models";
+import { InternalBotModel, ProjectCardRelationship } from "@/core/models";
 import { useAuth } from "@/core/providers/AuthProvider";
+import { BoardChatProvider } from "@/core/providers/BoardChatProvider";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { Utils } from "@langboard/core/utils";
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -39,6 +40,11 @@ interface IRelationshipSelectionDraft {
     selectionActors: Record<string, IRelationshipSelectionActor>;
 }
 
+interface IBoardChatState {
+    bot: InternalBotModel.TModel;
+    projectUID: string;
+}
+
 export interface IBoardControllerContext {
     boardViewType: TBoardViewType;
     selectCardViewType?: ProjectCardRelationship.TRelationship;
@@ -47,6 +53,7 @@ export interface IBoardControllerContext {
     disabledCardSelectionUIDsRef: React.RefObject<string[]>;
     chatResizableSidebar: TDashboardStyledLayoutProps["resizableSidebar"];
     chatSidebarRef: React.RefObject<HTMLDivElement | null>;
+    boardChat?: IBoardChatState;
     setBoardViewType: React.Dispatch<React.SetStateAction<TBoardViewType>>;
     startCardSelection: (props: IStartCardSelectionProps) => void;
     setSelectedRelationshipCardUIDs: React.Dispatch<React.SetStateAction<[string, string][]>>;
@@ -59,6 +66,7 @@ export interface IBoardControllerContext {
     filterRelationships: (cardUID: string, relationships: ProjectCardRelationship.TModel[], isParent: bool) => ProjectCardRelationship.TModel[];
     filterRelatedCardUIDs: (cardUID: string, relationships: ProjectCardRelationship.TModel[], isParent: bool) => string[];
     setChatResizableSidebar: React.Dispatch<React.SetStateAction<TDashboardStyledLayoutProps["resizableSidebar"]>>;
+    setBoardChat: React.Dispatch<React.SetStateAction<IBoardChatState | undefined>>;
 }
 
 interface IBoardControllerProps {
@@ -72,6 +80,7 @@ const initialContext = {
     disabledCardSelectionUIDsRef: { current: [] },
     chatResizableSidebar: undefined,
     chatSidebarRef: { current: null },
+    boardChat: undefined,
     setBoardViewType: () => {},
     startCardSelection: () => {},
     setSelectedRelationshipCardUIDs: () => {},
@@ -84,6 +93,7 @@ const initialContext = {
     filterRelationships: () => [],
     filterRelatedCardUIDs: () => [],
     setChatResizableSidebar: () => {},
+    setBoardChat: () => {},
 };
 
 const BoardControllerContext = createContext<IBoardControllerContext>(initialContext);
@@ -161,6 +171,7 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
     const relationshipSelectionActorsRef = useRef<Record<string, IRelationshipSelectionActor>>({});
     const [relationshipSelectionSyncState, setRelationshipSelectionSyncState] = useState<IRelationshipSelectionSyncState>();
     const [chatResizableSidebar, setChatResizableSidebar] = useState<TDashboardStyledLayoutProps["resizableSidebar"]>();
+    const [boardChat, setBoardChat] = useState<IBoardChatState>();
     const currentCardUIDRef = useRef<string>(null);
     const saveCardSelectionCallbackRef = useRef<(relationships: [string, string][]) => void>(null);
     const disabledCardSelectionUIDsRef = useRef<string[]>([]);
@@ -336,7 +347,7 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
         setRelationshipSelectionSyncState(undefined);
     };
 
-    return (
+    const content = (
         <BoardControllerContext.Provider
             value={{
                 boardViewType,
@@ -346,6 +357,7 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
                 disabledCardSelectionUIDsRef,
                 chatResizableSidebar,
                 chatSidebarRef,
+                boardChat,
                 setBoardViewType,
                 startCardSelection,
                 setSelectedRelationshipCardUIDs,
@@ -358,10 +370,21 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
                 filterRelationships,
                 filterRelatedCardUIDs,
                 setChatResizableSidebar,
+                setBoardChat,
             }}
         >
             {children}
         </BoardControllerContext.Provider>
+    );
+
+    if (!boardChat) {
+        return content;
+    }
+
+    return (
+        <BoardChatProvider projectUID={boardChat.projectUID} bot={boardChat.bot}>
+            {content}
+        </BoardChatProvider>
     );
 });
 
