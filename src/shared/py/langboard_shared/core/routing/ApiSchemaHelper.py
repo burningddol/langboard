@@ -1,9 +1,11 @@
+from enum import Enum
 from json import dumps as json_dumps
 from re import findall as re_findall
 from typing import Any, Literal, TypedDict, cast
 from pydantic import BaseModel
 from ..utils.datamodel.parser.jsonschema import JsonSchemaParser
 from ..utils.decorators import staticclass
+from .ApiPermission import ApiPermission
 from .AppExceptionHandlingRoute import AppExceptionHandlingRoute
 
 
@@ -15,6 +17,7 @@ class ApiSchemaMap(TypedDict):
     path: str
     path_params: list[str]
     method: str
+    permission: str | ApiPermission
     content_type: Literal["application/json", "multipart/form-data"]
     description: str
     form: dict[str, Any] | None
@@ -30,6 +33,8 @@ class ApiSchemaHelper:
         assert hasattr(route.endpoint, "_schema"), "Route does not have schema information."
         schema: ApiSchemaMap = cast(Any, {**route.endpoint._schema})
         schema["method"] = list(route.methods)[0]
+        if isinstance(schema["permission"], Enum):
+            schema["permission"] = schema["permission"].value
         schema["path"] = route.path
         schema["path_params"] = re_findall(PATH_PARAM_PATTERN, route.path)
         schema["description"] = route.description
@@ -83,7 +88,7 @@ class ApiSchemaHelper:
     def __parse_model(form_type: Literal["query", "form"], schema: Any):
         BASE_MODEL_CLASS_PATTERN = r"class (\w+)\(BaseModel\):"
 
-        parser = JsonSchemaParser(json_dumps(schema), use_subclass_enum=True)
+        parser = JsonSchemaParser(json_dumps(schema), use_subclass_enum=True, field_constraints=True)
         source: str = parser.parse()
         imports: list[str] = []
         other_classes: dict[str, str] = {}
@@ -97,7 +102,7 @@ class ApiSchemaHelper:
 
         for line in source.splitlines():
             if line.startswith("from"):
-                if "pydantic" not in line and "__future__" not in line:
+                if "__future__" not in line:
                     imports.append(line)
                 continue
 

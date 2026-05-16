@@ -1,6 +1,6 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import Bot, Checkitem, Checklist, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -10,7 +10,7 @@ from langboard_shared.security import Auth, RoleFinder
 from .forms import CardChecklistNotifyForm, CardCheckRelatedForm, ChangeRootOrderForm
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/card/{card_uid}/checklist",
     tags=["Board.Card"],
@@ -55,7 +55,7 @@ def get_card_checklists(card_uid: str, service: DomainService = DomainService.sc
     return JsonResponse(content={"checklists": checklists})
 
 
-@AppRouter.schema(form=CardCheckRelatedForm)
+@AppRouter.schema(form=CardCheckRelatedForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/checklist",
     tags=["Board.Card.Checklist"],
@@ -88,7 +88,7 @@ def create_checklist(
     )
 
 
-@AppRouter.schema(form=CardCheckRelatedForm)
+@AppRouter.schema(form=CardCheckRelatedForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/checkitem",
     tags=["Board.Card.Checklist"],
@@ -112,7 +112,7 @@ def create_checkitem(
     return JsonResponse(status_code=status.HTTP_201_CREATED)
 
 
-@AppRouter.schema(form=CardChecklistNotifyForm)
+@AppRouter.schema(form=CardChecklistNotifyForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/notify",
     tags=["Board.Card.Checklist"],
@@ -136,7 +136,7 @@ def notify_checklist(
     return JsonResponse()
 
 
-@AppRouter.schema(form=CardCheckRelatedForm)
+@AppRouter.schema(form=CardCheckRelatedForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/title",
     tags=["Board.Card.Checklist"],
@@ -160,7 +160,7 @@ def change_checklist_title(
     return JsonResponse()
 
 
-@AppRouter.schema(form=ChangeRootOrderForm)
+@AppRouter.schema(form=ChangeRootOrderForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/order",
     tags=["Board.Card.Checklist"],
@@ -183,7 +183,7 @@ def change_checklist_order(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/toggle-checked",
     tags=["Board.Card.Checklist"],
@@ -206,7 +206,7 @@ def toggle_checklist_checked(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}",
     tags=["Board.Card.Checklist"],

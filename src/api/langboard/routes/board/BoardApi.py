@@ -1,5 +1,5 @@
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import (
     Bot,
@@ -25,7 +25,7 @@ from langboard_shared.security import Auth, RoleFinder
 from .forms import InviteProjectMemberForm, ProjectInvitationForm
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.post(
     "/board/{project_uid}/available",
     tags=["Board"],
@@ -41,7 +41,7 @@ def is_project_available(project_uid: str, service: DomainService = DomainServic
     return JsonResponse(content={"title": project.title})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}",
     tags=["Board"],
@@ -93,7 +93,7 @@ def get_project(
     )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/assigned-users",
     tags=["Board"],
@@ -112,7 +112,7 @@ def get_project_assigned_users(project_uid: str, service: DomainService = Domain
     return JsonResponse(content={"users": users})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/columns",
     tags=["Board"],
@@ -136,7 +136,7 @@ def get_project_columns(project_uid: str, service: DomainService = DomainService
     return JsonResponse(content={"columns": columns})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/labels",
     tags=["Board"],
@@ -153,7 +153,7 @@ def get_project_labels(project_uid: str, service: DomainService = DomainService.
     return JsonResponse(content={"labels": labels})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/cards",
     tags=["Board"],
@@ -256,7 +256,7 @@ def unassign_project_assignee(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/is-assigned/{assignee_uid}",
     tags=["Board"],

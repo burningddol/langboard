@@ -1,7 +1,7 @@
 import inspect
 from fastapi import Request
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.security import AuthSecurity
 from langboard_shared.domain.models import McpRole, User
 from langboard_shared.domain.models.McpRole import McpRoleAction
@@ -13,7 +13,7 @@ from ...mcp_integration import McpTool
 from ...mcp_tools.RoleChecker import McpRoleChecker
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get("/mcp/tools", tags=["MCP"], description="List all available MCP tools", response_model=None)
 @RoleFilter.add(McpRole, [McpRoleAction.Read], RoleFinder.mcp)
 @AuthFilter.add("user")
@@ -29,7 +29,7 @@ def get_mcp_tools():
     )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.post("/mcp/tools/{tool_name}", tags=["MCP"], description="Execute an MCP tool", response_model=None)
 @RoleFilter.add(McpRole, [McpRoleAction.Read], RoleFinder.mcp)
 @AuthFilter.add("user")

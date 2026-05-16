@@ -1,7 +1,7 @@
 from fastapi import File, UploadFile, status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.routing.Exception import MissingException
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.storage import Storage, StorageName
@@ -21,7 +21,7 @@ from .forms import (
 )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/wikis",
     tags=["Board.Wiki"],
@@ -64,7 +64,7 @@ def get_project_wikis(
     return JsonResponse(content={"wikis": wikis, "project_members": project_members})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/wiki/{wiki_uid}",
     tags=["Board.Wiki"],
@@ -109,7 +109,7 @@ def get_project_wiki_details(
     return JsonResponse(content={"wiki": api_wiki})
 
 
-@AppRouter.schema(form=WikiForm)
+@AppRouter.schema(form=WikiForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/wiki",
     tags=["Board.Wiki"],
@@ -151,7 +151,7 @@ def create_project_wiki(
     return JsonResponse(content={"wiki": api_wiki}, status_code=status.HTTP_201_CREATED)
 
 
-@AppRouter.schema(form=ChangeWikiDetailsForm)
+@AppRouter.schema(form=ChangeWikiDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/details",
     tags=["Board.Wiki"],
@@ -205,7 +205,7 @@ def change_project_wiki_details(
     return JsonResponse(content=result)
 
 
-@AppRouter.schema(form=ChangeWikiPublicForm)
+@AppRouter.schema(form=ChangeWikiPublicForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/public",
     tags=["Board.Wiki"],
@@ -235,7 +235,7 @@ def change_project_wiki_public(
     return JsonResponse()
 
 
-@AppRouter.schema(form=AssigneesForm)
+@AppRouter.schema(form=AssigneesForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/assignees",
     tags=["Board.Wiki"],
@@ -268,7 +268,7 @@ def update_project_wiki_assignees(
     return JsonResponse()
 
 
-@AppRouter.schema(form=ChangeChildOrderForm)
+@AppRouter.schema(form=ChangeChildOrderForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/order",
     tags=["Board.Wiki"],
@@ -329,7 +329,7 @@ def upload_wiki_attachment(
     )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/wiki/{wiki_uid}",
     tags=["Board.Wiki"],

@@ -1,6 +1,6 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import Bot, ProjectColumn, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -10,7 +10,7 @@ from langboard_shared.security import Auth, RoleFinder
 from .forms import ChangeRootOrderForm, ColumnForm
 
 
-@AppRouter.schema(form=ColumnForm)
+@AppRouter.schema(form=ColumnForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/column",
     tags=["Board.Column"],
@@ -47,7 +47,7 @@ def create_project_column(
     )
 
 
-@AppRouter.schema(form=ColumnForm)
+@AppRouter.schema(form=ColumnForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/column/{column_uid}/name",
     tags=["Board.Column"],
@@ -91,7 +91,7 @@ def update_project_column_order(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/column/{column_uid}",
     tags=["Board.Column"],

@@ -1,6 +1,6 @@
 from langboard_shared.ai import BotScheduleHelper
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
@@ -15,7 +15,7 @@ from langboard_shared.security import RoleFinder
 from ..forms import CreateBotCronTimeForm, DeleteBotCronTimeForm, UpdateBotCronTimeForm
 
 
-@AppRouter.schema(form=CreateBotCronTimeForm)
+@AppRouter.schema(form=CreateBotCronTimeForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/bot/{bot_uid}/schedule",
     tags=["Bot.Schedule"],
@@ -80,7 +80,7 @@ def schedule_bot_crons(
     return JsonResponse()
 
 
-@AppRouter.schema(form=UpdateBotCronTimeForm)
+@AppRouter.schema(form=UpdateBotCronTimeForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/bot/{bot_uid}/reschedule/{schedule_uid}",
     tags=["Bot.Schedule"],
@@ -143,7 +143,7 @@ def reschedule_bot_crons(
     return JsonResponse()
 
 
-@AppRouter.schema(form=DeleteBotCronTimeForm)
+@AppRouter.schema(form=DeleteBotCronTimeForm, permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/bot/{bot_uid}/unschedule/{schedule_uid}",
     tags=["Bot.Schedule"],

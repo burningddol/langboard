@@ -1,6 +1,6 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.utils.Converter import convert_python_data
 from langboard_shared.domain.models import (
@@ -32,7 +32,7 @@ from .forms import (
 )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/details",
     tags=["Board.Settings"],
@@ -99,7 +99,7 @@ def get_project_details(
     )
 
 
-@AppRouter.schema(form=UpdateProjectDetailsForm)
+@AppRouter.schema(form=UpdateProjectDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/details",
     tags=["Board.Settings"],
@@ -176,7 +176,7 @@ def update_project_user_roles(
     return JsonResponse()
 
 
-@AppRouter.schema(form=CreateProjectLabelForm)
+@AppRouter.schema(form=CreateProjectLabelForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/settings/label",
     tags=["Board.Settings"],
@@ -201,7 +201,7 @@ def create_project_label(
     return JsonResponse(content={"label": api_label}, status_code=status.HTTP_201_CREATED)
 
 
-@AppRouter.schema(form=UpdateProjectLabelDetailsForm)
+@AppRouter.schema(form=UpdateProjectLabelDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/label/{label_uid}/details",
     tags=["Board.Settings"],
@@ -248,7 +248,7 @@ def change_project_label_details(
     return JsonResponse(content=result)
 
 
-@AppRouter.schema(form=ChangeRootOrderForm)
+@AppRouter.schema(form=ChangeRootOrderForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/label/{label_uid}/order",
     tags=["Board.Settings"],
@@ -267,7 +267,7 @@ def change_project_label_order(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/settings/label/{label_uid}",
     tags=["Board.Settings"],

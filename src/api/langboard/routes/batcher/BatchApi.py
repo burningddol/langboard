@@ -1,20 +1,33 @@
 from json import dumps as json_dumps
 from json import loads as json_loads
-from typing import cast
+from re import escape as re_escape
+from re import fullmatch as re_fullmatch
+from re import sub as re_sub
 from fastapi import Request, status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import AppExceptionHandlingRoute, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing.ApiSchemaHelper import ApiSchemaMap
+from langboard_shared.core.security import AuthSecurity
 from langboard_shared.core.utils.Converter import json_default
 from langboard_shared.domain.models import Bot, User
 from langboard_shared.security import Auth
 from starlette.types import Message
-from .BatchForm import BatchForm
+from .BatchForm import BatchForm, BatchFormRequestSchema
 
 
-_cached_apis: dict[str, str] = {}
+AGENT_PERMISSION_LEVEL_PERMISSIONS: dict[str, set[str]] = {
+    "read": {ApiPermission.Read.value},
+    "edit": {ApiPermission.Read.value, ApiPermission.Create.value, ApiPermission.Edit.value},
+    "full_access": {
+        ApiPermission.Read.value,
+        ApiPermission.Create.value,
+        ApiPermission.Edit.value,
+        ApiPermission.Delete.value,
+    },
+}
 
 
-@AppRouter.schema(form=BatchForm)
+@AppRouter.schema(form=BatchForm, permission=ApiPermission.Read)
 @AppRouter.api.post(
     "/batch",
     tags=["Batcher"],
@@ -22,34 +35,29 @@ _cached_apis: dict[str, str] = {}
 )
 @AuthFilter.add()
 async def batch_apis(request: Request, form: BatchForm, user_or_bot: User | Bot = Auth.scope("all")):
-    if not _cached_apis:
-        _set_cache_apis()
-
     API_METHODS = {"GET", "POST", "PUT", "DELETE"}
+    allowed_permissions = _get_agent_allowed_permissions(request)
     responses = []
     for request_schema in form.request_schemas:
         if request_schema.method.upper() not in API_METHODS:
             responses.append(_batch_response({}, status.HTTP_400_BAD_REQUEST))
             continue
 
-        if request_schema.path_or_api_name in _cached_apis:
-            request_schema.path_or_api_name = _cached_apis[request_schema.path_or_api_name]
-            try:
-                request_schema.path_or_api_name = request_schema.path_or_api_name.format(
-                    **{**(request_schema.form or {}), **(request_schema.query or {})}
-                )
-            except Exception:
-                pass
+        api_schema, request_path, error_response = _resolve_batch_request(request_schema, allowed_permissions)
+        if error_response is not None:
+            responses.append(error_response)
+            continue
 
         query_string = _query_dict_to_bytes(request_schema.query or {})
         scope = {
             "type": "http",
             "method": request_schema.method,
-            "path": request_schema.path_or_api_name,
+            "path": request_path,
             "query_string": query_string,
             "headers": request.headers.raw,
             "auth": user_or_bot,
             "is_batch": True,
+            "batch_api_schema": api_schema,
         }
 
         response = {}
@@ -89,8 +97,87 @@ def _batch_response(content: dict, status_code: int = status.HTTP_200_OK) -> dic
     return {"status": status_code, "body": content}
 
 
-def _set_cache_apis():
-    for route in AppRouter.get_app().routes:
-        route = cast(AppExceptionHandlingRoute, route)
-        route_name = route.name
-        _cached_apis[route_name] = route.path
+def _get_agent_allowed_permissions(request: Request) -> set[str] | None:
+    api_token = request.headers.get(
+        AuthSecurity.API_TOKEN_HEADER,
+        request.headers.get(AuthSecurity.API_TOKEN_HEADER.lower(), None),
+    )
+    if not api_token:
+        return None
+
+    try:
+        payload = AuthSecurity.decode_access_token(api_token)
+    except Exception:
+        return AGENT_PERMISSION_LEVEL_PERMISSIONS["read"]
+
+    permission_level = payload.get("api_permission_level")
+    if not isinstance(permission_level, str):
+        permission_level = "read"
+
+    return AGENT_PERMISSION_LEVEL_PERMISSIONS.get(permission_level, AGENT_PERMISSION_LEVEL_PERMISSIONS["read"])
+
+
+def _resolve_batch_request(
+    request_schema: BatchFormRequestSchema, allowed_permissions: set[str] | None
+) -> tuple[ApiSchemaMap | None, str, dict | None]:
+    api_schema = _get_batch_api_schema(request_schema)
+    if not api_schema:
+        return (
+            None,
+            request_schema.path_or_api_name,
+            _batch_response({"message": "API schema not found."}, status.HTTP_404_NOT_FOUND),
+        )
+
+    if api_schema["path"] == "/batch":
+        return (
+            None,
+            request_schema.path_or_api_name,
+            _batch_response({"message": "Nested batch requests are not allowed."}, status.HTTP_400_BAD_REQUEST),
+        )
+
+    if request_schema.method.upper() != api_schema["method"].upper():
+        return (
+            None,
+            request_schema.path_or_api_name,
+            _batch_response({"message": "API method does not match."}, status.HTTP_405_METHOD_NOT_ALLOWED),
+        )
+
+    permission = api_schema["permission"]
+    if allowed_permissions is not None and permission not in allowed_permissions:
+        return (
+            None,
+            request_schema.path_or_api_name,
+            _batch_response({"message": "Not enough permissions to access this endpoint."}, status.HTTP_403_FORBIDDEN),
+        )
+
+    return api_schema, _get_request_path(request_schema, api_schema), None
+
+
+def _get_batch_api_schema(request_schema: BatchFormRequestSchema) -> ApiSchemaMap | None:
+    api_schema = AppRouter.api_routes.get(request_schema.path_or_api_name)
+    if api_schema:
+        return api_schema
+
+    for schema in AppRouter.api_routes.values():
+        if schema["method"].upper() != request_schema.method.upper():
+            continue
+        if _matches_api_path(schema["path"], request_schema.path_or_api_name):
+            return schema
+
+    return None
+
+
+def _get_request_path(request_schema: BatchFormRequestSchema, api_schema: ApiSchemaMap) -> str:
+    if request_schema.path_or_api_name not in AppRouter.api_routes:
+        return request_schema.path_or_api_name
+
+    try:
+        return api_schema["path"].format(**{**(request_schema.form or {}), **(request_schema.query or {})})
+    except Exception:
+        return api_schema["path"]
+
+
+def _matches_api_path(api_path: str, request_path: str) -> bool:
+    pattern = re_escape(api_path)
+    pattern = re_sub(r"\\\{[^}]+\\\}", r"[^/]+", pattern)
+    return re_fullmatch(pattern, request_path) is not None

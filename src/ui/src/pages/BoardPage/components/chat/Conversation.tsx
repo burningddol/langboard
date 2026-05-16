@@ -7,7 +7,6 @@ import { useBoardChat } from "@/core/providers/BoardChatProvider";
 import { ChatMessageList } from "@/components/Chat/ChatMessageList";
 import { ChatMessageModel } from "@/core/models";
 import ChatMessage from "@/pages/BoardPage/components/chat/ChatMessage";
-import { cn } from "@/core/utils/ComponentUtils";
 
 const LOADING_ELEMENT_MIDDLE_Y = 18;
 
@@ -121,10 +120,7 @@ function Conversation({ chatInputHeight }: IConversationProps): React.JSX.Elemen
 
     return (
         <Box
-            className={cn(
-                "h-[calc(100%_-_theme(spacing.12)_-_var(--chat-input-height))]",
-                "max-h-[calc(100%_-_theme(spacing.24))] min-h-[calc(100%_-_theme(spacing.24)_-_20vh)]"
-            )}
+            className="h-[calc(100%_-_var(--chat-input-height)_-_3px)] min-h-[calc(100%_-_20vh_-_3px)]"
             style={
                 {
                     "--chat-input-height": `${chatInputHeight}px`,
@@ -137,7 +133,18 @@ function Conversation({ chatInputHeight }: IConversationProps): React.JSX.Elemen
                     <ChatMessage key={`chat-bubble-${chatMessage.uid}`} chatMessage={chatMessage} />
                 ))}
                 {!messages.length && (
-                    <h2 className="truncate text-nowrap pb-3 text-center text-sm text-accent-foreground">{t("project.Ask anything to {app} AI!")}</h2>
+                    <Box
+                        mx="auto"
+                        mt="8"
+                        w="full"
+                        rounded="2xl"
+                        border
+                        px="4"
+                        py="6"
+                        className="max-w-md border-dashed border-border bg-card/60 text-center shadow-sm"
+                    >
+                        <h2 className="truncate text-nowrap text-sm font-medium text-accent-foreground">{t("project.Ask anything to {app} AI!")}</h2>
+                    </Box>
                 )}
             </ChatMessageList>
         </Box>

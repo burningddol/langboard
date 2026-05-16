@@ -1,6 +1,13 @@
 from fastapi import Depends
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse, SocketTopic
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    JsonResponse,
+    SocketTopic,
+)
 from langboard_shared.domain.models import Bot, Project, ProjectRole, ProjectWiki, ProjectWikiMetadata, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
 from langboard_shared.domain.services import DomainService
@@ -12,7 +19,7 @@ from .MetadataForm import MetadataDeleteForm, MetadataForm, MetadataGetModel
 from .MetadataHelper import create_metadata_api_schema
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/metadata/project/{project_uid}/wiki/{wiki_uid}",
     tags=["Metadata"],
@@ -39,7 +46,7 @@ def get_wiki_metadata(
     return JsonResponse(content={"metadata": metadata})
 
 
-@AppRouter.schema(query=MetadataGetModel)
+@AppRouter.schema(query=MetadataGetModel, permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/metadata/project/{project_uid}/wiki/{wiki_uid}/key",
     tags=["Metadata"],
@@ -68,7 +75,7 @@ def get_wiki_metadata_by_key(
     return JsonResponse(content={get_query.key: value})
 
 
-@AppRouter.schema(form=MetadataForm)
+@AppRouter.schema(form=MetadataForm, permission=ApiPermission.Edit)
 @AppRouter.api.post(
     "/metadata/project/{project_uid}/wiki/{wiki_uid}",
     tags=["Metadata"],
@@ -100,7 +107,7 @@ def save_wiki_metadata(
     return JsonResponse()
 
 
-@AppRouter.schema(form=MetadataDeleteForm)
+@AppRouter.schema(form=MetadataDeleteForm, permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/metadata/project/{project_uid}/wiki/{wiki_uid}",
     tags=["Metadata"],

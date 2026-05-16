@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from ...Env import Env
 from ..utils.decorators import class_instance, thread_safe_singleton
 from .ApiErrorCode import ApiErrorCode
+from .ApiPermission import ApiPermission
 from .ApiSchemaHelper import ApiSchemaHelper, ApiSchemaMap
 from .AppExceptionHandlingRoute import AppExceptionHandlingRoute
 
@@ -42,9 +43,10 @@ class AppRouter:
         query: type[BaseModel] | None = None,
         form: type[BaseModel] | None = None,
         file_field: str | None = None,
+        permission: ApiPermission,
     ):
         def wrapper(func: _TRoute) -> _TRoute:
-            setattr(func, "_schema", {"query": query, "form": form, "file_field": file_field})
+            setattr(func, "_schema", {"query": query, "form": form, "file_field": file_field, "permission": permission})
             return func
 
         return wrapper

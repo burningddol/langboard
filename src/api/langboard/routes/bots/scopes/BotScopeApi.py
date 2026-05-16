@@ -1,6 +1,6 @@
 from langboard_shared.ai import BotScopeHelper
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
 from langboard_shared.domain.models import Bot, Project, ProjectRole
@@ -14,7 +14,7 @@ from langboard_shared.security import RoleFinder
 from ..forms import ApplyDefaultBotScopeForm, CreateBotScopeForm, DeleteBotScopeForm, ToggleBotTriggerConditionForm
 
 
-@AppRouter.schema(form=CreateBotScopeForm)
+@AppRouter.schema(form=CreateBotScopeForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/bot/{bot_uid}/scope",
     tags=["Bot.Scope"],
@@ -51,7 +51,7 @@ def create_bot_scope_in_project(
     return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
-@AppRouter.schema(form=ToggleBotTriggerConditionForm)
+@AppRouter.schema(form=ToggleBotTriggerConditionForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/bot/{bot_uid}/scope/{bot_scope_uid}/trigger-condition",
     tags=["Bot.Scope"],
@@ -92,7 +92,7 @@ def toggle_bot_trigger_condition(
     return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
-@AppRouter.schema(form=DeleteBotScopeForm)
+@AppRouter.schema(form=DeleteBotScopeForm, permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/bot/{bot_uid}/scope/{bot_scope_uid}",
     tags=["Bot.Scope"],
@@ -131,7 +131,7 @@ def delete_bot_scope(
     return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
 
 
-@AppRouter.schema(form=ApplyDefaultBotScopeForm)
+@AppRouter.schema(form=ApplyDefaultBotScopeForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/bot/{bot_uid}/scope/default",
     tags=["Bot.Scope"],

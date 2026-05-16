@@ -1,5 +1,5 @@
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.utils.Converter import convert_python_data
@@ -17,7 +17,7 @@ from .forms import (
 )
 
 
-@AppRouter.schema(form=CardCheckRelatedForm)
+@AppRouter.schema(form=CardCheckRelatedForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/title",
     tags=["Board.Card.Checkitem"],
@@ -41,7 +41,7 @@ def change_checkitem_title(
     return JsonResponse()
 
 
-@AppRouter.schema(form=ChangeCardCheckitemDeadlineForm)
+@AppRouter.schema(form=ChangeCardCheckitemDeadlineForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/deadline",
     tags=["Board.Card.Checkitem"],
@@ -70,7 +70,7 @@ def change_checkitem_deadline(
     return JsonResponse(content={"deadline_at": convert_python_data(deadline_at)})
 
 
-@AppRouter.schema(form=ChangeChildOrderForm)
+@AppRouter.schema(form=ChangeChildOrderForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/order",
     tags=["Board.Card.Checkitem"],
@@ -123,7 +123,7 @@ def change_checkitem_status(
     return JsonResponse()
 
 
-@AppRouter.schema(form=CardifyCheckitemForm)
+@AppRouter.schema(form=CardifyCheckitemForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/cardify",
     tags=["Board.Card.Checkitem"],
@@ -154,7 +154,7 @@ def cardify_checkitem(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/toggle-checked",
     tags=["Board.Card.Checkitem"],
@@ -184,7 +184,7 @@ def toggle_checkitem_checked(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}",
     tags=["Board.Card.Checkitem"],

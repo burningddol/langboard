@@ -6,6 +6,7 @@ import Flex from "@/components/base/Flex";
 import IconComponent from "@/components/base/IconComponent";
 import Conversation from "@/pages/BoardPage/components/chat/Conversation";
 import ChatInput from "@/pages/BoardPage/components/chat/ChatInput";
+import { CHAT_INPUT_MIN_HEIGHT } from "@/pages/BoardPage/components/chat/constants";
 import ChatSessionList from "@/pages/BoardPage/components/chat/ChatSessionList";
 import { cn } from "@/core/utils/ComponentUtils";
 import ChatSessionMoreMenu from "@/pages/BoardPage/components/chat/ChatSessionMoreMenu";
@@ -84,7 +85,7 @@ const ChatSidebar = memo(({ ref }: IChatSidebarProps): React.JSX.Element => {
 
 function ChatSidebarDisplay() {
     const [t] = useTranslation();
-    const [height, setHeight] = useState(0);
+    const [height, setHeight] = useState(CHAT_INPUT_MIN_HEIGHT);
     const { isSessionListOpened } = useBoardChat();
 
     return (

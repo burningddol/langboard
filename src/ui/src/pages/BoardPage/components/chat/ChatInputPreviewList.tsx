@@ -32,17 +32,12 @@ function ChatInputPreviewList() {
         }
     }, [effectiveScope]);
 
+    if (!file && !effectiveScope) {
+        return null;
+    }
+
     return (
-        <Flex
-            position="absolute"
-            top="-28"
-            h="28"
-            py="2"
-            w="full"
-            gap="2"
-            justify="around"
-            className={cn("bg-secondary/70", !file && !effectiveScope && "hidden")}
-        >
+        <Flex w="full" gap="2" px="2" pt="2" className="min-w-0">
             <Flex position="relative" size="24" className={cn("shrink-0", !file && "hidden")}>
                 {!isSending && (
                     <Button

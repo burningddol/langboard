@@ -11,6 +11,7 @@ import { SocketEvents } from "@langboard/core/constants";
 import ChatSession from "@/models/ChatSession";
 import { TChatScope } from "@langboard/core/types";
 import ProjectChatSession from "@/models/ProjectChatSession";
+import { EAgentPermissionLevel } from "@langboard/core/ai";
 
 EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.IS_AVAILABLE, async ({ client, topicId }) => {
     const [internalBot, _] = (await ProjectAssignedInternalBot.getInternalBotByProjectUID(EInternalBotType.ProjectChat, topicId)) ?? [null, null];
@@ -47,7 +48,12 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
     }
 
     const [internalBot, internalBotSettings] = internalBotResult;
-    const restData: Record<string, any> = {};
+    const apiPermissionLevel = Object.values(EAgentPermissionLevel).includes(data?.api_permission_level)
+        ? data.api_permission_level
+        : EAgentPermissionLevel.Read;
+    const restData: Record<string, any> = {
+        api_permission_level: apiPermissionLevel,
+    };
 
     const scopeTable = data.scope_table as TChatScope | undefined;
     if (scopeTable) {

@@ -2962,6 +2962,11 @@
   resolved "https://registry.npmjs.org/@types/unist/-/unist-2.0.11.tgz"
   integrity sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==
 
+"@types/viz.js@^2.1.5":
+  version "2.1.5"
+  resolved "https://registry.yarnpkg.com/@types/viz.js/-/viz.js-2.1.5.tgz#b9edc7d2f20fe3ce399b5a78a876da63e4b7aa14"
+  integrity sha512-4gbs5vQ4hAP4mPfsiGIXWUmS3vjyicYPoR6kp5tVedHCQKmFW9trg5DlXKVTaF4mRhPW1nlI7mHYGQouZGMSRg==
+
 "@typescript-eslint/eslint-plugin@8.56.1", "@typescript-eslint/eslint-plugin@^8.56.1":
   version "8.56.1"
   resolved "https://registry.yarnpkg.com/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.56.1.tgz#b1ce606d87221daec571e293009675992f0aae76"

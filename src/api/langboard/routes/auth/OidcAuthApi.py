@@ -11,7 +11,6 @@ from langboard_shared.domain.services import DomainService
 from langboard_shared.Env import Env
 
 
-@AppRouter.schema()
 @AppRouter.api.get(
     "/auth/oidc/login",
     tags=["Auth.OIDC"],
@@ -33,7 +32,6 @@ def oidc_login(redirect: str | None = None) -> JsonResponse:
     return JsonResponse(content={"authorize_url": authorize_url, "state": state})
 
 
-@AppRouter.schema()
 @AppRouter.api.get(
     "/auth/oidc/callback",
     tags=["Auth.OIDC"],
@@ -152,7 +150,6 @@ def oidc_callback(
         raise ApiException.Unauthorized_401(ApiErrorCode.AU1004)
 
 
-@AppRouter.schema()
 @AppRouter.api.post("/auth/oidc/logout", tags=["Auth.OIDC"], responses=OpenApiSchema(202).get())
 def oidc_logout() -> JsonResponse:
     response = JsonResponse(status_code=status.HTTP_202_ACCEPTED)

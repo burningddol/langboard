@@ -1,7 +1,7 @@
 from fastapi import status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import Bot, CardComment, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -11,7 +11,7 @@ from langboard_shared.security import Auth, RoleFinder
 from .forms import ToggleCardCommentReactionForm
 
 
-@AppRouter.schema(form=EditorContentModel)
+@AppRouter.schema(form=EditorContentModel, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/comment",
     tags=["Board.Card.Comment"],
@@ -70,7 +70,7 @@ def get_card_comment(card_uid: str, comment_uid: str, service: DomainService = D
     return JsonResponse(content={"comment": result})
 
 
-@AppRouter.schema(form=EditorContentModel)
+@AppRouter.schema(form=EditorContentModel, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/comment/{comment_uid}",
     tags=["Board.Card.Comment"],
@@ -99,7 +99,7 @@ def update_card_comment(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}/comment/{comment_uid}",
     tags=["Board.Card.Comment"],
@@ -127,7 +127,7 @@ def delete_card_comment(
     return JsonResponse()
 
 
-@AppRouter.schema(form=ToggleCardCommentReactionForm)
+@AppRouter.schema(form=ToggleCardCommentReactionForm, permission=ApiPermission.Edit)
 @AppRouter.api.post(
     "/board/{project_uid}/card/{card_uid}/comment/{comment_uid}/react",
     tags=["Board.Card.Comment"],

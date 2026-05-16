@@ -1,6 +1,6 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import McpRole, McpToolGroup, User
 from langboard_shared.domain.models.McpRole import McpRoleAction
@@ -10,7 +10,7 @@ from langboard_shared.security import Auth, RoleFinder
 from .Form import CreateMcpToolGroupForm, DeleteSelectedMcpToolGroupsForm, UpdateMcpToolGroupForm
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/settings/mcp/groups/admin",
     tags=["AppSettings.MCP"],
@@ -25,7 +25,7 @@ def list_mcp_tool_groups(
     return JsonResponse(content={"tool_groups": tool_groups})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/settings/mcp/groups/global",
     tags=["AppSettings.MCP"],
@@ -38,7 +38,7 @@ def list_global_mcp_tool_groups(service: DomainService = DomainService.scope()) 
     return JsonResponse(content={"tool_groups": tool_groups})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/settings/mcp/group",
     tags=["AppSettings.MCP"],
@@ -58,7 +58,7 @@ def create_mcp_tool_group(
     return JsonResponse(content={"tool_group": tool_group.api_response()}, status_code=status.HTTP_201_CREATED)
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/settings/mcp/group/{group_uid}/details",
     tags=["AppSettings.MCP"],
@@ -79,7 +79,7 @@ def get_mcp_tool_group_details(
     return JsonResponse(content={"tool_group": tool_group.api_response()})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/settings/mcp/group/{group_uid}",
     tags=["AppSettings.MCP"],
@@ -109,7 +109,7 @@ def update_mcp_tool_group(
     return JsonResponse(content={"tool_group": tool_group.api_response()})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/settings/mcp/group/{group_uid}/activate",
     tags=["AppSettings.MCP"],
@@ -134,7 +134,7 @@ def activate_mcp_tool_group(
     return JsonResponse({"activated_at": tool_group.activated_at})
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/settings/mcp/group/{group_uid}/deactivate",
     tags=["AppSettings.MCP"],
@@ -159,7 +159,7 @@ def deactivate_mcp_tool_group(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/settings/mcp/group/{group_uid}",
     tags=["AppSettings.MCP"],
@@ -184,7 +184,7 @@ def delete_mcp_tool_group(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/settings/mcp/groups",
     tags=["AppSettings.MCP"],

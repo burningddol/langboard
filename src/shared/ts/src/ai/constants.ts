@@ -37,3 +37,22 @@ export const AGENT_MODELS = [
 ] as const;
 
 export type TAgentModelName = (typeof AGENT_MODELS)[number];
+
+export enum EApiPermission {
+    Read = "read",
+    Create = "create",
+    Edit = "edit",
+    Delete = "delete",
+}
+
+export enum EAgentPermissionLevel {
+    Read = "read",
+    Edit = "edit",
+    FullAccess = "full_access",
+}
+
+export const AGENT_PERMISSION_LEVEL_PERMISSIONS: Record<EAgentPermissionLevel, EApiPermission[]> = {
+    [EAgentPermissionLevel.Read]: [EApiPermission.Read],
+    [EAgentPermissionLevel.Edit]: [EApiPermission.Read, EApiPermission.Create, EApiPermission.Edit],
+    [EAgentPermissionLevel.FullAccess]: [EApiPermission.Read, EApiPermission.Create, EApiPermission.Edit, EApiPermission.Delete],
+};

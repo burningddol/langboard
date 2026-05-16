@@ -12,6 +12,7 @@ import useGetProjectChatSessions from "@/controllers/api/board/chat/useGetProjec
 import useBoardChatSessionCreatedHandlers from "@/controllers/socket/board/chat/useBoardChatSessionCreatedHandlers";
 import { TChatScope } from "@langboard/core/types";
 import { Utils } from "@langboard/core/utils";
+import { EAgentPermissionLevel } from "@langboard/core/ai";
 
 export interface IBoardChatContext {
     projectUID: string;
@@ -23,6 +24,8 @@ export interface IBoardChatContext {
     setIsUploading: React.Dispatch<React.SetStateAction<bool>>;
     isSessionListOpened: bool;
     setIsSessionListOpened: React.Dispatch<React.SetStateAction<bool>>;
+    agentPermissionLevel: EAgentPermissionLevel;
+    setAgentPermissionLevel: React.Dispatch<React.SetStateAction<EAgentPermissionLevel>>;
     selectedScope?: [TChatScope, string] | undefined;
     setSelectedScope: React.Dispatch<React.SetStateAction<[TChatScope, string] | undefined>>;
     lockedScope?: [TChatScope, string] | undefined;
@@ -51,6 +54,8 @@ const initialContext = {
     setIsUploading: () => {},
     isSessionListOpened: false,
     setIsSessionListOpened: () => {},
+    agentPermissionLevel: EAgentPermissionLevel.Read,
+    setAgentPermissionLevel: () => {},
     selectedScope: undefined,
     setSelectedScope: () => {},
     lockedScope: undefined,
@@ -71,6 +76,7 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
     const [isSending, setIsSendingState] = useState(false);
     const [isUploading, setIsUploadingState] = useState(false);
     const [isSessionListOpened, setIsSessionListOpened] = useState(false);
+    const [agentPermissionLevel, setAgentPermissionLevel] = useState(EAgentPermissionLevel.Read);
     const [selectedScope, setSelectedScope] = useState<[TChatScope, string] | undefined>(undefined);
     const [lockedScope, setLockedScope] = useState<[TChatScope, string] | undefined>(undefined);
     const chatTaskIdRef = useRef<string | null>(null);
@@ -255,6 +261,8 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
                 setIsUploading,
                 isSessionListOpened,
                 setIsSessionListOpened,
+                agentPermissionLevel,
+                setAgentPermissionLevel,
                 selectedScope,
                 setSelectedScope,
                 lockedScope,

@@ -209,6 +209,8 @@ function BotValueDefaultInputDisplay({
         setValue("agent_llm")(nextProvider);
         providerCollaboration.updateValue(nextProvider);
     };
+    const allApiNames = useMemo(() => Object.keys(apiList), [apiList]);
+    const isAllApiSelected = !!allApiNames.length && allApiNames.every((apiName) => selectedApis.includes(apiName));
 
     useEffect(() => {
         setValue("api_names")(selectedApis);
@@ -230,59 +232,86 @@ function BotValueDefaultInputDisplay({
             {showableInputs.includes("api_names") && (
                 <Box>
                     {isEditing ? (
-                        <MultiSelect
-                            placeholder={t("bot.agent.Select API(s) to use")}
-                            selections={Object.keys(apiList).map((value) => ({ label: value, value }))}
-                            selectedValue={selectedApis}
-                            listClassName="absolute w-[calc(100%_-_theme(spacing.6))]"
-                            badgeListClassName="max-h-28 overflow-y-auto relative"
-                            inputClassName="sticky bottom-0 bg-background ml-0 pl-2"
-                            onValueChange={changeSelectedApis}
-                            createBadgeWrapper={(badge, value) => {
-                                const remoteApiMeta = remoteApiMetaMap[value];
+                        <>
+                            <Flex justify="end" gap="1" mb="1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    disabled={isValidating || disabled || isAllApiSelected}
+                                    onClick={() => changeSelectedApis(allApiNames)}
+                                >
+                                    {t("common.Select all")}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    disabled={isValidating || disabled || !selectedApis.length}
+                                    onClick={() => changeSelectedApis([])}
+                                >
+                                    {t("common.Clear")}
+                                </Button>
+                            </Flex>
+                            <MultiSelect
+                                placeholder={t("bot.agent.Select API(s) to use")}
+                                selections={allApiNames.map((value) => ({ label: value, value }))}
+                                selectedValue={selectedApis}
+                                listClassName="absolute w-[calc(100%_-_theme(spacing.6))]"
+                                badgeListClassName="max-h-28 overflow-y-auto relative"
+                                inputClassName="sticky bottom-0 bg-background ml-0 pl-2"
+                                onValueChange={changeSelectedApis}
+                                createBadgeWrapper={(badge, value) => {
+                                    const remoteApiMeta = remoteApiMetaMap[value];
 
-                                return (
-                                    <span className="relative inline-flex">
-                                        {remoteApiMeta?.added ? (
+                                    return (
+                                        <span className="relative inline-flex">
+                                            {remoteApiMeta?.added ? (
+                                                <CollaborativeUserLabel
+                                                    className="absolute left-1 top-0 z-[9999] -translate-y-1/2"
+                                                    color={remoteApiMeta.borderColor}
+                                                    name={remoteApiMeta.actorName}
+                                                />
+                                            ) : null}
+                                            <Tooltip.Root>
+                                                <Tooltip.Trigger asChild>
+                                                    <span
+                                                        className="inline-flex rounded-md border-2 border-transparent"
+                                                        style={remoteApiMeta?.added ? { borderColor: remoteApiMeta.borderColor } : undefined}
+                                                    >
+                                                        {badge}
+                                                    </span>
+                                                </Tooltip.Trigger>
+                                                <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">{apiList[value]}</Tooltip.Content>
+                                            </Tooltip.Root>
+                                        </span>
+                                    );
+                                }}
+                                renderSelectableItem={(item) => {
+                                    const remoteApiMeta = remoteApiMetaMap[item.value];
+                                    if (!remoteApiMeta || remoteApiMeta.added) {
+                                        return item.label;
+                                    }
+
+                                    return (
+                                        <div
+                                            className="relative w-full rounded-md border-2 px-2 py-1"
+                                            style={{ borderColor: remoteApiMeta.borderColor }}
+                                        >
                                             <CollaborativeUserLabel
-                                                className="absolute left-1 top-0 z-[9999] -translate-y-1/2"
+                                                className="absolute left-2 top-0 z-[9999] -translate-y-1/2"
                                                 color={remoteApiMeta.borderColor}
                                                 name={remoteApiMeta.actorName}
                                             />
-                                        ) : null}
-                                        <Tooltip.Root>
-                                            <Tooltip.Trigger asChild>
-                                                <span
-                                                    className="inline-flex rounded-md border-2 border-transparent"
-                                                    style={remoteApiMeta?.added ? { borderColor: remoteApiMeta.borderColor } : undefined}
-                                                >
-                                                    {badge}
-                                                </span>
-                                            </Tooltip.Trigger>
-                                            <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">{apiList[value]}</Tooltip.Content>
-                                        </Tooltip.Root>
-                                    </span>
-                                );
-                            }}
-                            renderSelectableItem={(item) => {
-                                const remoteApiMeta = remoteApiMetaMap[item.value];
-                                if (!remoteApiMeta || remoteApiMeta.added) {
-                                    return item.label;
-                                }
-
-                                return (
-                                    <div className="relative w-full rounded-md border-2 px-2 py-1" style={{ borderColor: remoteApiMeta.borderColor }}>
-                                        <CollaborativeUserLabel
-                                            className="absolute left-2 top-0 z-[9999] -translate-y-1/2"
-                                            color={remoteApiMeta.borderColor}
-                                            name={remoteApiMeta.actorName}
-                                        />
-                                        <span>{item.label}</span>
-                                    </div>
-                                );
-                            }}
-                            disabled={isValidating || disabled}
-                        />
+                                            <span>{item.label}</span>
+                                        </div>
+                                    );
+                                }}
+                                disabled={isValidating || disabled}
+                            />
+                        </>
                     ) : (
                         <Flex wrap gap="1.5" className="min-h-9 rounded-md border border-input bg-muted/20 px-3 py-2">
                             {selectedApis.length ? (

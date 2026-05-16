@@ -1,7 +1,7 @@
 from fastapi import status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.utils.Converter import convert_python_data
@@ -37,7 +37,7 @@ from .forms import (
 )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/card/{card_uid}",
     tags=["Board.Card"],
@@ -138,7 +138,7 @@ def get_card_details(
     )
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/board/{project_uid}/card/{card_uid}/comments",
     tags=["Board.Card"],
@@ -173,7 +173,7 @@ def get_card_comments(card_uid: str, service: DomainService = DomainService.scop
     return JsonResponse(content={"comments": comments})
 
 
-@AppRouter.schema(form=CreateCardForm)
+@AppRouter.schema(form=CreateCardForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/board/{project_uid}/card",
     tags=["Board.Card"],
@@ -225,7 +225,7 @@ def create_card(
     return JsonResponse(content={"card": api_card}, status_code=status.HTTP_201_CREATED)
 
 
-@AppRouter.schema(form=ChangeCardDetailsForm)
+@AppRouter.schema(form=ChangeCardDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/details",
     tags=["Board.Card"],
@@ -286,7 +286,7 @@ def change_card_details(
     return JsonResponse(content=result)
 
 
-@AppRouter.schema(form=AssignUsersForm)
+@AppRouter.schema(form=AssignUsersForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/assigned-users",
     tags=["Board.Card"],
@@ -309,7 +309,7 @@ def update_card_assigned_users(
     return JsonResponse()
 
 
-@AppRouter.schema(form=ChangeChildOrderForm)
+@AppRouter.schema(form=ChangeChildOrderForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/order",
     tags=["Board.Card"],
@@ -332,7 +332,7 @@ def change_card_order_or_move_column(
     return JsonResponse()
 
 
-@AppRouter.schema(form=UpdateCardLabelsForm)
+@AppRouter.schema(form=UpdateCardLabelsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/labels",
     tags=["Board.Card"],
@@ -355,7 +355,7 @@ def update_card_labels(
     return JsonResponse()
 
 
-@AppRouter.schema(form=UpdateCardRelationshipsForm)
+@AppRouter.schema(form=UpdateCardRelationshipsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/relationships",
     tags=["Board.Card"],
@@ -378,7 +378,7 @@ def update_card_relationships(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/archive",
     tags=["Board.Card"],
@@ -404,7 +404,7 @@ def archive_card(
     return JsonResponse()
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}",
     tags=["Board.Card"],

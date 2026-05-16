@@ -1,5 +1,5 @@
 from fastapi import Query
-from langboard_shared.core.routing import ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 
 
@@ -26,6 +26,7 @@ def get_api_list():
                     "path": "string",
                     "path_params": "array[string]",
                     "method": "string",
+                    "permission": "Enum[read, create, edit, delete]",
                     "content_type": "Enum[application/json, multipart/form-data]",
                     "description": "string",
                     "form?": "object",
@@ -58,6 +59,7 @@ def get_api_schema(api_name: str):
                         "path": "string",
                         "path_params": "array[string]",
                         "method": "string",
+                        "permission": "Enum[read, create, edit, delete]",
                         "content_type": "Enum[application/json, multipart/form-data]",
                         "description": "string",
                         "form?": "object",
@@ -71,12 +73,21 @@ def get_api_schema(api_name: str):
         .get()
     ),
 )
-def get_api_schema_list(api_names: str = Query(...)):
+def get_api_schema_list(api_names: str = Query(...), permissions: str | None = Query(None)):
     schemas = {}
     api_name_list = api_names.split(",")
+    allowed_permissions: set[str] | None = None
+    if permissions:
+        allowed_permissions = set()
+        for permission in permissions.split(","):
+            try:
+                allowed_permissions.add(ApiPermission(permission).value)
+            except ValueError:
+                continue
+
     for api_name in api_name_list:
         schema = AppRouter.api_routes.get(api_name)
-        if schema:
+        if schema and (allowed_permissions is None or schema["permission"] in allowed_permissions):
             schemas[api_name] = schema
 
     return JsonResponse(content={"schemas": schemas})

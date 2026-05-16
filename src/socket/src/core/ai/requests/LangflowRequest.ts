@@ -11,12 +11,13 @@ import formidable from "formidable";
 import fs from "fs";
 import { LangflowStreamResponse } from "@/core/ai/responses/LangflowResponse";
 import BaseStreamResponse from "@/core/ai/responses/BaseStreamResponse";
-import { EBotPlatform, EBotPlatformRunningType } from "@langboard/core/ai";
+import { EAgentPermissionLevel, EBotPlatform, EBotPlatformRunningType } from "@langboard/core/ai";
 
 class LangflowRequest extends BaseRequest {
     protected createRequestData({ requestModel, useStream }: IRequestExecuteParams): IRequestData | null {
         const sessionId = requestModel.sessionId ?? Utils.String.Token.generate(32);
-        const oneTimeToken = createOneTimeToken(new SnowflakeID(requestModel.userId));
+        const apiPermissionLevel = requestModel.restData?.api_permission_level ?? EAgentPermissionLevel.Read;
+        const oneTimeToken = createOneTimeToken(new SnowflakeID(requestModel.userId), apiPermissionLevel);
 
         const queryParams = new URLSearchParams({
             stream: useStream ? "true" : "false",
@@ -50,7 +51,6 @@ class LangflowRequest extends BaseRequest {
                 "user",
                 { uid: new SnowflakeID(requestModel.userId).toShortCode() },
                 requestModel.projectUID,
-                [],
                 requestModel.restData
             ),
         ];

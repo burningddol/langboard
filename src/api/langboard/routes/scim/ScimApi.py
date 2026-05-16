@@ -1,6 +1,6 @@
 from typing import Any
 from fastapi import Depends, Request, status
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.services import DomainService
 from langboard_shared.security import Auth
@@ -28,7 +28,7 @@ def _scim_user_example() -> dict[str, Any]:
     }
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/scim/v2/ServiceProviderConfig",
     tags=["SCIM"],
@@ -73,7 +73,7 @@ def scim_service_provider_config(request: Request) -> JsonResponse:
     )
 
 
-@AppRouter.schema(query=ScimUsersPagination)
+@AppRouter.schema(query=ScimUsersPagination, permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/scim/v2/Users",
     tags=["SCIM"],
@@ -107,7 +107,7 @@ def list_scim_users(
     return JsonResponse(content=result)
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
     "/scim/v2/Users/{user_id}",
     tags=["SCIM"],
@@ -129,7 +129,7 @@ def get_scim_user(user_id: str, request: Request, service: DomainService = Domai
     return JsonResponse(content=service.scim_provisioning.build_scim_user(user))
 
 
-@AppRouter.schema(form=ScimUserUpsertForm)
+@AppRouter.schema(form=ScimUserUpsertForm, permission=ApiPermission.Create)
 @AppRouter.api.post(
     "/scim/v2/Users",
     tags=["SCIM"],
@@ -153,7 +153,7 @@ def create_scim_user(
     return JsonResponse(status_code=status.HTTP_201_CREATED, content=service.scim_provisioning.build_scim_user(user))
 
 
-@AppRouter.schema(form=ScimUserUpsertForm)
+@AppRouter.schema(form=ScimUserUpsertForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/scim/v2/Users/{user_id}",
     tags=["SCIM"],
@@ -184,7 +184,7 @@ def replace_scim_user(
     return JsonResponse(content=service.scim_provisioning.build_scim_user(user))
 
 
-@AppRouter.schema(form=ScimPatchForm)
+@AppRouter.schema(form=ScimPatchForm, permission=ApiPermission.Edit)
 @AppRouter.api.patch(
     "/scim/v2/Users/{user_id}",
     tags=["SCIM"],
@@ -217,7 +217,7 @@ def patch_scim_user(
     return JsonResponse(content=service.scim_provisioning.build_scim_user(user))
 
 
-@AppRouter.schema()
+@AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/scim/v2/Users/{user_id}",
     tags=["SCIM"],
