@@ -67,6 +67,11 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
     const { mutateAsync: deleteNotificationScheduleRuleMutateAsync } = useDeleteNotificationScheduleRule(rule, { interceptToast: true });
     const [isEditing, setIsEditing] = useState(false);
     const [editingOriginalRule, setEditingOriginalRule] = useState<TNotificationRuleValue | null>(null);
+    const [draftRule, setDraftRule] = useState<TNotificationRuleValue | null>(null);
+    const editingOriginalRuleRef = useRef<TNotificationRuleValue | null>(null);
+    const initializedDraftRef = useRef(false);
+    const ignoreRemoteDraftRef = useRef(false);
+    const ignoreRemoteDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isApplyingRemoteDraftRef = useRef(false);
     const editStartedAtRef = useRef(0);
     const remoteDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,11 +139,17 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
         defaultValue: JSON.stringify(normalizedRuleValue),
         disabled: isFormDisabled,
         onValueChange: (nextValue) => {
+            if (ignoreRemoteDraftRef.current) {
+                return;
+            }
+
             isApplyingRemoteDraftRef.current = true;
             if (remoteDraftTimerRef.current) {
                 clearTimeout(remoteDraftTimerRef.current);
             }
-            updateRule(parseRuleDraft(nextValue));
+            const nextRule = parseRuleDraft(nextValue);
+            setDraftRule(nextRule);
+            updateRule(nextRule);
             remoteDraftTimerRef.current = setTimeout(() => {
                 isApplyingRemoteDraftRef.current = false;
                 remoteDraftTimerRef.current = null;
@@ -146,9 +157,33 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
         },
     });
     useEffect(() => {
+        if (!isEditing || !editingOriginalRule || initializedDraftRef.current) {
+            return;
+        }
+
+        if (ruleDraftSync.remoteCursors.length || ruleDraftSync.remoteMeta.length) {
+            initializedDraftRef.current = true;
+            return;
+        }
+
+        initializedDraftRef.current = true;
+        ruleDraftSync.resetValue(JSON.stringify(editingOriginalRule));
+        if (ignoreRemoteDraftTimerRef.current) {
+            clearTimeout(ignoreRemoteDraftTimerRef.current);
+        }
+        ignoreRemoteDraftTimerRef.current = setTimeout(() => {
+            ignoreRemoteDraftRef.current = false;
+            ignoreRemoteDraftTimerRef.current = null;
+        }, 1000);
+    }, [editingOriginalRule, isEditing, ruleDraftSync]);
+
+    useEffect(() => {
         return () => {
             if (remoteDraftTimerRef.current) {
                 clearTimeout(remoteDraftTimerRef.current);
+            }
+            if (ignoreRemoteDraftTimerRef.current) {
+                clearTimeout(ignoreRemoteDraftTimerRef.current);
             }
         };
     }, []);
@@ -177,10 +212,12 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
         const serializedRule = JSON.stringify(normalizedRule);
 
         if (serializedRule === ruleDraftSync.value) {
+            setDraftRule(normalizedRule);
             updateRule(normalizedRule);
             return;
         }
 
+        setDraftRule(normalizedRule);
         updateRule(normalizedRule);
         ruleDraftSync.updateValue(serializedRule);
     };
@@ -228,7 +265,9 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
         return <label className="text-sm font-medium">{label}</label>;
     };
 
-    const syncedRuleValue = isEditing ? parseRuleDraft(ruleDraftSync.value) : normalizedRuleValue;
+    const syncedRuleValue = isEditing
+        ? draftRule || editingOriginalRuleRef.current || editingOriginalRule || normalizedRuleValue
+        : normalizedRuleValue;
     const syncedIsEnabled = syncedRuleValue.is_enabled;
     const syncedIntervalStr = syncedRuleValue.interval_str;
     const syncedTarget = syncedRuleValue.target;
@@ -291,9 +330,14 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
             error: handleError,
             success: () => t("successes.Notification schedule saved successfully."),
             finally: () => {
+                ruleDraftSync.updateValue(JSON.stringify(normalizedRule));
                 setIsValidating(false);
                 ruleDraftSync.updateMeta(null);
                 editStartedAtRef.current = 0;
+                editingOriginalRuleRef.current = null;
+                initializedDraftRef.current = false;
+                ignoreRemoteDraftRef.current = false;
+                setDraftRule(null);
                 setEditingOriginalRule(null);
                 setIsEditing(false);
             },
@@ -325,17 +369,26 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
 
         const originalRule = normalizeNotificationRule(ruleValue, schema);
         editStartedAtRef.current = Date.now();
+        initializedDraftRef.current = false;
+        ignoreRemoteDraftRef.current = true;
+        setDraftRule(originalRule);
         ruleDraftSync.updateMeta(null);
         updateRule(originalRule);
+        editingOriginalRuleRef.current = originalRule;
         setEditingOriginalRule(originalRule);
         setIsEditing(true);
     };
 
     const cancelEditing = () => {
-        const originalRule = editingOriginalRule || normalizeNotificationRule(ruleValue, schema);
+        const originalRule = editingOriginalRuleRef.current || editingOriginalRule || normalizeNotificationRule(ruleValue, schema);
         updateRule(originalRule);
+        ruleDraftSync.resetValue(JSON.stringify(originalRule));
         ruleDraftSync.updateMeta(null);
         editStartedAtRef.current = 0;
+        editingOriginalRuleRef.current = null;
+        initializedDraftRef.current = false;
+        ignoreRemoteDraftRef.current = false;
+        setDraftRule(null);
         setEditingOriginalRule(null);
         setIsEditing(false);
     };

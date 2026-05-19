@@ -69,6 +69,14 @@ class Env:
         return int(self.__get_from_cache("UI_PORT", "5173"))
 
     @property
+    def SOCKET_PORT(self) -> int:
+        return int(self.__get_from_cache("SOCKET_PORT", "5690"))
+
+    @property
+    def SOCKET_INTERNAL_URL(self) -> str:
+        return self.__get_from_cache("SOCKET_INTERNAL_URL", f"http://localhost:{self.SOCKET_PORT}").rstrip("/")
+
+    @property
     def API_URL(self) -> str:
         return (
             self.__get_from_cache("API_URL", f"http://localhost:{self.API_PORT}")

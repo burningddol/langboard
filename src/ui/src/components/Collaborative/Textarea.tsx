@@ -12,6 +12,8 @@ export interface ICollaborativeTextareaProps extends Omit<TextareaProps, "value"
     section?: number | string;
     uid?: number | string;
     onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
+    onCollaborativeValueReady?: (updateValue: ((value: string) => void) | null) => void;
+    onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
     onValueChange?: (value: string) => void;
 }
 
@@ -62,6 +64,8 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             onClick,
             onFocus,
             onMouseUp,
+            onCollaborativeValueReady,
+            onCollaborativeValueResetReady,
             onValueChange,
             className,
             children,
@@ -70,7 +74,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
         ref
     ) => {
         const textareaRef = useRef<HTMLTextAreaElement>(null);
-        const { remoteCursors, updateSelection, value, updateValue } = useCollaborativeText({
+        const { remoteCursors, resetValue, updateSelection, value, updateValue } = useCollaborativeText({
             collaborationType,
             documentID,
             field,
@@ -81,6 +85,22 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             onValueChange,
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});
+
+        useEffect(() => {
+            onCollaborativeValueReady?.(updateValue);
+
+            return () => {
+                onCollaborativeValueReady?.(null);
+            };
+        }, [onCollaborativeValueReady, updateValue]);
+
+        useEffect(() => {
+            onCollaborativeValueResetReady?.(resetValue);
+
+            return () => {
+                onCollaborativeValueResetReady?.(null);
+            };
+        }, [onCollaborativeValueResetReady, resetValue]);
 
         const handleChange: React.ChangeEventHandler<HTMLTextAreaElement> = (event) => {
             updateValue(event.target.value);

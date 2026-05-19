@@ -210,12 +210,12 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
     return (
         <>
             {hasRunningBot && <ShineBorder className="z-[999999]" />}
-            <Flex direction="col" className={cn("h-full min-h-0", isExpanded ? "gap-0" : "gap-4")}>
-                <Flex className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <Flex direction="col" className="h-full min-h-0 gap-2">
+                <Flex className={cn("min-h-0 min-w-0 flex-1", isExpanded ? "overflow-hidden" : "overflow-visible")}>
                     <Box
                         className={cn(
-                            "relative min-h-0 min-w-0 max-w-full flex-1 overflow-hidden border bg-background px-4 py-4 sm:px-6 sm:py-6",
-                            isExpanded ? "border-0 pb-20 shadow-none" : "rounded-2xl shadow-2xl"
+                            "relative min-h-0 min-w-0 max-w-full flex-1 border bg-background px-4 py-4 sm:px-6 sm:py-6",
+                            isExpanded ? "overflow-hidden border-0 shadow-none" : "overflow-visible rounded-2xl shadow-2xl"
                         )}
                     >
                         {!isExpanded && (
@@ -225,7 +225,7 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                         )}
                         <Box className="relative flex h-full min-h-0 min-w-0 flex-col overflow-visible">
                             <Dialog.Header className="sticky top-0 z-[100] mb-3 shrink-0 border-b-2 bg-background pb-3 text-left sm:-top-2">
-                                <BoardCardTitle key={`board-card-title-${card.uid}`} />
+                                <BoardCardTitle key={`board-card-title-${card.uid}`} className={isExpanded ? "sm:mr-44" : undefined} />
                                 <Flex gap="3">
                                     {isExpanded ? (
                                         <Box textSize="sm" className="text-muted">
@@ -238,7 +238,7 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                     )}
                                     <BoardCardLabelList key={`board-card-label-list-${card.uid}`} />
                                 </Flex>
-                                <Flex items="center" gap="1" className="absolute right-0 top-0">
+                                <Flex items="start" gap="1" className="absolute right-0 top-0 !mt-0 pl-3">
                                     {isExpanded && (
                                         <Box className="hidden sm:flex sm:items-center sm:gap-1">
                                             <BoardCardActionRelationship buttonClassName="" isExpanded />
@@ -249,6 +249,7 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                             type="button"
                                             variant="ghost"
                                             size="icon"
+                                            className="size-8"
                                             title={t(isExpanded ? "common.Collapse" : "common.Expand")}
                                             onClick={() => setIsExpanded((value) => !value)}
                                         >
@@ -256,11 +257,18 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                         </Button>
                                     )}
                                     {isExpanded ? (
-                                        <Button type="button" variant="ghost" size="icon" title={t("common.Close")} onClick={onClose}>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="size-8"
+                                            title={t("common.Close")}
+                                            onClick={onClose}
+                                        >
                                             <IconComponent icon="x" size="4" />
                                         </Button>
                                     ) : (
-                                        <Dialog.CloseButton />
+                                        <Dialog.CloseButton className="inline-flex size-8 items-center justify-center" />
                                     )}
                                 </Flex>
                             </Dialog.Header>
@@ -275,6 +283,7 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                                 <BoardCardDeadline key={`board-card-deadline-${card.uid}`} />
                                             </BoardCardSection>
                                         </Flex>
+                                        <BoardCardMobileActions />
                                         <BoardCardSection title="card.Description" className="relative min-h-56">
                                             <BoardCardDescription key={`board-card-description-${card.uid}`} />
                                         </BoardCardSection>
@@ -288,11 +297,6 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                                 <BoardCardAttachmentList key={`board-card-attachment-list-${card.uid}`} />
                                             </BoardCardSection>
                                         )}
-                                        <Box className={cn("sm:hidden", !isActionPanelOpen && "hidden")}>
-                                            <BoardCardSection title="card.Actions" titleClassName="mb-2">
-                                                <BoardCardActionList key={`board-card-action-list-mobile-${card.uid}`} />
-                                            </BoardCardSection>
-                                        </Box>
                                         <BoardCardMobileComments scrollableRef={contentViewportRef} />
                                     </Flex>
                                 </Box>
@@ -308,12 +312,28 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                                 <BoardCommentForm variant="mobile" />
                             </Box>
                         </Box>
-                        {isExpanded && <BoardCardFloatingNav isExpanded={isExpanded} />}
                     </Box>
                 </Flex>
-                {!isExpanded && <BoardCardFloatingNav isExpanded={isExpanded} />}
+                <BoardCardFloatingNav />
             </Flex>
         </>
+    );
+}
+
+function BoardCardMobileActions(): React.JSX.Element | null {
+    const { card } = useBoardCard();
+    const { isActionPanelOpen } = useBoardCardPanel();
+
+    if (!isActionPanelOpen) {
+        return null;
+    }
+
+    return (
+        <Box className="sm:hidden">
+            <BoardCardSection title="card.Actions" titleClassName="mb-2">
+                <BoardCardActionList key={`board-card-action-list-mobile-${card.uid}`} />
+            </BoardCardSection>
+        </Box>
     );
 }
 
@@ -398,7 +418,7 @@ function BoardCardExpandedChatScope({ isExpanded }: { isExpanded: bool }): null 
     return null;
 }
 
-function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.Element {
+function BoardCardFloatingNav(): React.JSX.Element {
     const { projectUID, card } = useBoardCard();
     const { isCommentPanelOpen, toggleCommentPanel, isActionPanelOpen, toggleActionPanel } = useBoardCardPanel();
     const { hasRoleAction, canEditCard, isCardEditing, enterCardEditMode, leaveCardEditMode } = useBoardCard();
@@ -464,36 +484,35 @@ function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.E
     }, [card, changeCardDetailsMutateAsync, getHasUnsavedChanges, isSaving, leaveCardEditMode, projectUID, resetAll, saveDirtySections]);
 
     return (
-        <Flex
-            justify="center"
-            className={cn(
-                "pointer-events-none z-[110]",
-                isExpanded ? "absolute bottom-4 left-0 right-0" : "sticky bottom-3 pb-1 sm:bottom-4 sm:pb-2"
-            )}
-        >
+        <Flex justify="center" className="pointer-events-none z-[110] shrink-0">
             <Flex items="center" gap="1" className={cn("pointer-events-auto rounded-full border bg-background shadow-lg backdrop-blur")}>
                 {canEditCard && (
                     <>
                         {!isCardEditing ? (
-                            <Button type="button" variant="ghost" className="h-10 gap-1 rounded-full px-4" onClick={enterCardEditMode}>
+                            <Button type="button" variant="ghost" className="h-10 gap-1 rounded-full px-3 sm:px-4" onClick={enterCardEditMode}>
                                 <IconComponent icon="pen" size="4" />
-                                {t("common.Edit")}
+                                <span className="hidden sm:inline">{t("common.Edit")}</span>
                             </Button>
                         ) : (
                             <>
-                                <Button type="button" variant="outline" className="h-10 gap-1 rounded-full px-4" onClick={handleCancelEditing}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
+                                    onClick={handleCancelEditing}
+                                >
                                     <IconComponent icon="x" size="4" />
-                                    {t("common.Cancel")}
+                                    <span className="hidden sm:inline">{t("common.Cancel")}</span>
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="default"
                                     disabled={isSaving}
-                                    className="h-10 gap-1 rounded-full px-4"
+                                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
                                     onClick={handleSaveEditing}
                                 >
                                     <IconComponent icon="save" size="4" />
-                                    {t("common.Save")}
+                                    <span className="hidden sm:inline">{t("common.Save")}</span>
                                 </Button>
                             </>
                         )}
@@ -501,31 +520,31 @@ function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.E
                 )}
                 {canAttachFile && (
                     <BoardCardActionAttachFile
-                        buttonClassName={"h-10 gap-1 rounded-full border-0 bg-transparent px-4 text-sm shadow-none hover:bg-accent"}
+                        buttonClassName={"h-10 gap-1 rounded-full border-0 bg-transparent px-3 text-sm shadow-none hover:bg-accent sm:px-4"}
                     >
                         <>
                             <IconComponent icon="file-up" size="4" />
-                            {t("card.Attach file")}
+                            <span className="hidden sm:inline">{t("card.Attach file")}</span>
                         </>
                     </BoardCardActionAttachFile>
                 )}
                 <Button
                     type="button"
                     variant={isActionPanelOpen ? "default" : "ghost"}
-                    className="h-10 gap-1 rounded-full px-4"
+                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
                     onClick={toggleActionPanel}
                 >
                     <IconComponent icon="list" size="4" />
-                    {t("card.Actions")}
+                    <span className="hidden sm:inline">{t("card.Actions")}</span>
                 </Button>
                 <Button
                     type="button"
                     variant={isCommentPanelOpen ? "default" : "ghost"}
-                    className="h-10 gap-1 rounded-full px-4"
+                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
                     onClick={toggleCommentPanel}
                 >
                     <IconComponent icon="message-square" size="4" />
-                    {t("card.Comments")}
+                    <span className="hidden sm:inline">{t("card.Comments")}</span>
                 </Button>
             </Flex>
         </Flex>

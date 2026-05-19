@@ -120,7 +120,28 @@ export const useCollaborativeText = ({
     const providerRef = useRef<HocuspocusProvider | null>(null);
     const ytextRef = useRef<Y.Text | null>(null);
     const isApplyingRemoteChangeRef = useRef(false);
+    const hasLocalDirtyValueRef = useRef(false);
+    const activeBindingKeyRef = useRef("");
     const valueRef = useRef(fallbackValue);
+
+    const hasActiveRemoteFieldEditor = useCallback(() => {
+        const provider = providerRef.current;
+        const document = ytextRef.current?.doc;
+        const awareness = provider?.awareness;
+        if (!provider || !document || !awareness) {
+            return false;
+        }
+
+        return Array.from(awareness.getStates().entries()).some(([clientID, state]) => {
+            if (clientID === document.clientID) {
+                return false;
+            }
+
+            const selection = state.collaborativeTextSelection as IAwarenessTextSelection | undefined;
+            const meta = state.collaborativeTextMeta as IAwarenessTextMeta | undefined;
+            return selection?.field === field || meta?.field === field;
+        });
+    }, [field]);
 
     useEffect(() => {
         fallbackValueRef.current = fallbackValue;
@@ -131,9 +152,16 @@ export const useCollaborativeText = ({
     }, [onValueChange]);
 
     useEffect(() => {
+        const bindingKey = `${currentUserUID}:${resolvedDocumentID}:${field}`;
+        if (activeBindingKeyRef.current !== bindingKey) {
+            activeBindingKeyRef.current = bindingKey;
+            hasLocalDirtyValueRef.current = false;
+        }
+
         let disposed = false;
 
         if (disabled || !resolvedDocumentID) {
+            hasLocalDirtyValueRef.current = false;
             valueRef.current = fallbackValueRef.current;
             setValue(fallbackValueRef.current);
             setIsConnected(false);
@@ -144,6 +172,7 @@ export const useCollaborativeText = ({
         }
 
         if (!currentUserUID) {
+            hasLocalDirtyValueRef.current = false;
             valueRef.current = fallbackValueRef.current;
             setValue(fallbackValueRef.current);
             setIsConnected(false);
@@ -155,6 +184,7 @@ export const useCollaborativeText = ({
 
         const url = socket.getAuthorizedWebSocketUrl("editor-sync");
         if (!url) {
+            hasLocalDirtyValueRef.current = false;
             valueRef.current = fallbackValueRef.current;
             setValue(fallbackValueRef.current);
             setIsConnected(false);
@@ -241,27 +271,42 @@ export const useCollaborativeText = ({
             }
 
             setIsSynced(true);
-            if (text.length === 0 && fallbackValueRef.current) {
-                text.insert(0, fallbackValueRef.current);
+            const fallbackValue = fallbackValueRef.current;
+            const currentValue = text.toString();
+            if (currentValue !== fallbackValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
+                text.doc?.transact(() => {
+                    text.delete(0, text.length);
+                    if (fallbackValue) {
+                        text.insert(0, fallbackValue);
+                    }
+                });
+                hasLocalDirtyValueRef.current = false;
+                valueRef.current = fallbackValue;
+                setValue(fallbackValue);
+                onValueChangeRef.current?.(fallbackValue);
                 return;
             }
 
-            const nextValue = text.toString();
-            valueRef.current = nextValue;
-            setValue(nextValue);
-            onValueChangeRef.current?.(nextValue);
+            if (currentValue === fallbackValue) {
+                hasLocalDirtyValueRef.current = false;
+            }
+            valueRef.current = currentValue;
+            setValue(currentValue);
+            onValueChangeRef.current?.(currentValue);
         };
 
         const handleSharedProviderStateChange = (state: ISharedProviderState) => {
-            if (disposed) {
-                return;
-            }
+            queueMicrotask(() => {
+                if (disposed) {
+                    return;
+                }
 
-            setIsConnected(state.isConnected);
-            setIsSynced(state.isSynced);
-            if (state.isSynced) {
-                applySyncedText();
-            }
+                setIsConnected(state.isConnected);
+                setIsSynced(state.isSynced);
+                if (state.isSynced) {
+                    applySyncedText();
+                }
+            });
         };
 
         sharedEntry.stateListeners.add(handleSharedProviderStateChange);
@@ -360,9 +405,10 @@ export const useCollaborativeText = ({
             providerRef.current = null;
             ytextRef.current = null;
         };
-    }, [currentUserUID, disabled, field, resolvedDocumentID, socket]);
+    }, [currentUserUID, disabled, fallbackValue, field, hasActiveRemoteFieldEditor, resolvedDocumentID, socket]);
 
     const updateValue = useCallback((nextValue: string) => {
+        hasLocalDirtyValueRef.current = nextValue !== fallbackValueRef.current;
         valueRef.current = nextValue;
         setValue(nextValue);
         onValueChangeRef.current?.(nextValue);
@@ -381,6 +427,32 @@ export const useCollaborativeText = ({
             text.insert(0, nextValue);
         });
     }, []);
+
+    const resetValue = useCallback(
+        (nextValue: string) => {
+            hasLocalDirtyValueRef.current = false;
+            valueRef.current = nextValue;
+            setValue(nextValue);
+            onValueChangeRef.current?.(nextValue);
+
+            const text = ytextRef.current;
+            if (!text || hasActiveRemoteFieldEditor()) {
+                return;
+            }
+
+            if (text.toString() === nextValue) {
+                return;
+            }
+
+            text.doc?.transact(() => {
+                text.delete(0, text.length);
+                if (nextValue) {
+                    text.insert(0, nextValue);
+                }
+            });
+        },
+        [hasActiveRemoteFieldEditor]
+    );
 
     const updateSelection = useCallback(
         (selectionStart: number, selectionEnd: number = selectionStart) => {
@@ -422,6 +494,7 @@ export const useCollaborativeText = ({
         updateMeta,
         updateSelection,
         value,
+        resetValue,
         updateValue,
     };
 };

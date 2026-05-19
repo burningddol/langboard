@@ -1,6 +1,17 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import McpRole, McpToolGroup, User
 from langboard_shared.domain.models.McpRole import McpRoleAction
@@ -79,6 +90,18 @@ def get_mcp_tool_group_details(
     return JsonResponse(content={"tool_group": tool_group.api_response()})
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{group_uid}", "mcp-tool-group"),
+        "name",
+        "name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{group_uid}", "mcp-tool-group"),
+        "description",
+        "description",
+    ),
+)
 @AppRouter.schema(permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/settings/mcp/group/{group_uid}",
@@ -159,6 +182,11 @@ def deactivate_mcp_tool_group(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{group_uid}", "mcp-tool-group")
+    )
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/settings/mcp/group/{group_uid}",
@@ -184,6 +212,11 @@ def delete_mcp_tool_group(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{group_uids}", "mcp-tool-group")
+    )
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/settings/mcp/groups",

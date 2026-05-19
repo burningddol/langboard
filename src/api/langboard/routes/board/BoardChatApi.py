@@ -1,6 +1,16 @@
 from fastapi import Depends, status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import (
     ChatHistory,
@@ -142,6 +152,22 @@ def create_chat_template(
     return JsonResponse(status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "chat-template-{template_uid}"
+        ),
+        "name",
+        "name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "chat-template-{template_uid}"
+        ),
+        "template",
+        "template",
+    ),
+)
 @AppRouter.api.put(
     "/board/{project_uid}/chat/template/{template_uid}",
     tags=["Board.Chat"],
@@ -172,6 +198,13 @@ def update_chat_template(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "chat-template-{template_uid}"
+        )
+    )
+)
 @AppRouter.api.delete(
     "/board/{project_uid}/chat/template/{template_uid}",
     tags=["Board.Chat"],

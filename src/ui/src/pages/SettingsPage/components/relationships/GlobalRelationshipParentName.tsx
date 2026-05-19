@@ -17,6 +17,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 function GlobalRelationshipParentName() {
@@ -30,6 +31,7 @@ function GlobalRelationshipParentName() {
     const parentName = globalRelationship.useField("parent_name");
     const editorName = `${globalRelationship.uid}-global-relationship-parent-name`;
     const { mutateAsync } = useUpdateGlobalRelationship(globalRelationship, { interceptToast: true });
+    const resetCollaborativeParentNameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateGlobalRelationship,
@@ -67,6 +69,11 @@ function GlobalRelationshipParentName() {
         originalValue: parentName,
     });
 
+    const cancelEditing = () => {
+        resetCollaborativeParentNameRef.current?.(parentName);
+        setIsEditing(false);
+    };
+
     return (
         <Table.FlexCell className={cn("w-1/6 truncate text-center", isEditing && "pb-2.5 pt-[calc(theme(spacing.4)_-_2px)]")}>
             {!isEditing ? (
@@ -102,6 +109,9 @@ function GlobalRelationshipParentName() {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={parentName}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeParentNameRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -118,7 +128,7 @@ function GlobalRelationshipParentName() {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

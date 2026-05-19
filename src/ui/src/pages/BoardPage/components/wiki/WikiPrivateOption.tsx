@@ -69,7 +69,7 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
     const assignedMemberUIDs = useMemo(() => assignedMembers.map((member) => member.uid), [assignedMembers]);
     const defaultSelectedMemberUIDs = useMemo(() => JSON.stringify(assignedMemberUIDs), [assignedMemberUIDs]);
     const [isAssigneePopoverOpen, setIsAssigneePopoverOpen] = useState(false);
-    const { remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
+    const { remoteMeta, resetValue, updateMeta, updateValue, value } = useCollaborativeText({
         defaultValue: defaultSelectedMemberUIDs,
         disabled: isPublic || !isAssigneePopoverOpen,
         collaborationType: EEditorCollaborationType.Wiki,
@@ -231,10 +231,10 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
                     flushSelectedMemberUIDsTimeoutRef.current = null;
                 }
                 updateMeta(null);
-                updateValue(defaultSelectedMemberUIDs);
+                resetValue(defaultSelectedMemberUIDs);
             }
         },
-        [defaultSelectedMemberUIDs, updateMeta, updateValue]
+        [defaultSelectedMemberUIDs, resetValue, updateMeta]
     );
 
     const flushSelectedMemberUIDs = useCallback(

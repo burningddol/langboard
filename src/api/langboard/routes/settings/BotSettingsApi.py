@@ -1,7 +1,17 @@
 from fastapi import File, UploadFile, status
 from langboard_shared.ai import validate_bot_form
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.storage import Storage, StorageName
 from langboard_shared.domain.models import Bot, BotDefaultScopeBranch, SettingRole
@@ -130,6 +140,26 @@ def copy_bot(bot_uid: str, service: DomainService = DomainService.scope()) -> Js
     )
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot"),
+        "bot_name",
+        "name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot"),
+        "bot_uname",
+        "bot_uname",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot"),
+        "api_url",
+        "api_url",
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot-value")
+    ),
+)
 @AppRouter.api.put(
     "/settings/bot/{bot_uid}",
     tags=["AppSettings.Bot"],
@@ -225,6 +255,14 @@ def generate_new_bot_api_token(bot_uid: str, service: DomainService = DomainServ
     )
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{bot_uid}", "bot-value")
+    ),
+)
 @AppRouter.api.delete(
     "/settings/bot/{bot_uid}",
     tags=["AppSettings.Bot"],

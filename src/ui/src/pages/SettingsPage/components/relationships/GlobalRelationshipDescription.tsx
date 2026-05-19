@@ -17,6 +17,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 function GlobalRelationshipDescription() {
@@ -30,6 +31,7 @@ function GlobalRelationshipDescription() {
     const description = globalRelationship.useField("description");
     const editorName = `${globalRelationship.uid}-global-relationship-description`;
     const { mutateAsync } = useUpdateGlobalRelationship(globalRelationship, { interceptToast: true });
+    const resetCollaborativeDescriptionRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateGlobalRelationship,
@@ -67,6 +69,11 @@ function GlobalRelationshipDescription() {
         },
         originalValue: description,
     });
+
+    const cancelEditing = () => {
+        resetCollaborativeDescriptionRef.current?.(description);
+        setIsEditing(false);
+    };
 
     return (
         <Table.FlexCell
@@ -111,6 +118,9 @@ function GlobalRelationshipDescription() {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={description}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeDescriptionRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -127,7 +137,7 @@ function GlobalRelationshipDescription() {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

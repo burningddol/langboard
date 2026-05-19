@@ -42,6 +42,7 @@ const useRescheduleBotCron = (params: TRescheduleBotCronParams, options?: TMutat
                 interval_str: form.interval,
                 target_table: form.scope ? params.target_table : undefined,
                 target_uid: form.scope?.uid,
+                project_uid: form.scope ? ("project_uid" in form.scope ? form.scope.project_uid : form.scope.uid) : undefined,
                 running_type: form.running_type,
                 start_at: form.start_at,
                 end_at: form.end_at,

@@ -1,6 +1,16 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import SettingRole, WebhookSetting
 from langboard_shared.domain.models.SettingRole import SettingRoleAction
@@ -55,6 +65,18 @@ def create_webhook(form: CreateWebhookForm, service: DomainService = DomainServi
     return JsonResponse(content={"webhook": setting.api_response()}, status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{webhook_uid}", "webhook"),
+        "name",
+        "name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{webhook_uid}", "webhook"),
+        "url",
+        "url",
+    ),
+)
 @AppRouter.api.put(
     "/settings/webhook/{webhook_uid}",
     tags=["AppSettings.Webhook"],
@@ -72,6 +94,11 @@ def update_webhook(
     return JsonResponse(content={"webhook": result.api_response()})
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{webhook_uid}", "webhook")
+    )
+)
 @AppRouter.api.delete(
     "/settings/webhook/{webhook_uid}",
     tags=["AppSettings.Webhook"],
@@ -87,6 +114,11 @@ def delete_webhook(webhook_uid: str, service: DomainService = DomainService.scop
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{webhook_uids}", "webhook")
+    )
+)
 @AppRouter.api.delete(
     "/settings/webhooks",
     tags=["AppSettings.Webhook"],

@@ -1,5 +1,15 @@
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import (
     Bot,
@@ -219,6 +229,11 @@ def get_project_cards(project_uid: str, service: DomainService = DomainService.s
     )
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}", "members")
+    )
+)
 @AppRouter.api.put(
     "/board/{project_uid}/assigned-users",
     tags=["Board"],
@@ -239,6 +254,11 @@ def update_project_member(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}", "members")
+    )
+)
 @AppRouter.api.delete(
     "/board/{project_uid}/unassign/{assignee_uid}",
     tags=["Board"],

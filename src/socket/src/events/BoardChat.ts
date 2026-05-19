@@ -12,6 +12,158 @@ import ChatSession from "@/models/ChatSession";
 import { TChatScope } from "@langboard/core/types";
 import ProjectChatSession from "@/models/ProjectChatSession";
 import { EAgentPermissionLevel } from "@langboard/core/ai";
+import { EEditorCollaborationType } from "@langboard/core/constants";
+import { getActiveEditorSyncDocumentNames } from "@/core/server/Hocus";
+
+const parseEditorSyncDocumentName = (documentName: string) => {
+    const [type, entityUID, section, ...extraParts] = documentName.split(":");
+    if (!type || !entityUID || extraParts.length > 0) {
+        return null;
+    }
+
+    return {
+        entityUID,
+        section,
+        type,
+    };
+};
+
+const isAgentPermissionLevel = (value: unknown): value is EAgentPermissionLevel => {
+    return Object.values(EAgentPermissionLevel).some((permissionLevel) => permissionLevel === value);
+};
+
+const getCollaborativeDocumentSchema = (type: string, section?: string) => {
+    if (type === EEditorCollaborationType.BoardColumnName) {
+        return {
+            api_field: "name",
+            field: "name",
+        };
+    }
+
+    if (type === EEditorCollaborationType.Card) {
+        switch (section) {
+            case "title":
+                return { api_field: "title", field: "title" };
+            case "description":
+                return { api_field: "description" };
+            case "deadline":
+                return { api_field: "deadline_at", field: "value" };
+            case "members":
+                return { api_field: "assigned_users", field: "selected-member-uids" };
+            case "labels":
+                return { api_field: "labels", field: "selected-label-uids" };
+            case "relationships-parents":
+            case "relationships-children":
+                return { api_field: "relationships", field: "selected-relationships" };
+            default:
+                if (section?.startsWith("attachment-")) {
+                    return { api_field: "attachment_name", field: "name" };
+                }
+                if (section?.startsWith("comment-")) {
+                    return { api_field: "content" };
+                }
+                if (section?.startsWith("checklist-")) {
+                    return { api_field: "title", field: "title" };
+                }
+                if (section?.startsWith("checkitem-") && section.endsWith("-deadline")) {
+                    return { api_field: "deadline_at", field: "value" };
+                }
+                if (section?.startsWith("checkitem-")) {
+                    return { api_field: "title", field: "title" };
+                }
+                if (section?.startsWith("metadata-")) {
+                    return { api_field: "metadata", field: "key/value" };
+                }
+        }
+    }
+
+    if (type === EEditorCollaborationType.Wiki) {
+        switch (section) {
+            case "title":
+                return { api_field: "title", field: "title" };
+            case "content":
+                return { api_field: "content" };
+            case "private-assignees":
+                return { api_field: "assignees", field: "selected-member-uids" };
+            default:
+                if (section?.startsWith("metadata-")) {
+                    return { api_field: "metadata", field: "key/value" };
+                }
+        }
+    }
+
+    if (type === EEditorCollaborationType.BotSchedule) {
+        return { api_field: "schedule", field: "schedule" };
+    }
+
+    return {};
+};
+
+const getActiveCollaborativeDocuments = async (projectUID: string, scopeTable: TChatScope | undefined, scopeUID: string | undefined) => {
+    if (!scopeUID) {
+        return [];
+    }
+
+    let type: EEditorCollaborationType | undefined;
+    switch (scopeTable) {
+        case "card":
+            type = EEditorCollaborationType.Card;
+            break;
+        case "project_wiki":
+            type = EEditorCollaborationType.Wiki;
+            break;
+        case "project_column":
+            type = EEditorCollaborationType.BoardColumnName;
+            break;
+    }
+
+    if (!type) {
+        return [];
+    }
+
+    const lookupUID = type === EEditorCollaborationType.BoardColumnName ? projectUID : scopeUID;
+    const scopedDocumentLookups = [{ type, lookupUID }];
+    if (scopeTable === "card" || scopeTable === "project_column") {
+        scopedDocumentLookups.push({
+            type: EEditorCollaborationType.BotSchedule,
+            lookupUID: projectUID,
+        });
+    }
+
+    const activeDocumentNames = (
+        await Promise.all(scopedDocumentLookups.map((lookup) => getActiveEditorSyncDocumentNames(lookup.type, lookup.lookupUID)))
+    ).flat();
+    const activeDocuments = activeDocumentNames.flatMap((documentName) => {
+        const parsed = parseEditorSyncDocumentName(documentName);
+        if (!parsed) {
+            return [];
+        }
+
+        if (parsed.type === EEditorCollaborationType.BoardColumnName && scopeUID && parsed.section !== scopeUID) {
+            return [];
+        }
+        if (
+            parsed.type === EEditorCollaborationType.BotSchedule &&
+            scopeTable &&
+            scopeUID &&
+            !parsed.section?.startsWith(`${scopeTable}-${scopeUID}-`)
+        ) {
+            return [];
+        }
+
+        return [
+            {
+                document_name: documentName,
+                entity_uid: parsed.entityUID,
+                section: parsed.section,
+                type: parsed.type,
+                ...getCollaborativeDocumentSchema(parsed.type, parsed.section),
+            },
+        ];
+    });
+
+    return activeDocuments;
+};
 
 EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.IS_AVAILABLE, async ({ client, topicId }) => {
     const [internalBot, _] = (await ProjectAssignedInternalBot.getInternalBotByProjectUID(EInternalBotType.ProjectChat, topicId)) ?? [null, null];
@@ -48,30 +200,40 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
     }
 
     const [internalBot, internalBotSettings] = internalBotResult;
-    const apiPermissionLevel = Object.values(EAgentPermissionLevel).includes(data?.api_permission_level)
-        ? data.api_permission_level
-        : EAgentPermissionLevel.Read;
+    const apiPermissionLevel = isAgentPermissionLevel(data?.api_permission_level) ? data.api_permission_level : EAgentPermissionLevel.Read;
     const restData: Record<string, any> = {
         api_permission_level: apiPermissionLevel,
     };
 
     const scopeTable = data.scope_table as TChatScope | undefined;
+    const scopeUID = Utils.Type.isString(scope_uid) ? scope_uid : undefined;
     if (scopeTable) {
         restData.chat_scope = scopeTable;
         switch (scopeTable) {
             case "project_column":
-                restData.project_column_uid = scope_uid;
+                restData.project_column_uid = scopeUID;
                 break;
             case "card":
-                restData.card_uid = scope_uid;
+                restData.card_uid = scopeUID;
                 break;
             case "project_wiki":
-                restData.project_wiki_uid = scope_uid;
+                restData.project_wiki_uid = scopeUID;
                 break;
             default:
                 restData.chat_scope = "project";
                 break;
         }
+    }
+
+    const activeCollaborativeDocuments = await getActiveCollaborativeDocuments(topicId, scopeTable, scopeUID);
+    if (activeCollaborativeDocuments.length) {
+        restData.active_collaborative_documents = activeCollaborativeDocuments;
+        restData.collaborative_edit_instruction = [
+            "Some fields in the current scope are being edited in real time.",
+            "When changing one of those fields, use the normal matching edit API with the intended final field value.",
+            "The API will automatically update the active collaborative draft instead of saving directly.",
+            "Do not store unsaved draft values in metadata.",
+        ].join(" ");
     }
 
     const response = await BotRunner.runAbortable({

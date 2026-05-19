@@ -1,6 +1,16 @@
 from langboard_shared.ai import BotScheduleHelper
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
@@ -80,6 +90,13 @@ def schedule_bot_crons(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BotSchedule, "{project_uid}", "{target_table}-{target_uid}-{schedule_uid}"
+        )
+    )
+)
 @AppRouter.schema(form=UpdateBotCronTimeForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/bot/{bot_uid}/reschedule/{schedule_uid}",
@@ -143,6 +160,13 @@ def reschedule_bot_crons(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BotSchedule, "{project_uid}", "{target_table}-{target_uid}-{schedule_uid}"
+        )
+    )
+)
 @AppRouter.schema(form=DeleteBotCronTimeForm, permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/bot/{bot_uid}/unschedule/{schedule_uid}",

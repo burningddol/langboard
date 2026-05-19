@@ -1,7 +1,17 @@
 from fastapi import File, UploadFile, status
 from langboard_shared.ai import validate_bot_form
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.storage import Storage, StorageName
 from langboard_shared.domain.models import InternalBot, SettingRole
@@ -90,6 +100,27 @@ def copy_internal_bot(internal_bot_uid: str, service: DomainService = DomainServ
     )
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{internal_bot_uid}", "internal-bot"
+        ),
+        "display_name",
+        "display_name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{internal_bot_uid}", "internal-bot"
+        ),
+        "api_url",
+        "api_url",
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{internal_bot_uid}", "internal-bot-value"
+        )
+    ),
+)
 @AppRouter.api.put(
     "/settings/internal-bot/{internal_bot_uid}",
     tags=["AppSettings.InternalBot"],
@@ -144,6 +175,18 @@ def set_internal_bot_default(internal_bot_uid: str, service: DomainService = Dom
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{internal_bot_uid}", "internal-bot"
+        )
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{internal_bot_uid}", "internal-bot-value"
+        )
+    ),
+)
 @AppRouter.api.delete(
     "/settings/internal-bot/{internal_bot_uid}",
     tags=["AppSettings.InternalBot"],

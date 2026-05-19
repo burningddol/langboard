@@ -22,6 +22,9 @@ from ..core.schema import FlowRequestModel
 from ..core.schema.Exception import APIException, InvalidChatInputError
 
 
+FLOW_HANDLE_QUOTE = "\u0153"
+
+
 @AppRouter.api.post("/api/v1/run/{anypath}")
 async def run_flow(api_request: FlowRequestModel, stream: bool = False, service: DomainService = DomainService.scope()):
     result = _get_flow_json(api_request)
@@ -29,7 +32,7 @@ async def run_flow(api_request: FlowRequestModel, stream: bool = False, service:
         raise ApiException.NotFound_404(result)
 
     bot, bot_json = result
-    graph = await aload_flow_from_json(flow=json_loads(bot_json), tweaks=api_request.tweaks)
+    graph = await aload_flow_from_json(flow=_load_flow_json(bot_json), tweaks=api_request.tweaks)
 
     project = await _get_raw_project(service, api_request)
     bot_log = _get_raw_bot_log(api_request)
@@ -83,7 +86,7 @@ async def webhook_run_flow(
         api_request.tweaks = {}
     api_request.tweaks["Webhook"] = {"data": {"tweaks": json_dumps(api_request.tweaks)}}
 
-    graph = await aload_flow_from_json(flow=json_loads(bot_json), tweaks=api_request.tweaks)
+    graph = await aload_flow_from_json(flow=_load_flow_json(bot_json), tweaks=api_request.tweaks)
 
     project = await _get_raw_project(service, api_request)
     bot_log = _get_raw_bot_log(api_request)
@@ -104,6 +107,18 @@ async def webhook_run_flow(
         raise HTTPException(status_code=500, detail=error_msg) from exc
 
     return JsonResponse(content={"message": "Task started in the background", "status": "in progress"})
+
+
+def _load_flow_json(bot_json: str) -> dict:
+    flow = json_loads(bot_json.lstrip("\ufeff"))
+    for edge in flow.get("data", {}).get("edges", []):
+        if not isinstance(edge, dict):
+            continue
+        for key in ("id", "sourceHandle", "targetHandle"):
+            value = edge.get(key)
+            if isinstance(value, str):
+                edge[key] = value.replace('"', FLOW_HANDLE_QUOTE)
+    return flow
 
 
 def _get_flow_json(api_request: FlowRequestModel) -> ApiErrorCode | tuple[InternalBot | Bot, str]:

@@ -336,7 +336,13 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                 headerNavs={headerNavs}
                 headerTitle={projectTitle}
                 resizableSidebar={
-                    chatResizableSidebar ? { ...chatResizableSidebar, hidden: !!selectCardViewType || !!chatResizableSidebar.hidden } : undefined
+                    chatResizableSidebar
+                        ? {
+                              ...chatResizableSidebar,
+                              floatingHidden: (isCardPage && !isCardExpanded) || !!chatResizableSidebar.floatingHidden,
+                              hidden: !!selectCardViewType || !!chatResizableSidebar.hidden,
+                          }
+                        : undefined
                 }
                 className="!p-0"
             >
@@ -345,7 +351,10 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                         <Box
                             className={cn(
                                 "relative size-full",
-                                isCardPage && isCardExpanded && "pointer-events-none absolute inset-0 -z-[9999] overflow-hidden"
+                                isCardPage &&
+                                    isCardExpanded &&
+                                    !selectCardViewType &&
+                                    "pointer-events-none absolute inset-0 -z-[9999] overflow-hidden"
                             )}
                         >
                             <PageComponent project={project} currentUser={currentUser} />

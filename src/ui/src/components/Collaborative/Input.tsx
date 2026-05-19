@@ -12,6 +12,8 @@ export interface ICollaborativeInputProps extends Omit<InputProps, "value" | "on
     section?: number | string;
     uid?: number | string;
     onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    onCollaborativeValueReady?: (updateValue: ((value: string) => void) | null) => void;
+    onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
     onValueChange?: (value: string) => void;
 }
 
@@ -54,13 +56,15 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             onClick,
             onFocus,
             onMouseUp,
+            onCollaborativeValueReady,
+            onCollaborativeValueResetReady,
             onValueChange,
             ...props
         },
         ref
     ) => {
         const inputRef = useRef<HTMLInputElement>(null);
-        const { remoteCursors, updateSelection, value, updateValue } = useCollaborativeText({
+        const { remoteCursors, resetValue, updateSelection, value, updateValue } = useCollaborativeText({
             collaborationType,
             documentID,
             field,
@@ -72,6 +76,22 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});
         const [inputType, setInputType] = useState("text");
+
+        React.useEffect(() => {
+            onCollaborativeValueReady?.(updateValue);
+
+            return () => {
+                onCollaborativeValueReady?.(null);
+            };
+        }, [onCollaborativeValueReady, updateValue]);
+
+        React.useEffect(() => {
+            onCollaborativeValueResetReady?.(resetValue);
+
+            return () => {
+                onCollaborativeValueResetReady?.(null);
+            };
+        }, [onCollaborativeValueResetReady, resetValue]);
 
         const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
             updateValue(event.target.value);

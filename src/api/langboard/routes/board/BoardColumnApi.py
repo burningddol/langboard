@@ -1,6 +1,17 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import Bot, ProjectColumn, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -47,6 +58,15 @@ def create_project_column(
     )
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardColumnName, "{project_uid}", "{column_uid}"
+        ),
+        "name",
+        "name",
+    )
+)
 @AppRouter.schema(form=ColumnForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/column/{column_uid}/name",
@@ -91,6 +111,13 @@ def update_project_column_order(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardColumnName, "{project_uid}", "{column_uid}"
+        )
+    )
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/column/{column_uid}",

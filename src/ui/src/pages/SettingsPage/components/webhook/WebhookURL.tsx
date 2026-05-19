@@ -17,7 +17,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 function WebhookURL() {
@@ -32,6 +32,7 @@ function WebhookURL() {
     const [draftURL, setDraftURL] = useState(urlValue);
     const editorName = `${webhook.uid}-webhook-url`;
     const { mutateAsync } = useUpdateWebhook(webhook, { interceptToast: true });
+    const resetCollaborativeURLRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateWebhook,
@@ -82,6 +83,7 @@ function WebhookURL() {
         });
     };
     const cancelEdit = () => {
+        resetCollaborativeURLRef.current?.(urlValue);
         setDraftURL(urlValue);
         setIsEditing(false);
     };
@@ -126,6 +128,9 @@ function WebhookURL() {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={urlValue}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeURLRef.current = resetValue;
+                        }}
                         onValueChange={setDraftURL}
                         onClick={(e) => {
                             e.preventDefault();

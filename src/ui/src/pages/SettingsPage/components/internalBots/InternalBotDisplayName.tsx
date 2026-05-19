@@ -16,7 +16,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 const InternalBotDisplayName = memo(() => {
@@ -30,6 +30,7 @@ const InternalBotDisplayName = memo(() => {
     const displayName = internalBot.useField("display_name");
     const editorName = `${internalBot.uid}-internal-bot-display-name`;
     const { mutateAsync } = useUpdateInternalBot(internalBot, { interceptToast: true });
+    const resetCollaborativeDisplayNameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateInternalBot,
@@ -66,6 +67,10 @@ const InternalBotDisplayName = memo(() => {
         },
         originalValue: displayName,
     });
+    const cancelEditing = () => {
+        resetCollaborativeDisplayNameRef.current?.(displayName);
+        setIsEditing(false);
+    };
 
     return (
         <Box>
@@ -95,6 +100,9 @@ const InternalBotDisplayName = memo(() => {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={displayName}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeDisplayNameRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -111,7 +119,7 @@ const InternalBotDisplayName = memo(() => {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

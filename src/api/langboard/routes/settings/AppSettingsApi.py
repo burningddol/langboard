@@ -1,7 +1,16 @@
 from fastapi import status
 from langboard_shared.ai import BotScheduleHelper
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import NotificationScheduleRule, SettingRole, User
 from langboard_shared.domain.models.SettingRole import SettingRoleAction
@@ -76,6 +85,13 @@ def create_notification_schedule_rule(
     return JsonResponse(content={"notification_rule": rule.api_response()}, status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{rule_uid}", "notification-schedule-rule"
+        )
+    )
+)
 @AppRouter.api.put(
     "/settings/notification-schedule/rule/{rule_uid}",
     tags=["AppSettings.NotificationSchedule"],
@@ -104,6 +120,13 @@ def update_notification_schedule_rule(
     return JsonResponse(content={"notification_rule": rule.api_response()})
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{rule_uid}", "notification-schedule-rule"
+        )
+    )
+)
 @AppRouter.api.delete(
     "/settings/notification-schedule/rule/{rule_uid}",
     tags=["AppSettings.NotificationSchedule"],
@@ -121,6 +144,13 @@ def delete_notification_schedule_rule(rule_uid: str, service: DomainService = Do
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.AppSettings, "{rule_uids}", "notification-schedule-rule"
+        )
+    )
+)
 @AppRouter.api.delete(
     "/settings/notification-schedule/rules",
     tags=["AppSettings.NotificationSchedule"],

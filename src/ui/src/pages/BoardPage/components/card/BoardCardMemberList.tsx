@@ -38,7 +38,7 @@ const BoardCardMemberList = memo(() => {
     const groups = currentUser.useForeignFieldArray("user_groups");
     const { mutateAsync: updateCardAssignedUsersMutateAsync } = useUpdateCardAssignedUsers({ interceptToast: true });
     const defaultSelectedMemberUIDs = JSON.stringify(cardMemberUIDs);
-    const { remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
+    const { remoteMeta, resetValue, updateMeta, updateValue, value } = useCollaborativeText({
         defaultValue: defaultSelectedMemberUIDs,
         disabled: !isPopoverOpen,
         collaborationType: EEditorCollaborationType.Card,
@@ -122,10 +122,10 @@ const BoardCardMemberList = memo(() => {
                     flushSelectedMemberUIDsTimeoutRef.current = null;
                 }
                 updateMeta(null);
-                updateValue(defaultSelectedMemberUIDs);
+                resetValue(defaultSelectedMemberUIDs);
             }
         },
-        [defaultSelectedMemberUIDs, updateMeta, updateValue]
+        [defaultSelectedMemberUIDs, resetValue, updateMeta]
     );
 
     const flushSelectedMemberUIDs = useCallback(

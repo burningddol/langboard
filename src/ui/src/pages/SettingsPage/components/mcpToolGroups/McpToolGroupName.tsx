@@ -16,7 +16,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 const McpToolGroupName = memo(() => {
@@ -30,6 +30,7 @@ const McpToolGroupName = memo(() => {
     const name = toolGroup.useField("name");
     const editorName = `${toolGroup.uid}-tool-group-name`;
     const { mutateAsync } = useUpdateMcpToolGroup(toolGroup, { interceptToast: true });
+    const resetCollaborativeNameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateMcpToolGroup,
@@ -67,6 +68,11 @@ const McpToolGroupName = memo(() => {
         originalValue: name,
     });
 
+    const cancelEditing = () => {
+        resetCollaborativeNameRef.current?.(name);
+        setIsEditing(false);
+    };
+
     return (
         <Box>
             {!isEditing ? (
@@ -95,6 +101,9 @@ const McpToolGroupName = memo(() => {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={name}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeNameRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -111,7 +120,7 @@ const McpToolGroupName = memo(() => {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

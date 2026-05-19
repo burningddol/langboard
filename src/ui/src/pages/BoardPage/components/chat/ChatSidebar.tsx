@@ -97,16 +97,16 @@ function ChatSidebarDisplay() {
                 <ChatSidebarSessionListButton />
                 <ChatSessionMoreMenuButton />
             </Box>
-            <Flex justify="between" position="relative" h="full" className="max-h-[calc(100%_-_theme(spacing.16))]">
+            <Flex justify="between" position="relative" h="full" minH="0" className="max-h-[calc(100%_-_theme(spacing.16))] overflow-hidden">
                 <ChatSessionList />
                 <Box
                     h="full"
                     className={cn(
-                        "w-full max-w-full transition-all duration-200 ease-in-out",
+                        "flex w-full max-w-full flex-col overflow-hidden transition-all duration-200 ease-in-out",
                         isSessionListOpened && "overflow-hidden md:max-w-[calc(100%_-_theme(spacing.60))]"
                     )}
                 >
-                    <Conversation chatInputHeight={height} />
+                    <Conversation />
                     <ChatInput height={height} setHeight={setHeight} />
                 </Box>
             </Flex>

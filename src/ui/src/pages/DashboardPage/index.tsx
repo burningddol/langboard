@@ -41,13 +41,12 @@ const DashboardProxy = memo((): React.JSX.Element => {
         },
         starred: {
             name: t("dashboard.Starred"),
-            subNavs:
-                starredProjects.map((project) => ({
-                    name: project.title,
-                    onClick: () => {
-                        navigate(ROUTES.BOARD.MAIN(project.uid));
-                    },
-                })) ?? [],
+            subNavs: starredProjects.map((project) => ({
+                name: project.title,
+                onClick: () => {
+                    navigate(ROUTES.BOARD.MAIN(project.uid));
+                },
+            })),
         },
         tacking: {
             name: t("dashboard.Tracking"),

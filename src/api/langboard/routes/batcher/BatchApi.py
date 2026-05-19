@@ -1,3 +1,4 @@
+from enum import Enum
 from json import dumps as json_dumps
 from json import loads as json_loads
 from re import escape as re_escape
@@ -7,24 +8,13 @@ from fastapi import Request, status
 from langboard_shared.core.filter import AuthFilter
 from langboard_shared.core.routing import ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.routing.ApiSchemaHelper import ApiSchemaMap
-from langboard_shared.core.security import AuthSecurity
 from langboard_shared.core.utils.Converter import json_default
 from langboard_shared.domain.models import Bot, User
+from langboard_shared.helpers.AgentApiPermissionHelper import get_agent_allowed_permissions
 from langboard_shared.security import Auth
+from starlette.datastructures import Headers
 from starlette.types import Message
 from .BatchForm import BatchForm, BatchFormRequestSchema
-
-
-AGENT_PERMISSION_LEVEL_PERMISSIONS: dict[str, set[str]] = {
-    "read": {ApiPermission.Read.value},
-    "edit": {ApiPermission.Read.value, ApiPermission.Create.value, ApiPermission.Edit.value},
-    "full_access": {
-        ApiPermission.Read.value,
-        ApiPermission.Create.value,
-        ApiPermission.Edit.value,
-        ApiPermission.Delete.value,
-    },
-}
 
 
 @AppRouter.schema(form=BatchForm, permission=ApiPermission.Read)
@@ -36,7 +26,7 @@ AGENT_PERMISSION_LEVEL_PERMISSIONS: dict[str, set[str]] = {
 @AuthFilter.add()
 async def batch_apis(request: Request, form: BatchForm, user_or_bot: User | Bot = Auth.scope("all")):
     API_METHODS = {"GET", "POST", "PUT", "DELETE"}
-    allowed_permissions = _get_agent_allowed_permissions(request)
+    allowed_permissions = get_agent_allowed_permissions(Headers(raw=request.headers.raw), default_read=True)
     responses = []
     for request_schema in form.request_schemas:
         if request_schema.method.upper() not in API_METHODS:
@@ -46,6 +36,9 @@ async def batch_apis(request: Request, form: BatchForm, user_or_bot: User | Bot 
         api_schema, request_path, error_response = _resolve_batch_request(request_schema, allowed_permissions)
         if error_response is not None:
             responses.append(error_response)
+            continue
+        if api_schema is None:
+            responses.append(_batch_response({"message": "API schema not found."}, status.HTTP_404_NOT_FOUND))
             continue
 
         query_string = _query_dict_to_bytes(request_schema.query or {})
@@ -97,26 +90,6 @@ def _batch_response(content: dict, status_code: int = status.HTTP_200_OK) -> dic
     return {"status": status_code, "body": content}
 
 
-def _get_agent_allowed_permissions(request: Request) -> set[str] | None:
-    api_token = request.headers.get(
-        AuthSecurity.API_TOKEN_HEADER,
-        request.headers.get(AuthSecurity.API_TOKEN_HEADER.lower(), None),
-    )
-    if not api_token:
-        return None
-
-    try:
-        payload = AuthSecurity.decode_access_token(api_token)
-    except Exception:
-        return AGENT_PERMISSION_LEVEL_PERMISSIONS["read"]
-
-    permission_level = payload.get("api_permission_level")
-    if not isinstance(permission_level, str):
-        permission_level = "read"
-
-    return AGENT_PERMISSION_LEVEL_PERMISSIONS.get(permission_level, AGENT_PERMISSION_LEVEL_PERMISSIONS["read"])
-
-
 def _resolve_batch_request(
     request_schema: BatchFormRequestSchema, allowed_permissions: set[str] | None
 ) -> tuple[ApiSchemaMap | None, str, dict | None]:
@@ -143,11 +116,23 @@ def _resolve_batch_request(
         )
 
     permission = api_schema["permission"]
-    if allowed_permissions is not None and permission not in allowed_permissions:
+    permission_value = permission.value if isinstance(permission, Enum) else permission
+    if allowed_permissions is not None and permission_value not in allowed_permissions:
         return (
             None,
             request_schema.path_or_api_name,
             _batch_response({"message": "Not enough permissions to access this endpoint."}, status.HTTP_403_FORBIDDEN),
+        )
+
+    request_params = {**(request_schema.form or {}), **(request_schema.query or {})}
+    missing_path_params = [path_param for path_param in api_schema["path_params"] if path_param not in request_params]
+    if missing_path_params:
+        return (
+            None,
+            request_schema.path_or_api_name,
+            _batch_response(
+                {"message": f"Missing path parameter(s): {', '.join(missing_path_params)}"}, status.HTTP_400_BAD_REQUEST
+            ),
         )
 
     return api_schema, _get_request_path(request_schema, api_schema), None

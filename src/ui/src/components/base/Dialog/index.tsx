@@ -55,6 +55,7 @@ interface IContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrim
     overlayClassName?: string;
     overlayContentClassName?: string;
     contentWrapperClassName?: string;
+    viewportClassName?: string;
     nonModalOverlay?: bool;
     disablePortal?: bool;
     disableOverlayClick?: bool;
@@ -78,6 +79,7 @@ const Content = React.forwardRef<React.ComponentRef<typeof DialogPrimitive.Conte
             overlayClassName,
             overlayContentClassName,
             contentWrapperClassName,
+            viewportClassName,
             nonModalOverlay,
             disablePortal,
             disableOverlayClick,
@@ -132,7 +134,7 @@ const Content = React.forwardRef<React.ComponentRef<typeof DialogPrimitive.Conte
         const content = (
             <ScrollArea.Root
                 className={cn("size-full", overlayContentClassName)}
-                viewportClassName="max-h-screen sm:py-2 [&>div]:h-full"
+                viewportClassName={cn("max-h-screen sm:py-2 [&>div]:h-full", viewportClassName)}
                 viewportId={viewportId}
                 viewportRef={viewportRef}
                 viewportAsTable

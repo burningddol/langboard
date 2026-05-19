@@ -1,6 +1,17 @@
 from fastapi import status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.utils.Converter import convert_python_data
 from langboard_shared.domain.models import (
@@ -99,6 +110,28 @@ def get_project_details(
     )
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}"),
+        "title",
+        "title",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}"),
+        "description",
+        "description",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}"),
+        "project_type",
+        "project_type",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.BoardSettings, "{project_uid}"),
+        "archive_visible_days",
+        "archive_visible_days",
+    ),
+)
 @AppRouter.schema(form=UpdateProjectDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/details",
@@ -139,6 +172,15 @@ def change_project_internal_bot(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "internal-bot-prompt-{bot_type}"
+        ),
+        "prompt",
+        "prompt",
+    )
+)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/internal-bot/settings",
     tags=["Board.Settings"],
@@ -201,6 +243,22 @@ def create_project_label(
     return JsonResponse(content={"label": api_label}, status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "label-{label_uid}"
+        ),
+        "name",
+        "name",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "label-{label_uid}"
+        ),
+        "description",
+        "description",
+    ),
+)
 @AppRouter.schema(form=UpdateProjectLabelDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/settings/label/{label_uid}/details",
@@ -267,6 +325,13 @@ def change_project_label_order(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.BoardSettings, "{project_uid}", "label-{label_uid}"
+        )
+    )
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/settings/label/{label_uid}",

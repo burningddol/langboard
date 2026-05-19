@@ -60,6 +60,7 @@ const BotValueDefaultInputContext = createContext<IBotValueDefaultInputContext>(
 
 export const BotValueDefaultInputProvider = ({
     collaborationType,
+    disabled,
     platform,
     platformRunningType,
     section,
@@ -78,6 +79,7 @@ export const BotValueDefaultInputProvider = ({
     const [inputs, setInputs] = useState<TAgentFormInput[]>([]);
     const inputsRef = useRef<Record<string, HTMLElement | null>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [, setResetTick] = useState(0);
     const syncValue = useCallback(() => {
         newValueRef.current = JSON.stringify(valuesRef.current);
     }, []);
@@ -95,6 +97,21 @@ export const BotValueDefaultInputProvider = ({
     const showableInputs = useMemo(() => {
         return showableDefaultInputs[platform]?.[platformRunningType] ?? [];
     }, [platform, platformRunningType]);
+
+    useEffect(() => {
+        if (!disabled) {
+            return;
+        }
+
+        const nextValues = Utils.String.isJsonString(value) ? JSON.parse(value) : {};
+        valuesRef.current = nextValues;
+        newValueRef.current = value;
+        setSelectedProvider((nextValues["agent_llm"] as TAgentModelName) ?? "OpenAI");
+        setSelectedApis((nextValues["api_names"] as string[]) ?? []);
+        setErrors({});
+        setResetTick((tick) => tick + 1);
+    }, [disabled, value]);
+
     const getRef = () => ({
         type: "default-bot-json" as const,
         value: newValueRef.current,

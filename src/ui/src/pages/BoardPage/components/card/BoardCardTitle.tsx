@@ -4,9 +4,10 @@ import IconComponent from "@/components/base/IconComponent";
 import Skeleton from "@/components/base/Skeleton";
 import Button from "@/components/base/Button";
 import Collaborative from "@/components/Collaborative";
+import useResizeEvent from "@/core/hooks/useResizeEvent";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { usePageHeader } from "@/core/providers/PageHeaderProvider";
-import { cn, measureTextAreaHeight, setElementStyles } from "@/core/utils/ComponentUtils";
+import { cn, measureTextAreaHeight } from "@/core/utils/ComponentUtils";
 import { useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
 import BoardCardNotificationSettings from "@/pages/BoardPage/components/card/BoardCardNotificationSettings";
 import { EEditorCollaborationType } from "@langboard/core/constants";
@@ -21,7 +22,7 @@ export function SkeletonBoardCardTitle() {
     );
 }
 
-function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): React.JSX.Element {
+function BoardCardTitle({ className, useDialogTitle = true }: { className?: string; useDialogTitle?: bool }): React.JSX.Element {
     const { setPageAliasRef } = usePageHeader();
     const { card, isCardEditing, canEditCard } = useBoardCard();
     const [t] = useTranslation();
@@ -29,12 +30,58 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
     const title = card.useField("title");
     const titleSpanRef = useRef<HTMLSpanElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const updateCollaborativeTitleRef = useRef<((value: string) => void) | null>(null);
+    const resetCollaborativeTitleRef = useRef<((value: string) => void) | null>(null);
     const [draftTitle, setDraftTitle] = useState(title);
     const [height, setHeight] = useState(0);
     const [isOpened, setIsOpened] = useState(false);
+    const [isTitleWrapping, setIsTitleWrapping] = useState(false);
+    const [titleMaxHeight, setTitleMaxHeight] = useState(32);
     const [showCollapse, setShowCollapse] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const canStartEditing = canEditCard && isCardEditing;
+
+    const updateShowCollapse = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        if (!titleSpan) {
+            setShowCollapse(false);
+            return;
+        }
+
+        const isOverflowed = isTitleWrapping ? showCollapse : titleSpan.scrollWidth > titleSpan.clientWidth;
+        setShowCollapse(isOverflowed);
+        setTitleMaxHeight(isTitleWrapping ? titleSpan.scrollHeight : 32);
+    }, [isTitleWrapping, showCollapse]);
+
+    const openTitle = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        setIsOpened(true);
+        setIsTitleWrapping(true);
+        setTitleMaxHeight(titleSpan?.clientHeight || 32);
+
+        requestAnimationFrame(() => {
+            const nextTitleSpan = titleSpanRef.current;
+            if (!nextTitleSpan) {
+                return;
+            }
+
+            setTitleMaxHeight(nextTitleSpan.scrollHeight);
+        });
+    }, []);
+
+    const closeTitle = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        setIsOpened(false);
+        setTitleMaxHeight(titleSpan?.scrollHeight || 32);
+
+        requestAnimationFrame(() => {
+            setTitleMaxHeight(32);
+        });
+
+        window.setTimeout(() => {
+            setIsTitleWrapping(false);
+        }, 200);
+    }, []);
 
     const syncHeight = useCallback(() => {
         if (!textareaRef.current) {
@@ -61,8 +108,13 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
     );
 
     const handleToggleOpened = useCallback(() => {
-        setIsOpened((prev) => !prev);
-    }, []);
+        if (isOpened) {
+            closeTitle();
+            return;
+        }
+
+        openTitle();
+    }, [closeTitle, isOpened, openTitle]);
 
     const handleTitleValueChange = useCallback(
         (nextTitle: string) => {
@@ -72,6 +124,14 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
         },
         [markSectionDirty, syncHeight, title]
     );
+
+    const handleCollaborativeValueReady = useCallback((updateValue: ((value: string) => void) | null) => {
+        updateCollaborativeTitleRef.current = updateValue;
+    }, []);
+
+    const handleCollaborativeValueResetReady = useCallback((resetValue: ((value: string) => void) | null) => {
+        resetCollaborativeTitleRef.current = resetValue;
+    }, []);
 
     const handleTitleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key !== "Enter") {
@@ -86,6 +146,7 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
         const nextTitle = draftTitle.trim();
         const originalTitle = title.trim();
         if (!nextTitle || nextTitle === originalTitle) {
+            resetCollaborativeTitleRef.current?.(title);
             setDraftTitle(title);
             resetSection("title");
             return null;
@@ -95,6 +156,7 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
     }, [draftTitle, resetSection, title]);
 
     const cancelTitleEdit = useCallback(() => {
+        resetCollaborativeTitleRef.current?.(title);
         setDraftTitle(title);
         resetSection("title");
     }, [resetSection, title]);
@@ -120,43 +182,11 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
         textareaRef.current?.focus();
     }, [isEditing, syncHeight]);
 
-    useEffect(() => {
-        setTimeout(() => {
-            if (!titleSpanRef.current) {
-                return;
-            }
+    useLayoutEffect(() => {
+        requestAnimationFrame(updateShowCollapse);
+    }, [title, updateShowCollapse]);
 
-            const truncatedCloned = titleSpanRef.current.cloneNode(true) as HTMLSpanElement;
-            truncatedCloned.classList.add("truncate", "text-2xl", "font-semibold", "tracking-tight");
-
-            const allTextedCloned = titleSpanRef.current.cloneNode(true) as HTMLSpanElement;
-            allTextedCloned.classList.add("text-2xl", "font-semibold", "tracking-tight");
-            allTextedCloned.classList.remove("truncate");
-
-            const width = titleSpanRef.current.offsetWidth;
-            setElementStyles([truncatedCloned, allTextedCloned], {
-                display: "block",
-                position: "absolute",
-                visibility: "hidden",
-                zIndex: "-1",
-                maxWidth: `${width}px`,
-                width: "100%",
-            });
-
-            document.body.appendChild(truncatedCloned);
-            document.body.appendChild(allTextedCloned);
-
-            const truncatedHeight = truncatedCloned.offsetHeight;
-            const allTextedHeight = allTextedCloned.offsetHeight;
-
-            document.body.removeChild(truncatedCloned);
-            document.body.removeChild(allTextedCloned);
-            truncatedCloned.remove();
-            allTextedCloned.remove();
-
-            setShowCollapse(truncatedHeight !== allTextedHeight);
-        }, 0);
-    }, [title]);
+    useResizeEvent({ doneCallback: updateShowCollapse }, [updateShowCollapse]);
 
     useEffect(() => registerSectionSaveHandler("title", saveTitle), [registerSectionSaveHandler, saveTitle]);
     useEffect(() => registerSectionCancelHandler("title", cancelTitleEdit), [cancelTitleEdit, registerSectionCancelHandler]);
@@ -164,17 +194,22 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
     const Title = useDialogTitle ? Dialog.Title : "div";
 
     return (
-        <Title className="mr-7 text-2xl">
+        <Title className={cn("mr-20 text-2xl xs:mr-[88px]", className)}>
             {!isEditing ? (
-                <Flex>
+                <Flex className="min-w-0">
                     <span
-                        className={cn(isOpened ? "" : "truncate", canStartEditing && "cursor-text rounded-sm hover:bg-accent/40")}
+                        className={cn(
+                            "block min-w-0 overflow-hidden transition-[max-height] duration-200 ease-in-out",
+                            isTitleWrapping ? "whitespace-normal break-all" : "truncate",
+                            canStartEditing && "cursor-text rounded-sm hover:bg-accent/40"
+                        )}
+                        style={{ maxHeight: titleMaxHeight }}
                         ref={titleSpanRef}
                         onPointerDown={handleStartEditing}
                     >
                         {title}
                     </span>
-                    <Flex items="start" gap="1" ml="2.5">
+                    <Flex items="start" gap="1" ml="1" className="shrink-0">
                         <Button
                             variant="ghost"
                             size="icon-sm"
@@ -190,8 +225,9 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
             ) : (
                 <Collaborative.Textarea
                     ref={textareaRef}
-                    collaborationType={EEditorCollaborationType.CardTitle}
+                    collaborationType={EEditorCollaborationType.Card}
                     uid={card.uid}
+                    section="title"
                     field="title"
                     defaultValue={title}
                     className={cn(
@@ -200,6 +236,8 @@ function BoardCardTitle({ useDialogTitle = true }: { useDialogTitle?: bool }): R
                     )}
                     resize="none"
                     style={{ height }}
+                    onCollaborativeValueReady={handleCollaborativeValueReady}
+                    onCollaborativeValueResetReady={handleCollaborativeValueResetReady}
                     onValueChange={handleTitleValueChange}
                     onKeyDown={handleTitleKeyDown}
                 />

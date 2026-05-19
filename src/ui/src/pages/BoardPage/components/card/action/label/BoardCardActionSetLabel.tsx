@@ -35,7 +35,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
     const { mutateAsync: updateCardLabelsMutateAsync } = useUpdateCardLabels({ interceptToast: true });
     const currentCardLabelUIDs = labels.map((label) => label.uid);
     const defaultSelectedLabelUIDs = JSON.stringify(currentCardLabelUIDs);
-    const { remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
+    const { remoteMeta, resetValue, updateMeta, updateValue, value } = useCollaborativeText({
         defaultValue: defaultSelectedLabelUIDs,
         disabled: !isOpened,
         collaborationType: EEditorCollaborationType.Card,
@@ -72,7 +72,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
 
         if (!opened) {
             updateMeta(null);
-            updateValue(defaultSelectedLabelUIDs);
+            resetValue(defaultSelectedLabelUIDs);
         }
         setIsOpened(opened);
     };

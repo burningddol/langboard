@@ -244,7 +244,7 @@ function ChatInputDisplay() {
     };
 
     return (
-        <Flex direction="col" w="full" position="relative" className="border-t bg-background">
+        <Flex direction="col" w="full" position="relative" className="shrink-0 border-t bg-background">
             <Flex
                 direction="col"
                 className={cn(
@@ -275,16 +275,16 @@ function ChatInputDisplay() {
                     py="1"
                     justify="between"
                     items="center"
-                    className="inset-x-0 bg-card/95 backdrop-blur"
+                    className="pointer-events-none inset-x-0 bg-card/95 backdrop-blur"
                 >
-                    <Flex items="center" gap="1" className="min-w-0">
+                    <Flex items="center" gap="1" className="pointer-events-auto min-w-0">
                         {actionsMode === "more" ? (
                             <ChatInputMoreActions className="shrink-0" chatInputRef={chatInputRef} updateHeight={updateHeight} />
                         ) : (
                             <ChatInputActions chatInputRef={chatInputRef} updateHeight={updateHeight} />
                         )}
                     </Flex>
-                    <Flex items="center" gap="2" className="shrink-0">
+                    <Flex items="center" gap="2" className="pointer-events-auto shrink-0">
                         <ChatInputPermissionLevel showLabel={actionsMode === "full"} />
                         <Button
                             type="button"

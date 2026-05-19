@@ -1,7 +1,18 @@
 from fastapi import status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_rich,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import Bot, CardComment, ProjectRole, User
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -70,6 +81,12 @@ def get_card_comment(card_uid: str, comment_uid: str, service: DomainService = D
     return JsonResponse(content={"comment": result})
 
 
+@collaborative_edit(
+    collaborative_rich(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "comment-{comment_uid}"),
+        "content",
+    )
+)
 @AppRouter.schema(form=EditorContentModel, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/comment/{comment_uid}",
@@ -99,6 +116,11 @@ def update_card_comment(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "comment-{comment_uid}")
+    )
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}/comment/{comment_uid}",

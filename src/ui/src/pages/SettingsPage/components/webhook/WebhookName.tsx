@@ -17,7 +17,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 function WebhookName() {
@@ -32,6 +32,7 @@ function WebhookName() {
     const [draftName, setDraftName] = useState(name);
     const editorName = `${webhook.uid}-webhook-name`;
     const { mutateAsync } = useUpdateWebhook(webhook, { interceptToast: true });
+    const resetCollaborativeNameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateWebhook,
@@ -82,6 +83,7 @@ function WebhookName() {
         });
     };
     const cancelEdit = () => {
+        resetCollaborativeNameRef.current?.(name);
         setDraftName(name);
         setIsEditing(false);
     };
@@ -121,6 +123,9 @@ function WebhookName() {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={name}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeNameRef.current = resetValue;
+                        }}
                         onValueChange={setDraftName}
                         onClick={(e) => {
                             e.preventDefault();

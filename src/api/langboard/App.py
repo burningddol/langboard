@@ -11,7 +11,7 @@ from langboard_shared.FastAPIAppConfig import FastAPIAppConfig
 from .Constants import APP_CONFIG_FILE
 from .Loader import ModuleLoader
 from .mcp_integration import McpServer
-from .middlewares import ApiAuthMiddleware, RoleMiddleware
+from .middlewares import ApiAuthMiddleware, CollaborativeEditMiddleware, RoleMiddleware
 
 
 class App:
@@ -41,6 +41,7 @@ class App:
         origins = [Env.PUBLIC_UI_URL, "http://localhost:6274"]
         self.api.add_middleware(RoleMiddleware, routes=self.api.routes)
         self.api.add_middleware(ApiAuthMiddleware, routes=self.api.routes)
+        self.api.add_middleware(CollaborativeEditMiddleware)
         self.api.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
         self.api.add_middleware(
             CORSMiddleware,

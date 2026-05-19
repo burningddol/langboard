@@ -17,6 +17,7 @@ export interface IResizableSidebarProps {
     floatingIcon?: string;
     floatingTitle?: string;
     floatingFullScreen?: bool;
+    floatingHidden?: bool;
     hidden?: bool;
     widthCssVariable?: string;
 }
@@ -30,6 +31,7 @@ function ResizableSidebar({
     floatingIcon = "plus",
     floatingTitle = "common.Actions",
     floatingFullScreen = false,
+    floatingHidden,
     hidden,
     widthCssVariable,
 }: IResizableSidebarProps) {
@@ -173,13 +175,15 @@ function ResizableSidebar({
                 </Box>
                 {main}
             </Box>
-            <Floating.Button.Root fullScreen={floatingFullScreen} hidden={hidden}>
-                <Floating.Button.Content key={Utils.String.Token.uuid()}>
-                    {floatingFullScreen && <Floating.Button.CloseButton />}
-                    {isMobile && children}
-                </Floating.Button.Content>
-                <Floating.Button.Trigger key={Utils.String.Token.uuid()} icon={floatingIcon} title={floatingTitle} titleSide="right" />
-            </Floating.Button.Root>
+            {!hidden && !floatingHidden && (
+                <Floating.Button.Root fullScreen={floatingFullScreen}>
+                    <Floating.Button.Content key={Utils.String.Token.uuid()}>
+                        {floatingFullScreen && <Floating.Button.CloseButton />}
+                        {isMobile && children}
+                    </Floating.Button.Content>
+                    <Floating.Button.Trigger key={Utils.String.Token.uuid()} icon={floatingIcon} title={floatingTitle} titleSide="right" />
+                </Floating.Button.Root>
+            )}
         </>
     );
 }

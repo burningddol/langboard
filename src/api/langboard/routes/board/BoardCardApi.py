@@ -1,7 +1,19 @@
 from fastapi import status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_rich,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.utils.Converter import convert_python_data
@@ -225,6 +237,20 @@ def create_card(
     return JsonResponse(content={"card": api_card}, status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "title"), "title", "title"
+    ),
+    collaborative_rich(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "description"),
+        "description",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "deadline"),
+        "deadline_at",
+        "value",
+    ),
+)
 @AppRouter.schema(form=ChangeCardDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/details",
@@ -286,6 +312,13 @@ def change_card_details(
     return JsonResponse(content=result)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "members"),
+        "assigned_users",
+        "selected-member-uids",
+    )
+)
 @AppRouter.schema(form=AssignUsersForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/assigned-users",
@@ -332,6 +365,13 @@ def change_card_order_or_move_column(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "labels"),
+        "labels",
+        "selected-label-uids",
+    )
+)
 @AppRouter.schema(form=UpdateCardLabelsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/labels",
@@ -355,6 +395,18 @@ def update_card_labels(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-parents"),
+        "relationships",
+        "selected-relationships",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-children"),
+        "relationships",
+        "selected-relationships",
+    ),
+)
 @AppRouter.schema(form=UpdateCardRelationshipsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/relationships",
@@ -378,6 +430,25 @@ def update_card_relationships(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "title")),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "description")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "deadline")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "members")
+    ),
+    collaborative_block(create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "labels")),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-parents")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-children")
+    ),
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/archive",
@@ -404,6 +475,25 @@ def archive_card(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "title")),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "description")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "deadline")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "members")
+    ),
+    collaborative_block(create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "labels")),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-parents")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "relationships-children")
+    ),
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}",

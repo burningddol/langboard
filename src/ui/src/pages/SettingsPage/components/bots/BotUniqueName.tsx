@@ -17,7 +17,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 const BotUniqueName = memo(() => {
@@ -31,6 +31,8 @@ const BotUniqueName = memo(() => {
     const uname = bot.useField("bot_uname");
     const editorName = `${bot.uid}-bot-unique-name`;
     const { mutateAsync } = useUpdateBot(bot, { interceptToast: true });
+    const originalUniqueName = uname.slice(BotModel.Model.BOT_UNAME_PREFIX.length);
+    const resetCollaborativeUniqueNameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateBot,
@@ -65,8 +67,12 @@ const BotUniqueName = memo(() => {
                 },
             });
         },
-        originalValue: uname.slice(BotModel.Model.BOT_UNAME_PREFIX.length),
+        originalValue: originalUniqueName,
     });
+    const cancelEditing = () => {
+        resetCollaborativeUniqueNameRef.current?.(originalUniqueName);
+        setIsEditing(false);
+    };
 
     return (
         <Flex items="center">
@@ -90,7 +96,10 @@ const BotUniqueName = memo(() => {
                             "ml-0 h-6 rounded-none border-x-0 border-t-0 bg-transparent p-0 text-base scrollbar-hide",
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
-                        defaultValue={uname.slice(BotModel.Model.BOT_UNAME_PREFIX.length)}
+                        defaultValue={originalUniqueName}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeUniqueNameRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -107,7 +116,7 @@ const BotUniqueName = memo(() => {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

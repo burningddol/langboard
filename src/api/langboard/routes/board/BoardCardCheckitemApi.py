@@ -1,5 +1,16 @@
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.utils.Converter import convert_python_data
@@ -17,6 +28,15 @@ from .forms import (
 )
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.Card, "{card_uid}", "checkitem-{checkitem_uid}"
+        ),
+        "title",
+        "title",
+    )
+)
 @AppRouter.schema(form=CardCheckRelatedForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/title",
@@ -41,6 +61,15 @@ def change_checkitem_title(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.Card, "{card_uid}", "checkitem-{checkitem_uid}-deadline"
+        ),
+        "deadline_at",
+        "value",
+    )
+)
 @AppRouter.schema(form=ChangeCardCheckitemDeadlineForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}/deadline",
@@ -184,6 +213,18 @@ def toggle_checkitem_checked(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.Card, "{card_uid}", "checkitem-{checkitem_uid}"
+        )
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(
+            EEditorCollaborationType.Card, "{card_uid}", "checkitem-{checkitem_uid}-deadline"
+        )
+    ),
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/card/{card_uid}/checkitem/{checkitem_uid}",

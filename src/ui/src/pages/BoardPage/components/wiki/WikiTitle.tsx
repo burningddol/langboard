@@ -165,8 +165,9 @@ const WikiTitle = memo(({ wiki }: IWikiTitleProps) => {
             ) : (
                 <Collaborative.Textarea
                     ref={textareaRef}
-                    collaborationType={EEditorCollaborationType.WikiTitle}
+                    collaborationType={EEditorCollaborationType.Wiki}
                     uid={wiki.uid}
+                    section="title"
                     field="title"
                     className={cn(
                         "min-h-8 break-all rounded-none border-x-0 border-t-0 p-0 pb-px text-xl md:text-2xl",

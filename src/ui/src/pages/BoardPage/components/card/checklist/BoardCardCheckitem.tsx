@@ -187,7 +187,12 @@ const BoardCardCheckitemDisplay = memo(({ checkitem, canReorder, draggableRef }:
                                 <Tooltip.Content className={sharedClassNames.popoverContent}>{title}</Tooltip.Content>
                             </Tooltip.Root>
                             {deadline && (
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded border border-input px-1.5 py-0.5 text-xs text-muted-foreground">
+                                <span
+                                    className={cn(
+                                        "inline-flex shrink-0 items-center gap-1 rounded",
+                                        "border border-input px-1.5 py-0.5 text-xs text-muted-foreground"
+                                    )}
+                                >
                                     <IconComponent icon="calendar" size="3" />
                                     {Utils.String.formatDateLocale(deadline)}
                                 </span>

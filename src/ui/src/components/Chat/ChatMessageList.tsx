@@ -29,7 +29,7 @@ const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
         }
 
         return (
-            <Box position="relative" size="full" className="bg-gradient-to-b from-background via-muted/20 to-background">
+            <Box position="relative" size="full" className="min-h-0 bg-gradient-to-b from-background via-muted/20 to-background">
                 <Flex
                     size="full"
                     direction="col"
@@ -37,7 +37,7 @@ const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
                         initial: "3",
                         md: "4",
                     }}
-                    className={cn("overflow-y-auto", className)}
+                    className={cn("min-h-0 overflow-y-auto", className)}
                     ref={(el) => {
                         scrollRef.current = el;
                         if (Utils.Type.isFunction(ref)) {

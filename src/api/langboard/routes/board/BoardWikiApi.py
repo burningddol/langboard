@@ -1,7 +1,19 @@
 from fastapi import File, UploadFile, status
 from langboard_shared.core.db import EditorContentModel
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    ApiPermission,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_rich,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.routing.Exception import MissingException
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.storage import Storage, StorageName
@@ -151,6 +163,15 @@ def create_project_wiki(
     return JsonResponse(content={"wiki": api_wiki}, status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "title"), "title", "title"
+    ),
+    collaborative_rich(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "content"),
+        "content",
+    ),
+)
 @AppRouter.schema(form=ChangeWikiDetailsForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/details",
@@ -235,6 +256,13 @@ def change_project_wiki_public(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "private-assignees"),
+        "assignees",
+        "selected-member-uids",
+    )
+)
 @AppRouter.schema(form=AssigneesForm, permission=ApiPermission.Edit)
 @AppRouter.api.put(
     "/board/{project_uid}/wiki/{wiki_uid}/assignees",
@@ -329,6 +357,15 @@ def upload_wiki_attachment(
     )
 
 
+@collaborative_edit(
+    collaborative_block(create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "title")),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "content")
+    ),
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Wiki, "{wiki_uid}", "private-assignees")
+    ),
+)
 @AppRouter.schema(permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/board/{project_uid}/wiki/{wiki_uid}",

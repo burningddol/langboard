@@ -123,8 +123,9 @@ export const EditorDataProvider = ({
                 return [
                     "board:card",
                     Utils.String.createEditorCollaborationDocumentID({
-                        collaborationType: EEditorCollaborationType.CardDescription,
+                        collaborationType: EEditorCollaborationType.Card,
                         uid: cardForm.card_uid,
+                        section: "description",
                     }),
                     `${editorType}-chat-${cardForm.card_uid}`,
                     `${editorType}-copilot-${cardForm.card_uid}`,
@@ -136,9 +137,9 @@ export const EditorDataProvider = ({
                 return [
                     "board:card",
                     Utils.String.createEditorCollaborationDocumentID({
-                        collaborationType: EEditorCollaborationType.CardComment,
+                        collaborationType: EEditorCollaborationType.Card,
                         uid: commentForm.card_uid,
-                        section: commentForm.comment_uid,
+                        section: `comment-${commentForm.comment_uid}`,
                     }),
                     `${editorType}-chat-${commentForm.comment_uid}`,
                     `${editorType}-copilot-${commentForm.comment_uid}`,
@@ -163,8 +164,9 @@ export const EditorDataProvider = ({
                 return [
                     "board:wiki",
                     Utils.String.createEditorCollaborationDocumentID({
-                        collaborationType: EEditorCollaborationType.WikiContent,
+                        collaborationType: EEditorCollaborationType.Wiki,
                         uid: wikiForm.wiki_uid,
+                        section: "content",
                     }),
                     `${editorType}-chat-${wikiForm.wiki_uid}`,
                     `${editorType}-copilot-${wikiForm.wiki_uid}`,

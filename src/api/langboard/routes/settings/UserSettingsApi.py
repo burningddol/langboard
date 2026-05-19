@@ -1,7 +1,17 @@
 from typing import Any, cast
 from fastapi import Depends, status
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import ApiErrorCode, ApiException, AppRouter, JsonResponse
+from langboard_shared.core.routing import (
+    ApiErrorCode,
+    ApiException,
+    AppRouter,
+    EEditorCollaborationType,
+    JsonResponse,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
+)
 from langboard_shared.core.schema import OpenApiSchema, PaginatedList
 from langboard_shared.core.types import SafeDateTime
 from langboard_shared.domain.models import ApiKeyRole, McpRole, SettingRole, User, UserProfile
@@ -111,6 +121,18 @@ def create_user_in_settings(form: CreateUserForm, service: DomainService = Domai
     return JsonResponse(status_code=status.HTTP_201_CREATED)
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{user_uid}", "user"),
+        "firstname",
+        "firstname",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{user_uid}", "user"),
+        "lastname",
+        "lastname",
+    ),
+)
 @AppRouter.api.put(
     "/settings/users/{user_uid}",
     tags=["AppSettings.User"],
@@ -140,6 +162,11 @@ def update_user_in_settings(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{user_uid}", "user")
+    )
+)
 @AppRouter.api.delete(
     "/settings/users/{user_uid}",
     tags=["AppSettings.User"],
@@ -162,6 +189,11 @@ def delete_user_in_settings(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.AppSettings, "{user_uids}", "user")
+    )
+)
 @AppRouter.api.delete("/settings/users", tags=["AppSettings.User"], responses=OpenApiSchema().auth().forbidden().get())
 @RoleFilter.add(SettingRole, [SettingRoleAction.UserDelete], RoleFinder.setting, allowed_all_admin=False)
 @AuthFilter.add("admin")

@@ -13,6 +13,7 @@ import { DndKit } from "@/components/Editor/plugins/dnd-kit";
 import { createYjsKit } from "@/components/Editor/plugins/yjs-kit";
 
 const EMPTY_PLUGINS: PlatePlugin<any>[] = [];
+const EMPTY_EDITOR_VALUE: Value = [{ type: "p", children: [{ text: "" }] }];
 
 interface IBaseUseCreateEditor {
     plugins?: PlatePlugin<any>[];
@@ -71,17 +72,27 @@ export const useCreateEditor = (props: TUseCreateEditor) => {
         }
         return pluginList;
     }, [readOnly, socketEvents, chatEventKey, copilotEventKey, documentID, fullName, customPlugins]);
-    const getEditorValue = useCallback((editor: PlateEditor) => {
-        if (deserializedValueRef.current) {
-            return deserializedValueRef.current;
+    const normalizeEditorValue = useCallback((value: Value) => {
+        if (value.length) {
+            return value;
         }
 
-        if (valueRef.current) {
-            return editor.getApi(MarkdownPlugin).markdown.deserialize(valueRef.current.content);
-        } else {
-            return [];
-        }
+        return EMPTY_EDITOR_VALUE;
     }, []);
+    const getEditorValue = useCallback(
+        (editor: PlateEditor) => {
+            if (deserializedValueRef.current) {
+                return normalizeEditorValue(deserializedValueRef.current);
+            }
+
+            if (valueRef.current) {
+                return normalizeEditorValue(editor.getApi(MarkdownPlugin).markdown.deserialize(valueRef.current.content));
+            } else {
+                return EMPTY_EDITOR_VALUE;
+            }
+        },
+        [normalizeEditorValue]
+    );
     const editor = usePlateEditor(
         {
             plugins,

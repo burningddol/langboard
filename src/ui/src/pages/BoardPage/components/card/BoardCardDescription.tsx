@@ -36,6 +36,8 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     const { projectUID, card, currentUser, hasRoleAction, isCardEditing } = useBoardCard();
     const [t] = useTranslation();
     const editorRef = useRef<TEditor>(null);
+    const updateCollaborativeDescriptionRef = useRef<((value: string) => void) | null>(null);
+    const resetCollaborativeDescriptionRef = useRef<((value: string) => void) | null>(null);
     const projectMembers = card.useForeignFieldArray("project_members");
     const bots = BotModel.Model.useModels(() => true);
     const mentionables = useMemo(() => [...projectMembers, ...bots], [projectMembers, bots]);
@@ -72,12 +74,20 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         },
         [markSectionDirty]
     );
+    const handleCollaborativeValueReady = useCallback((updateValue: ((value: string) => void) | null) => {
+        updateCollaborativeDescriptionRef.current = updateValue;
+    }, []);
+
+    const handleCollaborativeValueResetReady = useCallback((resetValue: ((value: string) => void) | null) => {
+        resetCollaborativeDescriptionRef.current = resetValue;
+    }, []);
 
     const handleSave = useCallback(() => {
         const nextContent = sanitizeEditorContent(editorRef.current?.api.markdown.serialize() ?? description?.content ?? "");
         const originalContent = sanitizeEditorContent(description?.content ?? "");
 
         if (nextContent === originalContent) {
+            resetCollaborativeDescriptionRef.current?.(description?.content ?? "");
             resetSection("description");
             setIsEditing(false);
             return null;
@@ -96,10 +106,11 @@ const BoardCardDescription = memo((): React.JSX.Element => {
             return;
         }
 
+        resetCollaborativeDescriptionRef.current?.(description?.content ?? "");
         resetSection("description");
         stopEditing();
         setIsEditing(false);
-    }, [isEditing, resetSection, stopEditing]);
+    }, [description, isEditing, resetSection, stopEditing]);
 
     useEffect(() => {
         if (!isCardEditing && isEditing && !getHasUnsavedChanges()) {
@@ -107,16 +118,6 @@ const BoardCardDescription = memo((): React.JSX.Element => {
             setIsEditing(false);
         }
     }, [getHasUnsavedChanges, isCardEditing, isEditing, stopEditing]);
-
-    useEffect(() => {
-        if (!isEditing) {
-            return;
-        }
-
-        requestAnimationFrame(() => {
-            editorRef.current?.tf.focus();
-        });
-    }, [isEditing]);
 
     const handleStartEditing = useCallback(
         (e: PointerEvent<HTMLDivElement>) => {
@@ -169,7 +170,10 @@ const BoardCardDescription = memo((): React.JSX.Element => {
                         placeholder={!isEditing ? t("card.No description") : undefined}
                         setValue={() => {}}
                         onEditorChange={handleEditorChange}
+                        onCollaborativeValueReady={handleCollaborativeValueReady}
+                        onCollaborativeValueResetReady={handleCollaborativeValueResetReady}
                         serializeOnChange={false}
+                        focusOnReady={isEditing}
                         editorRef={editorRef}
                     />
                 </Box>

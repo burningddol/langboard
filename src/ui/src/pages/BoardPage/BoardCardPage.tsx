@@ -20,6 +20,7 @@ import {
     AlertDialogTitle,
 } from "@/components/plate-ui/alert-dialog";
 import { useTranslation } from "react-i18next";
+import { useBoardController } from "@/core/providers/BoardController";
 
 interface IBoardCardPageProps {
     projectUID?: string;
@@ -47,6 +48,8 @@ const BoardCardPageComponent = ({
     const [localIsExpanded, setLocalIsExpanded] = useState(false);
     const isExpanded = controlledIsExpanded ?? localIsExpanded;
     const setIsExpanded = controlledSetIsExpanded ?? setLocalIsExpanded;
+    const { selectCardViewType } = useBoardController();
+    const shouldHideForCardSelection = !!selectCardViewType;
     const { resetAll, getHasUnsavedChanges } = useBoardCardUnsavedActions();
     const [t] = useTranslation();
 
@@ -97,23 +100,56 @@ const BoardCardPageComponent = ({
         <>
             {currentUser && cardUID && (
                 <>
-                    <Dialog.Root modal={false} open={true} onOpenChange={(isOpen) => !isOpen && handleCloseRequest()}>
+                    <Dialog.Root
+                        modal={false}
+                        open={true}
+                        onOpenChange={(isOpen) => {
+                            if (!isOpen && !selectCardViewType) {
+                                handleCloseRequest();
+                            }
+                        }}
+                    >
                         <Dialog.Content
                             className={cn(
                                 "border-0 p-0 shadow-none",
-                                isExpanded
-                                    ? embedded
-                                        ? "pointer-events-auto absolute inset-0 z-[1] h-full w-full max-w-none overflow-hidden rounded-none bg-background"
-                                        : "pointer-events-auto fixed bottom-0 left-0 right-0 top-16 w-auto max-w-none overflow-hidden rounded-none bg-background md:left-[var(--board-chat-sidebar-width,0px)]"
-                                    : "h-[calc(100dvh-theme(spacing.8))] max-h-[calc(100dvh-theme(spacing.8))] max-w-[100vw] overflow-visible bg-transparent sm:h-[calc(100dvh-theme(spacing.12))] sm:max-h-[calc(100dvh-theme(spacing.12))] sm:max-w-[90vw] lg:max-w-[1120px]"
+                                isExpanded &&
+                                    (embedded
+                                        ? [
+                                              "pointer-events-auto absolute inset-0 z-[1]",
+                                              "h-full w-full max-w-none overflow-hidden",
+                                              "rounded-none bg-background",
+                                          ]
+                                        : [
+                                              "pointer-events-auto fixed bottom-0 left-0 right-0 top-16",
+                                              "w-auto max-w-none overflow-hidden rounded-none bg-background",
+                                              "md:left-[var(--board-chat-sidebar-width,0px)]",
+                                          ]),
+                                !isExpanded && [
+                                    "h-[calc(100dvh-theme(spacing.6))] max-h-[calc(100dvh-theme(spacing.6))]",
+                                    "max-w-[100vw] overflow-visible bg-transparent",
+                                    "sm:h-[calc(100dvh-theme(spacing.8))] sm:max-h-[calc(100dvh-theme(spacing.8))]",
+                                    "sm:max-w-[90vw] lg:max-w-[1120px]",
+                                ],
+                                shouldHideForCardSelection && "pointer-events-none -z-[9998] opacity-0"
                             )}
                             overlayClassName={
-                                isExpanded ? "!pointer-events-none !absolute !inset-0 !z-[1] bg-transparent backdrop-blur-none" : undefined
+                                shouldHideForCardSelection
+                                    ? "!pointer-events-none bg-transparent opacity-0 backdrop-blur-none"
+                                    : isExpanded
+                                      ? "!pointer-events-none !absolute !inset-0 !z-[1] bg-transparent backdrop-blur-none"
+                                      : undefined
                             }
-                            overlayContentClassName={isExpanded ? "pointer-events-none" : undefined}
+                            overlayContentClassName={shouldHideForCardSelection || isExpanded ? "pointer-events-none" : undefined}
                             contentWrapperClassName={
-                                isExpanded ? "pointer-events-none [&_[data-dialog-content=true]]:pointer-events-auto" : undefined
+                                shouldHideForCardSelection
+                                    ? "pointer-events-none"
+                                    : cn(
+                                          "pointer-events-none [&_[data-dialog-content=true]]:pointer-events-auto",
+                                          !isExpanded && "!items-start pb-2 pt-4 sm:pt-6",
+                                          !isExpanded && "[&_[data-radix-scroll-area-viewport]>div]:!overflow-visible"
+                                      )
                             }
+                            viewportClassName={!isExpanded ? "!py-0" : undefined}
                             aria-describedby=""
                             withCloseButton={false}
                             nonModalOverlay
@@ -125,6 +161,11 @@ const BoardCardPageComponent = ({
                                 }
                             }}
                             onOverlayInteract={(event) => {
+                                if (isExpanded) {
+                                    event.preventDefault();
+                                    return;
+                                }
+
                                 if (getHasUnsavedChanges()) {
                                     requestClose();
                                     return;

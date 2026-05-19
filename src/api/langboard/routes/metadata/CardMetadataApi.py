@@ -5,8 +5,13 @@ from langboard_shared.core.routing import (
     ApiException,
     ApiPermission,
     AppRouter,
+    EEditorCollaborationType,
     JsonResponse,
     SocketTopic,
+    collaborative_block,
+    collaborative_edit,
+    collaborative_text,
+    create_editor_collaboration_document_id,
 )
 from langboard_shared.domain.models import Card, CardMetadata, Project, ProjectRole
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
@@ -63,6 +68,18 @@ def get_card_metadata_by_key(
     return JsonResponse(content={get_query.key: value})
 
 
+@collaborative_edit(
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "metadata-{old_key}"),
+        "key",
+        "key",
+    ),
+    collaborative_text(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "metadata-{old_key}"),
+        "value",
+        "value",
+    ),
+)
 @AppRouter.schema(form=MetadataForm, permission=ApiPermission.Edit)
 @AppRouter.api.post(
     "/metadata/project/{project_uid}/card/{card_uid}",
@@ -88,6 +105,11 @@ def save_card_metadata(
     return JsonResponse()
 
 
+@collaborative_edit(
+    collaborative_block(
+        create_editor_collaboration_document_id(EEditorCollaborationType.Card, "{card_uid}", "metadata-{keys}")
+    )
+)
 @AppRouter.schema(form=MetadataDeleteForm, permission=ApiPermission.Delete)
 @AppRouter.api.delete(
     "/metadata/project/{project_uid}/card/{card_uid}",

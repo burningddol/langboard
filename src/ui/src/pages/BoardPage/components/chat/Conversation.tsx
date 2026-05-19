@@ -10,11 +10,7 @@ import ChatMessage from "@/pages/BoardPage/components/chat/ChatMessage";
 
 const LOADING_ELEMENT_MIDDLE_Y = 18;
 
-export interface IConversationProps {
-    chatInputHeight: number;
-}
-
-function Conversation({ chatInputHeight }: IConversationProps): React.JSX.Element {
+function Conversation(): React.JSX.Element {
     const { projectUID, scrollToBottomRef, isAtBottomRef, currentSessionUID } = useBoardChat();
     const [t] = useTranslation();
     const [isLoaded, setIsLoaded] = useState(false);
@@ -119,14 +115,7 @@ function Conversation({ chatInputHeight }: IConversationProps): React.JSX.Elemen
     }, [isFetched]);
 
     return (
-        <Box
-            className="h-[calc(100%_-_var(--chat-input-height)_-_3px)] min-h-[calc(100%_-_20vh_-_3px)]"
-            style={
-                {
-                    "--chat-input-height": `${chatInputHeight}px`,
-                } as React.CSSProperties
-            }
-        >
+        <Box className="min-h-0 flex-1">
             <ChatMessageList scrollToBottomRef={scrollToBottomRef} isAtBottomRef={isAtBottomRef} ref={conversationRef}>
                 {!isLastPage && <Loading size="3" variant="secondary" spacing="1" animate="bounce" my="3" />}
                 {sortedMessages.map((chatMessage) => (

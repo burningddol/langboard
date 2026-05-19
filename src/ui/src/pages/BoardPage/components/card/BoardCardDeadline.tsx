@@ -68,7 +68,7 @@ const BoardCardDeadline = memo(() => {
         [deadline, getNormalizedTime, markSectionDirty]
     );
 
-    const { updateValue: updateCollaborativeDeadline } = useCollaborativeText({
+    const { resetValue: resetCollaborativeDeadline, updateValue: updateCollaborativeDeadline } = useCollaborativeText({
         defaultValue: serializeDeadline(deadline),
         disabled: !editable,
         collaborationType: EEditorCollaborationType.Card,
@@ -117,6 +117,7 @@ const BoardCardDeadline = memo(() => {
         nextDeadline?.setSeconds(0, 0);
 
         if (getNormalizedTime(nextDeadline) === getNormalizedTime(deadline)) {
+            resetCollaborativeDeadline(serializeDeadline(deadline));
             resetSection("deadline");
             setIsEditing(false);
             return null;
@@ -125,12 +126,13 @@ const BoardCardDeadline = memo(() => {
         const deadlineAt: Date | "" = nextDeadline || "";
 
         return { deadline_at: deadlineAt };
-    }, [deadline, draftDeadline, getNormalizedTime, resetSection]);
+    }, [deadline, draftDeadline, getNormalizedTime, resetSection, updateCollaborativeDeadline]);
 
     const cancelDeadlineEdit = useCallback(() => {
         setDraftDeadline(deadline);
+        resetCollaborativeDeadline(serializeDeadline(deadline));
         resetSection("deadline");
-    }, [deadline, resetSection]);
+    }, [deadline, resetCollaborativeDeadline, resetSection]);
 
     useEffect(() => {
         if (!isCardEditing) {

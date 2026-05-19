@@ -16,6 +16,7 @@ import { ROUTES } from "@/core/routing/constants";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { EHttpStatus } from "@langboard/core/enums";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 function UserLastname({ user }: { user: User.TModel }) {
@@ -28,6 +29,7 @@ function UserLastname({ user }: { user: User.TModel }) {
     const lastname = user.useField("lastname");
     const editorName = `${user.uid}-user-lastname`;
     const { mutateAsync } = useUpdateUserInSettings(user, { interceptToast: true });
+    const resetCollaborativeLastnameRef = useRef<((value: string) => void) | null>(null);
 
     const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
         canEdit: () => canUpdateUser,
@@ -64,6 +66,10 @@ function UserLastname({ user }: { user: User.TModel }) {
         },
         originalValue: lastname,
     });
+    const cancelEditing = () => {
+        resetCollaborativeLastnameRef.current?.(lastname);
+        setIsEditing(false);
+    };
 
     return (
         <Box className={cn("truncate text-center", isEditing && "pb-2.5 pt-[calc(theme(spacing.4)_-_2px)]")}>
@@ -91,6 +97,9 @@ function UserLastname({ user }: { user: User.TModel }) {
                             "focus-visible:border-b-primary focus-visible:ring-0"
                         )}
                         defaultValue={lastname}
+                        onCollaborativeValueResetReady={(resetValue) => {
+                            resetCollaborativeLastnameRef.current = resetValue;
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -107,7 +116,7 @@ function UserLastname({ user }: { user: User.TModel }) {
                     <Button type="button" size="icon-sm" variant="ghost" onClick={() => changeMode("view")} title={t("common.Save")}>
                         <IconComponent icon="check" size="4" />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => setIsEditing(false)} title={t("common.Cancel")}>
+                    <Button type="button" size="icon-sm" variant="ghost" onClick={cancelEditing} title={t("common.Cancel")}>
                         <IconComponent icon="x" size="4" />
                     </Button>
                 </Flex>

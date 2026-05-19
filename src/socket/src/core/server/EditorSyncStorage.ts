@@ -33,6 +33,18 @@ const EditorSyncStorage = {
         await fs.writeFile(temporaryStatePath, state);
         await fs.rename(temporaryStatePath, statePath);
     },
+
+    async delete(documentName: string): Promise<void> {
+        try {
+            await fs.unlink(getDocumentStatePath(documentName));
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+                return;
+            }
+
+            throw error;
+        }
+    },
 };
 
 export default EditorSyncStorage;

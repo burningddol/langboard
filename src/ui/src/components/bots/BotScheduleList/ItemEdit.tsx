@@ -112,7 +112,7 @@ function BotScheduleListItemEdit({
     const scheduleDraftSync = useCollaborativeText({
         collaborationType: EEditorCollaborationType.BotSchedule,
         uid: projectUID,
-        section: `${params.target_table}-${schedule.uid}`,
+        section: `${params.target_table}-${target.uid}-${schedule.uid}`,
         field: "schedule",
         defaultValue: serializeBotScheduleDraft(originalValuesMap),
         disabled: !isOpened,
