@@ -64,6 +64,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             onClick,
             onFocus,
             onMouseUp,
+            onPaste,
             onCollaborativeValueReady,
             onCollaborativeValueResetReady,
             onValueChange,
@@ -106,6 +107,31 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             updateValue(event.target.value);
             updateSelection(event.target.selectionStart, event.target.selectionEnd);
             onChange?.(event);
+        };
+
+        const handlePaste: React.ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
+            onPaste?.(event);
+            if (event.defaultPrevented) {
+                return;
+            }
+
+            const textarea = textareaRef.current;
+            const pastedText = event.clipboardData.getData("text");
+            if (!textarea || !pastedText) {
+                return;
+            }
+
+            event.preventDefault();
+            const selectionStart = textarea.selectionStart;
+            const selectionEnd = textarea.selectionEnd;
+            const nextValue = `${value.slice(0, selectionStart)}${pastedText}${value.slice(selectionEnd)}`;
+            const nextSelection = selectionStart + pastedText.length;
+
+            updateValue(nextValue);
+            requestAnimationFrame(() => {
+                textarea.setSelectionRange(nextSelection, nextSelection);
+                updateSelection(nextSelection, nextSelection);
+            });
         };
 
         const handleClick: React.MouseEventHandler<HTMLTextAreaElement> = (event) => {
@@ -272,6 +298,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
                     onFocus={handleFocus}
                     onKeyUp={handleKeyUp}
                     onMouseUp={handleMouseUp}
+                    onPaste={handlePaste}
                     onSelect={handleSelect}
                 />
                 {children}

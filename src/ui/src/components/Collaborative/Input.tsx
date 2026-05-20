@@ -56,6 +56,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             onClick,
             onFocus,
             onMouseUp,
+            onPaste,
             onCollaborativeValueReady,
             onCollaborativeValueResetReady,
             onValueChange,
@@ -97,6 +98,31 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             updateValue(event.target.value);
             updateSelection(event.target.selectionStart ?? 0, event.target.selectionEnd ?? event.target.selectionStart ?? 0);
             onChange?.(event);
+        };
+
+        const handlePaste: React.ClipboardEventHandler<HTMLInputElement> = (event) => {
+            onPaste?.(event);
+            if (event.defaultPrevented) {
+                return;
+            }
+
+            const input = inputRef.current;
+            const pastedText = event.clipboardData.getData("text");
+            if (!input || !pastedText) {
+                return;
+            }
+
+            event.preventDefault();
+            const selectionStart = input.selectionStart ?? value.length;
+            const selectionEnd = input.selectionEnd ?? selectionStart;
+            const nextValue = `${value.slice(0, selectionStart)}${pastedText}${value.slice(selectionEnd)}`;
+            const nextSelection = selectionStart + pastedText.length;
+
+            updateValue(nextValue);
+            requestAnimationFrame(() => {
+                input.setSelectionRange(nextSelection, nextSelection);
+                updateSelection(nextSelection, nextSelection);
+            });
         };
 
         const handleClick: React.MouseEventHandler<HTMLInputElement> = (event) => {
@@ -241,6 +267,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
                     onFocus={handleFocus}
                     onKeyUp={handleKeyUp}
                     onMouseUp={handleMouseUp}
+                    onPaste={handlePaste}
                     onSelect={handleSelect}
                 />
                 <RemoteCursors cursors={remoteCursors} positions={cursorPositions} />
