@@ -28,24 +28,20 @@ export function SkeletonBoardCardActionList() {
 }
 
 const BoardCardActionList = memo(() => {
-    const { card, currentUser, hasRoleAction, isCardEditing } = useBoardCard();
+    const { card, currentUser, hasRoleAction } = useBoardCard();
     const isAdmin = currentUser.useField("is_admin");
     const archivedAt = card.useField("archived_at");
 
     return (
         <>
-            {isCardEditing && (
-                <>
-                    <BoardCardActionSetLabel buttonClassName={sharedButtonClassName} />
-                    <BoardCardActionBotScope buttonClassName={sharedButtonClassName} />
-                    <BoardCardActionRelationship buttonClassName={`${sharedButtonClassName} sm:hidden`} />
-                    <BoardCardActionAddChecklist buttonClassName={sharedButtonClassName} />
-                    <BoardCardActionMetadata buttonClassName={sharedButtonClassName} />
-                </>
-            )}
+            <BoardCardActionSetLabel buttonClassName={sharedButtonClassName} />
+            <BoardCardActionBotScope buttonClassName={sharedButtonClassName} />
+            <BoardCardActionRelationship buttonClassName={`${sharedButtonClassName} sm:hidden`} />
+            <BoardCardActionAddChecklist buttonClassName={sharedButtonClassName} />
+            <BoardCardActionMetadata buttonClassName={sharedButtonClassName} />
             <BoardCardActionActivity buttonClassName={sharedButtonClassName} />
             <BoardCardActionShare buttonClassName={sharedButtonClassName} />
-            {isCardEditing && !archivedAt && (hasRoleAction(ProjectRole.EAction.CardUpdate) || isAdmin) ? (
+            {!archivedAt && (hasRoleAction(ProjectRole.EAction.CardUpdate) || isAdmin) ? (
                 <BoardCardActionArchive buttonClassName={sharedButtonClassName} />
             ) : null}
             {!!archivedAt && (hasRoleAction(ProjectRole.EAction.CardDelete) || isAdmin) ? (

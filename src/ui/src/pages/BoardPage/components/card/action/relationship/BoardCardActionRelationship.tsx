@@ -7,12 +7,8 @@ export interface IBoardCardActionRelationshipProps extends ISharedBoardCardActio
 }
 
 function BoardCardActionRelationship({ buttonClassName, isExpanded = false }: IBoardCardActionRelationshipProps) {
-    const { card, isCardEditing } = useBoardCard();
+    const { card } = useBoardCard();
     const relationships = card.useForeignFieldArray("relationships");
-
-    if (!isCardEditing) {
-        return null;
-    }
 
     return (
         <>

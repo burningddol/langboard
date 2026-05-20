@@ -27,7 +27,7 @@ interface ILabelToggleMeta {
 }
 
 const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLabelProps) => {
-    const { projectUID, card, hasRoleAction, isCardEditing } = useBoardCard();
+    const { projectUID, card, hasRoleAction } = useBoardCard();
     const labels = card.useForeignFieldArray("labels");
     const [t] = useTranslation();
     const [isOpened, setIsOpened] = useState(false);
@@ -123,7 +123,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
         });
     };
 
-    if (!hasRoleAction(ProjectRole.EAction.CardUpdate) || !isCardEditing) {
+    if (!hasRoleAction(ProjectRole.EAction.CardUpdate)) {
         return null;
     }
 
