@@ -44,6 +44,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     const cards = ProjectCard.Model.useModels((model) => model.uid !== card.uid && model.project_uid === projectUID, [projectUID, card]);
     const description = card.useField("description");
     const [isEditing, setIsEditing] = useState(false);
+    const pointerDownPositionRef = useRef<{ x: number; y: number } | null>(null);
     const { markSectionDirty, resetSection, getHasUnsavedChanges, registerSectionSaveHandler, registerSectionCancelHandler } =
         useBoardCardUnsavedActions();
     const canEdit = hasRoleAction(ProjectRole.EAction.CardUpdate);
@@ -119,14 +120,32 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         }
     }, [getHasUnsavedChanges, isCardEditing, isEditing, stopEditing]);
 
-    const handleStartEditing = useCallback(
+    const handlePointerDown = useCallback(
         (e: PointerEvent<HTMLDivElement>) => {
             if (!canStartEditing || isEditing) {
                 return;
             }
 
-            e.preventDefault();
-            e.stopPropagation();
+            pointerDownPositionRef.current = {
+                x: e.clientX,
+                y: e.clientY,
+            };
+        },
+        [canStartEditing, isEditing]
+    );
+
+    const handlePointerUp = useCallback(
+        (e: PointerEvent<HTMLDivElement>) => {
+            const pointerDownPosition = pointerDownPositionRef.current;
+            pointerDownPositionRef.current = null;
+            if (!canStartEditing || isEditing || !pointerDownPosition) {
+                return;
+            }
+
+            const movedDistance = Math.hypot(e.clientX - pointerDownPosition.x, e.clientY - pointerDownPosition.y);
+            if (movedDistance > 4 || window.getSelection()?.toString()) {
+                return;
+            }
 
             requestAnimationFrame(() => {
                 setIsEditing(true);
@@ -142,7 +161,8 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         <Box
             data-card-description
             className={cn(canStartEditing && !isEditing && "cursor-text rounded-md transition-colors hover:bg-accent/20")}
-            onPointerDown={handleStartEditing}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
         >
             {shouldCollapse ? (
                 <CollapsibleDescriptionContent

@@ -18,12 +18,18 @@ export interface IBotValueDefaultInputContext {
     setSelectedProvider: React.Dispatch<React.SetStateAction<TAgentModelName>>;
     selectedApis: string[];
     setSelectedApis: React.Dispatch<React.SetStateAction<string[]>>;
+    selectedComfortTools: string[];
+    setSelectedComfortTools: React.Dispatch<React.SetStateAction<string[]>>;
+    comfortToolDescriptions: Record<string, string>;
+    setComfortToolDescriptions: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     inputs: TAgentFormInput[];
     setInputs: React.Dispatch<React.SetStateAction<TAgentFormInput[]>>;
     errors: Record<string, string>;
     setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     apiList: Record<string, string>;
     setApiList: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    comfortToolList: TComfortToolList;
+    setComfortToolList: React.Dispatch<React.SetStateAction<TComfortToolList>>;
     setValue: (name: string) => (value: any) => void;
     setInputRef: (name: string) => (element: HTMLElement | null) => void;
     required?: bool;
@@ -35,6 +41,8 @@ interface IBotValueDefaultInputProviderProps extends TSharedBotValueInputProps {
     children: React.ReactNode;
 }
 
+type TComfortToolList = Record<string, { label: string; description: string; api_names: string[] }>;
+
 const initialContext = {
     platform: EBotPlatform.Default,
     platformRunningType: EBotPlatformRunningType.Default,
@@ -43,12 +51,18 @@ const initialContext = {
     setSelectedProvider: () => {},
     selectedApis: [] as string[],
     setSelectedApis: () => {},
+    selectedComfortTools: [] as string[],
+    setSelectedComfortTools: () => {},
+    comfortToolDescriptions: {} as Record<string, string>,
+    setComfortToolDescriptions: () => {},
     inputs: [] as TAgentFormInput[],
     setInputs: () => {},
     errors: {} as Record<string, string>,
     setErrors: () => {},
     apiList: {} as Record<string, string>,
     setApiList: () => {},
+    comfortToolList: {} as TComfortToolList,
+    setComfortToolList: () => {},
     setValue: () => () => {},
     setInputRef: () => () => {},
     required: false,
@@ -76,6 +90,10 @@ export const BotValueDefaultInputProvider = ({
     const valuesRef = useRef<Record<string, any>>(Utils.String.isJsonString(value) ? JSON.parse(value) : {});
     const [selectedProvider, setSelectedProvider] = useState<TAgentModelName>((valuesRef.current["agent_llm"] as TAgentModelName) ?? "OpenAI");
     const [selectedApis, setSelectedApis] = useState<string[]>((valuesRef.current["api_names"] as string[]) ?? []);
+    const [selectedComfortTools, setSelectedComfortTools] = useState<string[]>((valuesRef.current["comfort_tool_names"] as string[]) ?? []);
+    const [comfortToolDescriptions, setComfortToolDescriptions] = useState<Record<string, string>>(
+        (valuesRef.current["comfort_tool_descriptions"] as Record<string, string>) ?? {}
+    );
     const [inputs, setInputs] = useState<TAgentFormInput[]>([]);
     const inputsRef = useRef<Record<string, HTMLElement | null>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +112,7 @@ export const BotValueDefaultInputProvider = ({
         [syncValue]
     );
     const [apiList, setApiList] = useState<Record<string, string>>({});
+    const [comfortToolList, setComfortToolList] = useState<TComfortToolList>({});
     const showableInputs = useMemo(() => {
         return showableDefaultInputs[platform]?.[platformRunningType] ?? [];
     }, [platform, platformRunningType]);
@@ -108,6 +127,8 @@ export const BotValueDefaultInputProvider = ({
         newValueRef.current = value;
         setSelectedProvider((nextValues["agent_llm"] as TAgentModelName) ?? "OpenAI");
         setSelectedApis((nextValues["api_names"] as string[]) ?? []);
+        setSelectedComfortTools((nextValues["comfort_tool_names"] as string[]) ?? []);
+        setComfortToolDescriptions((nextValues["comfort_tool_descriptions"] as Record<string, string>) ?? {});
         setErrors({});
         setResetTick((tick) => tick + 1);
     }, [disabled, value]);
@@ -202,12 +223,18 @@ export const BotValueDefaultInputProvider = ({
                 setSelectedProvider,
                 selectedApis,
                 setSelectedApis,
+                selectedComfortTools,
+                setSelectedComfortTools,
+                comfortToolDescriptions,
+                setComfortToolDescriptions,
                 inputs,
                 setInputs,
                 errors,
                 setErrors,
                 apiList,
                 setApiList,
+                comfortToolList,
+                setComfortToolList,
                 setValue,
                 setInputRef,
                 required,

@@ -31,7 +31,7 @@ const SidebarNavItems = memo(({ isFloating, navs }: TSidebarNavItemsProps): Reac
 });
 
 function getSidebarNavItemKey(item: ISidebarNavItem, index: number): string {
-    return item.href ?? `${item.name}-${index}`;
+    return item.href || `${item.name}-${index}`;
 }
 
 interface ISidebarNavItemProps {

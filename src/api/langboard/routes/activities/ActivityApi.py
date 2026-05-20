@@ -1,7 +1,7 @@
 from typing import Any
 from fastapi import Depends
 from langboard_shared.core.filter import AuthFilter
-from langboard_shared.core.routing import AppRouter, JsonResponse
+from langboard_shared.core.routing import ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import InfiniteRefreshableList, OpenApiSchema
 from langboard_shared.domain.models import Bot, ProjectRole, ProjectWikiActivity, User, UserActivity
 from langboard_shared.domain.models.bases import BaseActivityModel
@@ -154,6 +154,7 @@ def get_project_column_activities(
         .get()
     ),
 )
+@AppRouter.schema(query=ActivityPagination, permission=ApiPermission.Read)
 @RoleFilter.add(ProjectRole, [ProjectRoleAction.Read], RoleFinder.project)
 @AuthFilter.add()
 def get_card_activities(

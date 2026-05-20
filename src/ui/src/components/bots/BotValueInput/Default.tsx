@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import FormErrorMessage from "@/components/FormErrorMessage";
 import { TSharedBotValueInputProps } from "@/components/bots/BotValueInput/types";
 import useGetApiList from "@/controllers/api/settings/schemas/useGetApiList";
+import useGetApiComfortToolList from "@/controllers/api/settings/schemas/useGetApiComfortToolList";
 import MultiSelect from "@/components/MultiSelect";
 import Collaborative from "@/components/Collaborative";
 import CollaborativeControlOverlay from "@/components/Collaborative/ControlOverlay";
@@ -48,6 +49,12 @@ interface IRemoteProviderMetaState {
     updatedAt: number;
 }
 
+interface IComfortToolSelectionMeta {
+    added: bool;
+    comfortToolName: string;
+    updatedAt: number;
+}
+
 function BotValueDefaultInput(props: TSharedBotValueInputProps) {
     return (
         <BotValueDefaultInputProvider {...props}>
@@ -68,6 +75,7 @@ function BotValueDefaultInputDisplay({
     const [t] = useTranslation();
     const promptID = useId();
     const { mutateAsync: getApiListMutateAsync } = useGetApiList({ interceptToast: true });
+    const { mutateAsync: getApiComfortToolListMutateAsync } = useGetApiComfortToolList({ interceptToast: true });
     const {
         valuesRef,
         setInputRef,
@@ -78,8 +86,14 @@ function BotValueDefaultInputDisplay({
         errors,
         selectedApis,
         setSelectedApis,
+        selectedComfortTools,
+        setSelectedComfortTools,
+        comfortToolDescriptions,
+        setComfortToolDescriptions,
         apiList,
         setApiList,
+        comfortToolList,
+        setComfortToolList,
         showableInputs,
         collaborationType,
         uid,
@@ -121,6 +135,27 @@ function BotValueDefaultInputDisplay({
 
             setSelectedApis(nextApis as string[]);
             setValue("api_names")(nextApis);
+        },
+    });
+    const comfortToolNamesCollaboration = useCollaborativeText({
+        collaborationType,
+        uid,
+        section,
+        field: "comfort_tool_names",
+        defaultValue: JSON.stringify(selectedComfortTools),
+        disabled: disabled || !showableInputs.includes("api_names"),
+        onValueChange: (value) => {
+            if (!Utils.String.isJsonString(value)) {
+                return;
+            }
+
+            const nextComfortTools = JSON.parse(value);
+            if (!Utils.Type.isArray(nextComfortTools) || nextComfortTools.some((comfortToolName) => !Utils.Type.isString(comfortToolName))) {
+                return;
+            }
+
+            setSelectedComfortTools(nextComfortTools as string[]);
+            setValue("comfort_tool_names")(nextComfortTools);
         },
     });
     const remoteApiMetaMap = useMemo(() => {
@@ -181,6 +216,69 @@ function BotValueDefaultInputDisplay({
 
         return nextRemoteProviderMeta;
     }, [providerCollaboration.remoteMeta, selectedProvider]);
+    const remoteComfortToolMetaMap = useMemo(() => {
+        return comfortToolNamesCollaboration.remoteMeta.reduce<Record<string, IRemoteApiMetaState>>((acc, meta) => {
+            const value = meta.value;
+            if (
+                !value ||
+                !Utils.Type.isObject(value) ||
+                !Utils.Type.isString((value as Record<string, unknown>).comfortToolName) ||
+                !Utils.Type.isBool((value as Record<string, unknown>).added) ||
+                !Utils.Type.isNumber((value as Record<string, unknown>).updatedAt)
+            ) {
+                return acc;
+            }
+
+            const parsedValue = value as IComfortToolSelectionMeta;
+            const previous = acc[parsedValue.comfortToolName];
+            if (!previous || previous.updatedAt < parsedValue.updatedAt) {
+                acc[parsedValue.comfortToolName] = {
+                    actorName: meta.name,
+                    added: parsedValue.added,
+                    borderColor: meta.color,
+                    updatedAt: parsedValue.updatedAt,
+                };
+            }
+
+            return acc;
+        }, {});
+    }, [comfortToolNamesCollaboration.remoteMeta]);
+
+    const changeSelectedComfortTools = (nextComfortTools: string[]) => {
+        const addedComfortToolName = nextComfortTools.find((comfortToolName) => !selectedComfortTools.includes(comfortToolName)) ?? "";
+        const removedComfortToolName = selectedComfortTools.find((comfortToolName) => !nextComfortTools.includes(comfortToolName)) ?? "";
+
+        comfortToolNamesCollaboration.updateMeta(
+            addedComfortToolName || removedComfortToolName
+                ? ({
+                      added: !!addedComfortToolName,
+                      comfortToolName: addedComfortToolName || removedComfortToolName,
+                      updatedAt: Date.now(),
+                  } satisfies IComfortToolSelectionMeta)
+                : null
+        );
+        const nextDescriptionMap = Object.fromEntries(
+            Object.entries(comfortToolDescriptions).filter(([comfortToolName]) => nextComfortTools.includes(comfortToolName))
+        );
+        setSelectedComfortTools(nextComfortTools);
+        setValue("comfort_tool_names")(nextComfortTools);
+        setComfortToolDescriptions(nextDescriptionMap);
+        setValue("comfort_tool_descriptions")(nextDescriptionMap);
+        comfortToolNamesCollaboration.updateValue(JSON.stringify(nextComfortTools));
+    };
+
+    const changeComfortToolDescription = (comfortToolName: string) => (description: string) => {
+        const nextDescriptions = { ...comfortToolDescriptions };
+        if (description) {
+            nextDescriptions[comfortToolName] = description;
+        } else {
+            delete nextDescriptions[comfortToolName];
+        }
+
+        setComfortToolDescriptions(nextDescriptions);
+        setValue("comfort_tool_descriptions")(nextDescriptions);
+    };
+
     const changeSelectedApis = (nextApis: string[]) => {
         const addedApiName = nextApis.find((apiName) => !selectedApis.includes(apiName)) ?? "";
         const removedApiName = selectedApis.find((apiName) => !nextApis.includes(apiName)) ?? "";
@@ -211,17 +309,25 @@ function BotValueDefaultInputDisplay({
     };
     const allApiNames = useMemo(() => Object.keys(apiList), [apiList]);
     const isAllApiSelected = !!allApiNames.length && allApiNames.every((apiName) => selectedApis.includes(apiName));
+    const allComfortToolNames = useMemo(() => Object.keys(comfortToolList), [comfortToolList]);
+    const isAllComfortToolSelected =
+        !!allComfortToolNames.length && allComfortToolNames.every((comfortToolName) => selectedComfortTools.includes(comfortToolName));
 
     useEffect(() => {
         setValue("api_names")(selectedApis);
     }, [selectedApis, setValue]);
 
     useEffect(() => {
-        const getApiList = async () => {
-            const data = await getApiListMutateAsync({});
-            setApiList(data || {});
+        setValue("comfort_tool_names")(selectedComfortTools);
+    }, [selectedComfortTools, setValue]);
+
+    useEffect(() => {
+        const getApiLists = async () => {
+            const [apiList, comfortToolList] = await Promise.all([getApiListMutateAsync({}), getApiComfortToolListMutateAsync({})]);
+            setApiList(apiList || {});
+            setComfortToolList(comfortToolList || {});
         };
-        getApiList();
+        getApiLists();
     }, []);
 
     return (
@@ -231,6 +337,157 @@ function BotValueDefaultInputDisplay({
             </Box>
             {showableInputs.includes("api_names") && (
                 <Box>
+                    <Box mb="4">
+                        {isEditing ? (
+                            <>
+                                <Flex justify="between" items="center" gap="2" mb="1">
+                                    <Box textSize="sm" className="font-medium">
+                                        {t("bot.agent.Comfort tools")}
+                                    </Box>
+                                    <Flex gap="1">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2"
+                                            disabled={isValidating || disabled || isAllComfortToolSelected}
+                                            onClick={() => changeSelectedComfortTools(allComfortToolNames)}
+                                        >
+                                            {t("common.Select all")}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2"
+                                            disabled={isValidating || disabled || !selectedComfortTools.length}
+                                            onClick={() => changeSelectedComfortTools([])}
+                                        >
+                                            {t("common.Clear")}
+                                        </Button>
+                                    </Flex>
+                                </Flex>
+                                <MultiSelect
+                                    placeholder={t("bot.agent.Select comfort tool(s) to use")}
+                                    selections={allComfortToolNames.map((value) => ({ label: comfortToolList[value].label, value }))}
+                                    selectedValue={selectedComfortTools}
+                                    listClassName="absolute w-[calc(100%_-_theme(spacing.6))]"
+                                    badgeListClassName="max-h-28 overflow-y-auto relative"
+                                    inputClassName="sticky bottom-0 bg-background ml-0 pl-2"
+                                    onValueChange={changeSelectedComfortTools}
+                                    createBadgeWrapper={(badge, value) => {
+                                        const remoteComfortToolMeta = remoteComfortToolMetaMap[value];
+
+                                        return (
+                                            <span className="relative inline-flex">
+                                                {remoteComfortToolMeta?.added ? (
+                                                    <CollaborativeUserLabel
+                                                        className="absolute left-1 top-0 z-[9999] -translate-y-1/2"
+                                                        color={remoteComfortToolMeta.borderColor}
+                                                        name={remoteComfortToolMeta.actorName}
+                                                    />
+                                                ) : null}
+                                                <Tooltip.Root>
+                                                    <Tooltip.Trigger asChild>
+                                                        <span
+                                                            className="inline-flex rounded-md border-2 border-transparent"
+                                                            style={
+                                                                remoteComfortToolMeta?.added
+                                                                    ? { borderColor: remoteComfortToolMeta.borderColor }
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {badge}
+                                                        </span>
+                                                    </Tooltip.Trigger>
+                                                    <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">
+                                                        <Box>{comfortToolList[value]?.description}</Box>
+                                                        <Box mt="1" textSize="xs" className="text-muted-foreground">
+                                                            {comfortToolList[value]?.api_names.join(", ")}
+                                                        </Box>
+                                                    </Tooltip.Content>
+                                                </Tooltip.Root>
+                                            </span>
+                                        );
+                                    }}
+                                    renderSelectableItem={(item) => {
+                                        const remoteComfortToolMeta = remoteComfortToolMetaMap[item.value];
+                                        if (!remoteComfortToolMeta || remoteComfortToolMeta.added) {
+                                            return item.label;
+                                        }
+
+                                        return (
+                                            <div
+                                                className="relative w-full rounded-md border-2 px-2 py-1"
+                                                style={{ borderColor: remoteComfortToolMeta.borderColor }}
+                                            >
+                                                <CollaborativeUserLabel
+                                                    className="absolute left-2 top-0 z-[9999] -translate-y-1/2"
+                                                    color={remoteComfortToolMeta.borderColor}
+                                                    name={remoteComfortToolMeta.actorName}
+                                                />
+                                                <span>{item.label}</span>
+                                            </div>
+                                        );
+                                    }}
+                                    disabled={isValidating || disabled}
+                                />
+                                {selectedComfortTools.length ? (
+                                    <Flex direction="col" gap="2" mt="2">
+                                        {selectedComfortTools.map((comfortToolName) => (
+                                            <Collaborative.Textarea
+                                                key={`default-bot-comfort-tool-description-${comfortToolName}`}
+                                                collaborationType={collaborationType}
+                                                uid={uid}
+                                                section={section}
+                                                field={`comfort_tool_description_${comfortToolName}`}
+                                                defaultValue={comfortToolDescriptions[comfortToolName] ?? ""}
+                                                placeholder={t("bot.agent.Add comfort tool description", {
+                                                    tool: comfortToolList[comfortToolName]?.label ?? comfortToolName,
+                                                })}
+                                                resize="none"
+                                                className="min-h-16"
+                                                disabled={isValidating || disabled}
+                                                onValueChange={changeComfortToolDescription(comfortToolName)}
+                                            />
+                                        ))}
+                                    </Flex>
+                                ) : null}
+                            </>
+                        ) : (
+                            <>
+                                <Box textSize="sm" mb="1" className="font-medium">
+                                    {t("bot.agent.Comfort tools")}
+                                </Box>
+                                <Flex wrap gap="1.5" className="min-h-9 rounded-md border border-input bg-muted/20 px-3 py-2">
+                                    {selectedComfortTools.length ? (
+                                        selectedComfortTools.map((comfortToolName) => (
+                                            <Tooltip.Root key={`default-bot-comfort-tool-view-${comfortToolName}`}>
+                                                <Tooltip.Trigger asChild>
+                                                    <Badge variant="secondary" className="max-w-full">
+                                                        <span className="truncate">{comfortToolList[comfortToolName]?.label ?? comfortToolName}</span>
+                                                    </Badge>
+                                                </Tooltip.Trigger>
+                                                <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">
+                                                    <Box>{comfortToolList[comfortToolName]?.description}</Box>
+                                                    {comfortToolDescriptions[comfortToolName] ? (
+                                                        <Box mt="1">{comfortToolDescriptions[comfortToolName]}</Box>
+                                                    ) : null}
+                                                </Tooltip.Content>
+                                            </Tooltip.Root>
+                                        ))
+                                    ) : (
+                                        <Box textSize="sm" className="text-muted-foreground">
+                                            {t("bot.agent.Select comfort tool(s) to use")}
+                                        </Box>
+                                    )}
+                                </Flex>
+                            </>
+                        )}
+                    </Box>
+                    <Box textSize="sm" mb="1" className="font-medium">
+                        {t("bot.agent.Base tools")}
+                    </Box>
                     {isEditing ? (
                         <>
                             <Flex justify="end" gap="1" mb="1">

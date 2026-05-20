@@ -1,4 +1,4 @@
-import { memo, useReducer } from "react";
+import { memo, useMemo, useReducer } from "react";
 import { IHeaderNavItem } from "@/components/Header/types";
 import { DashboardStyledLayout } from "@/components/Layout";
 import { ISidebarNavItem } from "@/components/Sidebar/types";
@@ -26,35 +26,51 @@ const DashboardProxy = memo((): React.JSX.Element => {
     const { currentUser } = useAuth();
     const starredProjects = Project.Model.useModels((model) => model.starred, [data, isFetching, updatedStarredProjects]);
 
-    const headerNavs: Record<string, IHeaderNavItem> = {
-        projects: {
-            name: t("dashboard.Projects"),
-            onClick: () => {
-                navigate(ROUTES.DASHBOARD.PROJECTS.ALL, { smooth: true });
-            },
-        },
-        cards: {
-            name: t("dashboard.Cards"),
-            onClick: () => {
-                navigate(ROUTES.DASHBOARD.CARDS, { smooth: true });
-            },
-        },
-        starred: {
-            name: t("dashboard.Starred"),
-            subNavs: starredProjects.map((project) => ({
-                name: project.title,
+    const headerNavs = useMemo<IHeaderNavItem[]>(() => {
+        const navs: Record<string, IHeaderNavItem> = {
+            projects: {
+                name: t("dashboard.Projects"),
                 onClick: () => {
-                    navigate(ROUTES.BOARD.MAIN(project.uid));
+                    navigate(ROUTES.DASHBOARD.PROJECTS.ALL, { smooth: true });
                 },
-            })),
-        },
-        tacking: {
-            name: t("dashboard.Tracking"),
-            onClick: () => {
-                navigate(ROUTES.DASHBOARD.TRACKING, { smooth: true });
             },
-        },
-    };
+            cards: {
+                name: t("dashboard.Cards"),
+                onClick: () => {
+                    navigate(ROUTES.DASHBOARD.CARDS, { smooth: true });
+                },
+            },
+            starred: {
+                name: t("dashboard.Starred"),
+                subNavs: starredProjects.map((project) => ({
+                    name: project.title,
+                    onClick: () => {
+                        navigate(ROUTES.BOARD.MAIN(project.uid));
+                    },
+                })),
+            },
+            tracking: {
+                name: t("dashboard.Tracking"),
+                onClick: () => {
+                    navigate(ROUTES.DASHBOARD.TRACKING, { smooth: true });
+                },
+            },
+        };
+
+        switch (pageType) {
+            case "cards":
+                navs.cards.active = true;
+                break;
+            case "tracking":
+                navs.tracking.active = true;
+                break;
+            case "projects":
+                navs.projects.active = true;
+                break;
+        }
+
+        return Object.values(navs);
+    }, [pageType, starredProjects]);
 
     const sidebarNavs: ISidebarNavItem[] = [
         {
@@ -79,12 +95,10 @@ const DashboardProxy = memo((): React.JSX.Element => {
         case "cards":
             pageContent = <CardsPage />;
             skeletonContent = <SkeletonCardsPage />;
-            headerNavs.cards.active = true;
             break;
         case "tracking":
             pageContent = <TrackingPage />;
             skeletonContent = <SkeletonTrackingPage />;
-            headerNavs.tacking.active = true;
             break;
         case "projects":
             switch (tabName) {
@@ -100,19 +114,13 @@ const DashboardProxy = memo((): React.JSX.Element => {
                 default:
                     return <Navigate to={ROUTES.DASHBOARD.PROJECTS.STARRED} />;
             }
-            headerNavs.projects.active = true;
             break;
         default:
             return <Navigate to={ROUTES.DASHBOARD.PROJECTS.STARRED} />;
     }
 
     return (
-        <DashboardStyledLayout
-            headerNavs={Object.values(headerNavs)}
-            sidebarNavs={sidebarNavs}
-            scrollAreaMutable={scrollAreaMutable}
-            className="overflow-x-hidden"
-        >
+        <DashboardStyledLayout headerNavs={headerNavs} sidebarNavs={sidebarNavs} scrollAreaMutable={scrollAreaMutable} className="overflow-x-hidden">
             {currentUser ? <DashboardProvider currentUser={currentUser}>{pageContent}</DashboardProvider> : skeletonContent}
         </DashboardStyledLayout>
     );

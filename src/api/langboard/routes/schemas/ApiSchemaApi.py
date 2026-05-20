@@ -1,5 +1,6 @@
 from fastapi import Query
 from langboard_shared.core.routing import ApiException, ApiPermission, AppRouter, JsonResponse
+from langboard_shared.core.routing.ApiComfortTool import get_api_comfort_tool_list
 from langboard_shared.core.schema import OpenApiSchema
 
 
@@ -12,6 +13,19 @@ def get_api_list():
         apis[api_name] = api_schema["description"]
 
     return JsonResponse(content={"apis": apis})
+
+
+@AppRouter.api.get(
+    "/schema/api/comfort",
+    tags=["Schema"],
+    responses=(
+        OpenApiSchema()
+        .suc({"comfort_tools": {"<name>": {"label": "string", "description": "string", "api_names": ["string"]}}})
+        .get()
+    ),
+)
+def get_api_comfort_tool_list_api():
+    return JsonResponse(content={"comfort_tools": get_api_comfort_tool_list()})
 
 
 @AppRouter.api.get(

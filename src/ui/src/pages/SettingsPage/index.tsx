@@ -53,16 +53,22 @@ function SettingsProxy(): React.JSX.Element {
             return;
         }
 
-        socket.subscribe(ESocketTopic.AppSettings, Object.values(ESettingSocketTopicID), () => {
-            if (currentUser) {
-                currentUser.setting_role_actions = data.setting_role_actions ?? [];
-                currentUser.api_key_role_actions = data.api_key_role_actions ?? [];
-                currentUser.mcp_role_actions = data.mcp_role_actions ?? [];
-            }
+        if (currentUser) {
+            currentUser.setting_role_actions = data.setting_role_actions ?? [];
+            currentUser.api_key_role_actions = data.api_key_role_actions ?? [];
+            currentUser.mcp_role_actions = data.mcp_role_actions ?? [];
+        }
 
+        const topicIds = Object.values(ESettingSocketTopicID);
+        socket.subscribe(ESocketTopic.AppSettings, topicIds, () => {
             setIsReady(() => true);
         });
-    }, [isFetching]);
+        setIsReady(() => true);
+
+        return () => {
+            socket.unsubscribe(ESocketTopic.AppSettings, topicIds);
+        };
+    }, [currentUser, data, isFetching, socket]);
 
     let skeletonContent;
     switch (pathname) {

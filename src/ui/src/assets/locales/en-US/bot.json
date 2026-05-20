@@ -72,6 +72,10 @@
     "Agent settings": "Agent settings",
     "Select a provider": "Select a provider",
     "System prompt": "System prompt",
+    "Comfort tools": "Comfort tools",
+    "Base tools": "Base tools",
+    "Select comfort tool(s) to use": "Select comfort tool(s) to use",
+    "Add comfort tool description": "Add description for {{tool}}",
     "Select API(s) to use": "Select API(s) to use",
     "errors": {
       "missing": {

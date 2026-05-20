@@ -13,6 +13,7 @@ from langboard_shared.core.routing import (
 )
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.models import NotificationScheduleRule, SettingRole, User
+from langboard_shared.domain.models.bases.BaseRoleModel import ALL_GRANTED
 from langboard_shared.domain.models.SettingRole import SettingRoleAction
 from langboard_shared.domain.services import DomainService
 from langboard_shared.filter import RoleFilter
@@ -30,12 +31,18 @@ def get_setting_roles(user: User = Auth.scope("user"), service: DomainService = 
     setting_role = service.user.get_setting_role(user)
     api_key_role = service.api_key.get_role(user)
     mcp_role = service.mcp_tool_group.get_role(user)
+    api_key_role_actions = api_key_role.actions if api_key_role else None
+    mcp_role_actions = mcp_role.actions if mcp_role else None
+
+    if user.is_admin:
+        api_key_role_actions = [ALL_GRANTED]
+        mcp_role_actions = [ALL_GRANTED]
 
     return JsonResponse(
         content={
             "setting_role_actions": setting_role.actions if setting_role else None,
-            "api_key_role_actions": api_key_role.actions if api_key_role else None,
-            "mcp_role_actions": mcp_role.actions if mcp_role else None,
+            "api_key_role_actions": api_key_role_actions,
+            "mcp_role_actions": mcp_role_actions,
         }
     )
 

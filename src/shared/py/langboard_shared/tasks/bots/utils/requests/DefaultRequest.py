@@ -3,6 +3,7 @@ from json import loads as json_loads
 from typing import Any
 from .....ai import LangboardCalledAPIToolsComponent, LangboardCalledVariablesComponent
 from .....core.logger import Logger
+from .....core.routing.ApiComfortTool import create_api_comfort_tool_prompt, expand_api_names_with_comfort_tools
 from .....domain.models import BotLog
 from .....domain.models.BaseBotModel import BotPlatformRunningType
 from .....domain.models.bases import BaseBotLogModel
@@ -40,6 +41,13 @@ class DefaultRequest(LangflowRequest):
                 bot_value["agent_llm"] = agent_llm
                 tweaks["Agent"] = bot_value
 
+            comfort_tool_names = bot_value.pop("comfort_tool_names", [])
+            comfort_tool_descriptions = bot_value.pop("comfort_tool_descriptions", {})
+            if not isinstance(comfort_tool_names, list):
+                comfort_tool_names = []
+            if not isinstance(comfort_tool_descriptions, dict):
+                comfort_tool_descriptions = {}
+
             if "base_url" in tweaks:
                 del tweaks["base_url"]
 
@@ -50,12 +58,18 @@ class DefaultRequest(LangflowRequest):
             for possible_key in possible_agents:
                 agent_data = tweaks if not possible_key else tweaks.get(possible_key, {})
 
-                if "system_prompt" in agent_data:
+                comfort_tool_prompt = create_api_comfort_tool_prompt(comfort_tool_names, comfort_tool_descriptions)
+
+                if "system_prompt" in agent_data or comfort_tool_prompt:
                     system_prompt = agent_data.pop("system_prompt", "")
+                    if comfort_tool_prompt:
+                        system_prompt = "\n\n".join(
+                            [prompt for prompt in [system_prompt, comfort_tool_prompt] if prompt]
+                        )
                     tweaks["Prompt"] = {"prompt": system_prompt}
 
-                if "api_names" in agent_data:
-                    api_names = agent_data.pop("api_names", [])
+                api_names = expand_api_names_with_comfort_tools(agent_data.pop("api_names", []), comfort_tool_names)
+                if api_names:
                     api_tools_component = LangboardCalledAPIToolsComponent(api_names=api_names)
 
                     tweaks["api_names"] = api_names
