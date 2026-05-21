@@ -118,18 +118,19 @@ const BoardCardPageComponent = ({
                                               "pointer-events-auto absolute inset-0 z-[1]",
                                               "h-full w-full max-w-none overflow-hidden",
                                               "rounded-none bg-background",
-                                          ]
+                                          ].join(" ")
                                         : [
                                               "pointer-events-auto fixed bottom-0 left-0 right-0 top-16",
                                               "w-auto max-w-none overflow-hidden rounded-none bg-background",
                                               "md:left-[var(--board-chat-sidebar-width,0px)]",
-                                          ]),
-                                !isExpanded && [
-                                    "h-[calc(100dvh-theme(spacing.6))] max-h-[calc(100dvh-theme(spacing.6))]",
-                                    "max-w-[100vw] overflow-visible bg-transparent",
-                                    "sm:h-[calc(100dvh-theme(spacing.8))] sm:max-h-[calc(100dvh-theme(spacing.8))]",
-                                    "sm:max-w-[90vw] lg:max-w-[1120px]",
-                                ],
+                                          ].join(" ")),
+                                !isExpanded &&
+                                    [
+                                        "h-[calc(100dvh-theme(spacing.6))] max-h-[calc(100dvh-theme(spacing.6))]",
+                                        "max-w-[100vw] overflow-visible bg-transparent",
+                                        "sm:h-[calc(100dvh-theme(spacing.8))] sm:max-h-[calc(100dvh-theme(spacing.8))]",
+                                        "sm:max-w-[90vw] lg:max-w-[1120px]",
+                                    ].join(" "),
                                 shouldHideForCardSelection && "pointer-events-none -z-[9998] opacity-0"
                             )}
                             overlayClassName={
