@@ -1,5 +1,8 @@
 /* eslint-disable @/max-len */
 import useBotSettingCreatedHandlers from "@/controllers/socket/settings/bots/useBotSettingCreatedHandlers";
+import useApiComfortToolCreatedHandlers from "@/controllers/socket/settings/apiComfortTools/useApiComfortToolCreatedHandlers";
+import useApiComfortToolDeletedHandlers from "@/controllers/socket/settings/apiComfortTools/useApiComfortToolDeletedHandlers";
+import useApiComfortToolUpdatedHandlers from "@/controllers/socket/settings/apiComfortTools/useApiComfortToolUpdatedHandlers";
 import useMcpToolGroupCreatedHandlers from "@/controllers/socket/settings/mcpToolGroups/useMcpToolGroupCreatedHandlers";
 import useSelectedMcpToolGroupsDeletedHandlers from "@/controllers/socket/settings/mcpToolGroups/useSelectedMcpToolGroupsDeletedHandlers";
 import useNotificationScheduleRuleCreatedHandlers from "@/controllers/socket/settings/notificationSchedule/useNotificationScheduleRuleCreatedHandlers";
@@ -38,6 +41,9 @@ export const AppSettingProvider = ({ currentUser, children }: IAppSettingProvide
     const socket = useSocket();
     const [isValidating, setIsValidating] = useState(false);
     const webhookCreatedHandlers = useWebhookCreatedHandlers({});
+    const apiComfortToolCreatedHandlers = useApiComfortToolCreatedHandlers({});
+    const apiComfortToolUpdatedHandlers = useApiComfortToolUpdatedHandlers({});
+    const apiComfortToolDeletedHandlers = useApiComfortToolDeletedHandlers({});
     const selectedWebhooksDeletedHandlers = useSelectedWebhooksDeletedHandlers({});
     const botSettingCreatedHandlers = useBotSettingCreatedHandlers({});
     const userCreatedHandlers = useUserCreatedHandlers({});
@@ -52,6 +58,9 @@ export const AppSettingProvider = ({ currentUser, children }: IAppSettingProvide
     const handlers = useMemo(
         () => [
             webhookCreatedHandlers,
+            apiComfortToolCreatedHandlers,
+            apiComfortToolUpdatedHandlers,
+            apiComfortToolDeletedHandlers,
             selectedWebhooksDeletedHandlers,
             botSettingCreatedHandlers,
             userCreatedHandlers,
@@ -63,6 +72,9 @@ export const AppSettingProvider = ({ currentUser, children }: IAppSettingProvide
         ],
         [
             webhookCreatedHandlers,
+            apiComfortToolCreatedHandlers,
+            apiComfortToolUpdatedHandlers,
+            apiComfortToolDeletedHandlers,
             selectedWebhooksDeletedHandlers,
             botSettingCreatedHandlers,
             userCreatedHandlers,

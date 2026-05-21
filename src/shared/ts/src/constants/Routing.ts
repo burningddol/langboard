@@ -246,6 +246,8 @@ const API = {
         },
         SCHEMAS: {
             API_LIST: "/schema/api",
+            API_COMFORT_TOOLS: "/schema/api/comfort",
+            API_COMFORT_TOOL: "/schema/api/comfort/{comfort_tool_name}",
         },
         OLLAMA: {
             GET_LIST: "/settings/ollama/models",

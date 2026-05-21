@@ -25,6 +25,10 @@ export enum EAction {
     NotificationScheduleCreate = "notification_schedule_create",
     NotificationScheduleUpdate = "notification_schedule_update",
     NotificationScheduleDelete = "notification_schedule_delete",
+    ApiComfortToolRead = "api_comfort_tool_read",
+    ApiComfortToolCreate = "api_comfort_tool_create",
+    ApiComfortToolUpdate = "api_comfort_tool_update",
+    ApiComfortToolDelete = "api_comfort_tool_delete",
     OllamaRead = "ollama_read",
 }
 
@@ -47,5 +51,6 @@ export const CATEGORIZED_MAP = {
         EAction.NotificationScheduleUpdate,
         EAction.NotificationScheduleDelete,
     ],
+    ApiComfortTool: [EAction.ApiComfortToolRead, EAction.ApiComfortToolCreate, EAction.ApiComfortToolUpdate, EAction.ApiComfortToolDelete],
     Ollama: [EAction.OllamaRead],
 };

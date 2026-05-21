@@ -1,4 +1,5 @@
 import MultiSelectAssignee, { IFormProps, TSaveHandler } from "@/components/MultiSelectAssignee";
+import CollaborativeControlOverlay from "@/components/Collaborative/ControlOverlay";
 import { useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import Toast from "@/components/base/Toast";
 import { EMAIL_REGEX } from "@/constants";
@@ -23,6 +24,13 @@ interface IBoardMemberSelectionMeta {
     added: bool;
     key: string;
     kind: "email" | "member";
+    updatedAt: number;
+}
+
+interface IRemoteBoardMemberMetaState {
+    actorName: string;
+    added: bool;
+    borderColor: string;
     updatedAt: number;
 }
 
@@ -84,10 +92,10 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
     );
     const lastRenderedItemsRef = useRef<(string | TUserLikeModel)[]>(displayItems);
     const isSyncingFromRemoteRef = useRef(false);
-    const remoteAddedMetaMaps = useMemo(() => {
+    const remoteMetaMaps = useMemo(() => {
         return remoteMeta.reduce<{
-            emails: Record<string, { actorName: string; borderColor: string; updatedAt: number }>;
-            members: Record<string, { actorName: string; borderColor: string; updatedAt: number }>;
+            emails: Record<string, IRemoteBoardMemberMetaState>;
+            members: Record<string, IRemoteBoardMemberMetaState>;
         }>(
             (acc, meta) => {
                 const value = meta.value;
@@ -103,15 +111,12 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
                 }
 
                 const parsedValue = value as IBoardMemberSelectionMeta;
-                if (!parsedValue.added) {
-                    return acc;
-                }
-
                 const target = parsedValue.kind === "email" ? acc.emails : acc.members;
                 const previous = target[parsedValue.key];
                 if (!previous || previous.updatedAt < parsedValue.updatedAt) {
                     target[parsedValue.key] = {
                         actorName: meta.name,
+                        added: parsedValue.added,
                         borderColor: meta.color,
                         updatedAt: parsedValue.updatedAt,
                     };
@@ -240,7 +245,7 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
             }
             flushSerializedSelection(serializeBoardMemberItems([...nextMemberAssignees, ...effectiveInviteEmails]));
         },
-        [collaborativeInviteEmails, flushSerializedSelection, hiddenCurrentUserAssignee, updateMeta]
+        [collaborativeInviteEmails, collaborativeSelectedAssignees, flushSerializedSelection, hiddenCurrentUserAssignee, updateMeta]
     );
 
     return (
@@ -275,27 +280,58 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
             decorateSelectItem={
                 ((item: string | TUserLikeModel) => {
                     if (Utils.Type.isString(item)) {
-                        const remoteAddedEmailMeta = remoteAddedMetaMaps.emails[item];
-                        if (!remoteAddedEmailMeta) {
+                        const remoteEmailMeta = remoteMetaMaps.emails[item];
+                        if (!remoteEmailMeta?.added) {
                             return {};
                         }
 
                         return {
-                            badgeActorName: remoteAddedEmailMeta.actorName,
-                            badgeBorderColor: remoteAddedEmailMeta.borderColor,
+                            badgeActorName: remoteEmailMeta.actorName,
+                            badgeBorderColor: remoteEmailMeta.borderColor,
                         };
                     }
 
-                    const remoteAddedMemberMeta = remoteAddedMetaMaps.members[item.uid];
-                    if (!remoteAddedMemberMeta) {
+                    const remoteMemberMeta = remoteMetaMaps.members[item.uid];
+                    if (!remoteMemberMeta?.added) {
                         return {};
                     }
 
                     return {
-                        badgeActorName: remoteAddedMemberMeta.actorName,
-                        badgeBorderColor: remoteAddedMemberMeta.borderColor,
+                        badgeActorName: remoteMemberMeta.actorName,
+                        badgeBorderColor: remoteMemberMeta.borderColor,
                     };
                 }) as IFormProps["decorateSelectItem"]
+            }
+            renderSelectableItem={
+                ((item: TUserLikeModel) => {
+                    const remoteMemberMeta = remoteMetaMaps.members[item.uid];
+                    let label: string;
+
+                    if (item.MODEL_NAME === BotModel.Model.MODEL_NAME) {
+                        item = item as BotModel.TModel;
+                        label = `${item.name} (${item.bot_uname})`;
+                    } else {
+                        item = item as User.TModel;
+                        const isInvited = item.isPresentableUnknownUser() || invitedMemberUIDs.includes(item.uid);
+                        const invitedText = isInvited ? ` (${t("project.invited")})` : "";
+                        label = item.isValidUser() ? `${item.firstname} ${item.lastname}${invitedText}`.trim() : `${item.email} ${invitedText}`;
+                    }
+
+                    if (!remoteMemberMeta || remoteMemberMeta.added) {
+                        return label;
+                    }
+
+                    return (
+                        <div className="relative w-full px-2 py-1">
+                            <CollaborativeControlOverlay
+                                color={remoteMemberMeta.borderColor}
+                                labelClassName="absolute left-2 top-0 z-[9999] -translate-y-1/2"
+                                name={remoteMemberMeta.actorName}
+                            />
+                            <span>{label}</span>
+                        </div>
+                    );
+                }) as IFormProps["renderSelectableItem"]
             }
             addIconSize="6"
             allSelectables={allSelectables}

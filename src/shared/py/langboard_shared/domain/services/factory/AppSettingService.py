@@ -6,7 +6,8 @@ from ....core.types.ParamTypes import TGlobalCardRelationshipTypeParam
 from ....core.utils.Converter import convert_python_data
 from ....helpers import InfraHelper, ModelHelper
 from ....publishers import AppSettingPublisher
-from ...models import GlobalCardRelationshipType, NotificationScheduleRule, WebhookSetting
+from ...models import ApiComfortTool, GlobalCardRelationshipType, NotificationScheduleRule, WebhookSetting
+from ...models.ApiComfortTool import ApiComfortToolMap
 from ...models.BaseNotificationScheduleModel import BaseNotificationScheduleModel
 
 
@@ -176,6 +177,111 @@ class AppSettingService(BaseDomainService):
         uids = [InfraHelper.convert_uid(r) for r in webhook_setting_uids]
         AppSettingPublisher.selected_webhook_settings_deleted(uids)
 
+        return True
+
+    def get_api_comfort_tool_list(self) -> dict[str, ApiComfortToolMap]:
+        return {
+            **ApiComfortTool.DEFAULT_TOOLS,
+            **{
+                comfort_tool.name: comfort_tool.to_api_comfort_tool_map()
+                for comfort_tool in self.__get_custom_api_comfort_tools()
+            },
+        }
+
+    def get_api_comfort_tool_response_list(self) -> list[dict[str, Any]]:
+        return [
+            *[
+                ApiComfortTool.create_default_api_response(name, comfort_tool)
+                for name, comfort_tool in ApiComfortTool.DEFAULT_TOOLS.items()
+            ],
+            *[comfort_tool.api_response() for comfort_tool in self.__get_custom_api_comfort_tools()],
+        ]
+
+    def get_api_comfort_tool(self, name: str) -> ApiComfortTool | None:
+        return self.__get_custom_api_comfort_tool(name)
+
+    def create_api_comfort_tool(
+        self,
+        name: str,
+        *,
+        label: str,
+        description: str,
+        api_names: list[str],
+        query: dict[str, Any] | None = None,
+        form: dict[str, Any] | None = None,
+        api_queries: dict[str, dict[str, Any]] | None = None,
+        api_forms: dict[str, dict[str, Any]] | None = None,
+    ) -> ApiComfortTool:
+        comfort_tool_name = self.__normalize_api_comfort_tool_name(name, label)
+        if comfort_tool_name in ApiComfortTool.DEFAULT_TOOLS or self.__get_custom_api_comfort_tool(comfort_tool_name):
+            raise ValueError("Comfort tool name already exists.")
+
+        comfort_tool = ApiComfortTool(
+            name=comfort_tool_name,
+            label=label.strip(),
+            description=description.strip(),
+            api_names=list(dict.fromkeys(api_names)),
+            query=query or {},
+            form=form or {},
+            api_queries=api_queries or {},
+            api_forms=api_forms or {},
+            is_default=False,
+        )
+        self.repo.api_comfort_tool.insert(comfort_tool)
+        AppSettingPublisher.api_comfort_tool_created(comfort_tool)
+        return comfort_tool
+
+    def update_api_comfort_tool(
+        self,
+        name: str,
+        *,
+        next_name: str,
+        label: str,
+        description: str,
+        api_names: list[str],
+        query: dict[str, Any] | None = None,
+        form: dict[str, Any] | None = None,
+        api_queries: dict[str, dict[str, Any]] | None = None,
+        api_forms: dict[str, dict[str, Any]] | None = None,
+    ) -> tuple[str, ApiComfortTool] | None:
+        comfort_tool = self.get_api_comfort_tool(name)
+        if not comfort_tool:
+            return None
+
+        next_comfort_tool_name = self.__normalize_api_comfort_tool_name(next_name, label)
+        if next_comfort_tool_name != name and (
+            next_comfort_tool_name in ApiComfortTool.DEFAULT_TOOLS
+            or self.__get_custom_api_comfort_tool(next_comfort_tool_name)
+        ):
+            raise ValueError("Comfort tool name already exists.")
+
+        old_name = comfort_tool.name
+        comfort_tool.name = next_comfort_tool_name
+        comfort_tool.label = label.strip()
+        comfort_tool.description = description.strip()
+        comfort_tool.api_names = list(dict.fromkeys(api_names))
+        comfort_tool.query = query or {}
+        comfort_tool.form = form or {}
+        comfort_tool.api_queries = api_queries or {}
+        comfort_tool.api_forms = api_forms or {}
+        self.repo.api_comfort_tool.update(comfort_tool)
+
+        if old_name != comfort_tool.name:
+            AppSettingPublisher.api_comfort_tool_deleted(comfort_tool.get_uid(), old_name)
+            AppSettingPublisher.api_comfort_tool_created(comfort_tool)
+        else:
+            AppSettingPublisher.api_comfort_tool_updated(comfort_tool)
+        return comfort_tool.name, comfort_tool
+
+    def delete_api_comfort_tool(self, name: str) -> bool:
+        comfort_tool = self.get_api_comfort_tool(name)
+        if not comfort_tool:
+            return False
+
+        deleted_name = comfort_tool.name
+        deleted_uid = comfort_tool.get_uid()
+        self.repo.api_comfort_tool.delete(comfort_tool)
+        AppSettingPublisher.api_comfort_tool_deleted(deleted_uid, deleted_name)
         return True
 
     def get_api_notification_schedule_rules(self) -> list[dict[str, Any]]:
@@ -350,6 +456,24 @@ class AppSettingService(BaseDomainService):
             },
             "values": values,
         }
+
+    def __get_custom_api_comfort_tools(self) -> list[ApiComfortTool]:
+        return [comfort_tool for comfort_tool in self.repo.api_comfort_tool.get_all() if not comfort_tool.is_default]
+
+    def __get_custom_api_comfort_tool(self, name: str) -> ApiComfortTool | None:
+        comfort_tool = self.repo.api_comfort_tool.get_by_name(name)
+        if not comfort_tool or comfort_tool.is_default:
+            return None
+        return comfort_tool
+
+    def __normalize_api_comfort_tool_name(self, name: str, label: str) -> str:
+        if name.strip() and not ApiComfortTool.is_valid_name(name.strip()):
+            raise ValueError("Comfort tool name can only contain letters, numbers, hyphens, and underscores.")
+
+        comfort_tool_name = ApiComfortTool.normalize_name(name, label)
+        if not comfort_tool_name:
+            raise ValueError("Comfort tool name is required.")
+        return comfort_tool_name
 
     def __has_notification_schedule_interval(self, interval_str: str) -> bool:
         return any(rule.interval_str == interval_str for rule in self.repo.notification_schedule_rule.get_enabled())

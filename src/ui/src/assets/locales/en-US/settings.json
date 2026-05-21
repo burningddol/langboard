@@ -26,6 +26,16 @@
   "Internal bots": "Internal bots",
   "Global relationships": "Global relationships",
   "No global relationships": "No global relationships",
+  "API comfort tools": "API comfort tools",
+  "Create API comfort tool": "Create API comfort tool",
+  "Edit API comfort tool": "Edit API comfort tool",
+  "No API comfort tools": "No API comfort tools",
+  "Comfort tool name": "Comfort tool name",
+  "Comfort tool label": "Comfort tool label",
+  "Comfort tool description": "Comfort tool description",
+  "Base tools": "Base tools",
+  "Select API(s) to include": "Select API(s) to include",
+  "Selected base tools": "Selected base tools",
   "Webhooks": "Webhooks",
   "Notification schedule": "Notification schedule",
   "Enable scheduled notifications": "Enable scheduled notifications",
@@ -164,6 +174,9 @@
       "bot_apiKey": "Enter an API key.",
       "parent_name": "Enter a parent name.",
       "child_name": "Enter a child name.",
+      "comfort_tool_label": "Enter a comfort tool label.",
+      "comfort_tool_description": "Enter a comfort tool description.",
+      "comfort_tool_api_names": "Select at least one API.",
       "webhook_name": "Enter a webhook name.",
       "webhook_url": "Enter a webhook URL.",
       "internal_bot_displayName": "Enter a display name.",
@@ -176,7 +189,11 @@
     "invalid": {
       "bot_url": "Enter a valid API URL.",
       "webhook_url": "Enter a valid webhook URL.",
-      "internal_bot_url": "Enter a valid internal bot API URL."
+      "internal_bot_url": "Enter a valid internal bot API URL.",
+      "comfort_tool_name": "Use only letters, numbers, hyphens, or underscores."
+    },
+    "duplicated": {
+      "comfort_tool_name": "This comfort tool name is already used by another API or comfort tool."
     },
     "user": {
       "missing": {

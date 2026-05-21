@@ -13,6 +13,7 @@ import { useSocket } from "@/core/providers/SocketProvider";
 import { EHttpStatus, ESettingSocketTopicID, ESocketTopic } from "@langboard/core/enums";
 import { IS_OLLAMA_RUNNING } from "@/constants";
 import BotsPage from "@/pages/SettingsPage/BotsPage";
+import ApiComfortToolsPage from "@/pages/SettingsPage/ApiComfortToolsPage";
 import GlobalRelationshipsPage from "@/pages/SettingsPage/GlobalRelationshipsPage";
 import InternalBotsPage from "@/pages/SettingsPage/InternalBotsPage";
 import WebhooksPage from "@/pages/SettingsPage/WebhooksPage";
@@ -85,6 +86,9 @@ function SettingsProxy(): React.JSX.Element {
             skeletonContent = <></>;
             break;
         case ROUTES.SETTINGS.GLOBAL_RELATIONSHIPS:
+            skeletonContent = <></>;
+            break;
+        case ROUTES.SETTINGS.API_COMFORT_TOOLS:
             skeletonContent = <></>;
             break;
         case ROUTES.SETTINGS.WEBHOOKS:
@@ -168,6 +172,14 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
             },
             hidden: !hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.GlobalRelationship),
         },
+        [ROUTES.SETTINGS.API_COMFORT_TOOLS]: {
+            icon: "package-plus",
+            name: t("settings.API comfort tools"),
+            onClick: () => {
+                navigate(ROUTES.SETTINGS.API_COMFORT_TOOLS, { smooth: true });
+            },
+            hidden: !hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.ApiComfortTool),
+        },
         [ROUTES.SETTINGS.WEBHOOKS]: {
             icon: "webhook",
             name: t("settings.Webhooks"),
@@ -226,6 +238,9 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
         case ROUTES.SETTINGS.GLOBAL_RELATIONSHIPS:
             pageContent = <GlobalRelationshipsPage />;
             break;
+        case ROUTES.SETTINGS.API_COMFORT_TOOLS:
+            pageContent = <ApiComfortToolsPage />;
+            break;
         case ROUTES.SETTINGS.WEBHOOKS:
             pageContent = <WebhooksPage />;
             break;
@@ -265,6 +280,11 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
                 break;
             case ROUTES.SETTINGS.GLOBAL_RELATIONSHIPS:
                 if (!hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.GlobalRelationship)) {
+                    navigate(foundAvailableRoute ?? ROUTES.DASHBOARD.PROJECTS.ALL, { replace: true });
+                }
+                break;
+            case ROUTES.SETTINGS.API_COMFORT_TOOLS:
+                if (!hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.ApiComfortTool)) {
                     navigate(foundAvailableRoute ?? ROUTES.DASHBOARD.PROJECTS.ALL, { replace: true });
                 }
                 break;

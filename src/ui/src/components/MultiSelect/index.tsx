@@ -153,6 +153,8 @@ const MultiSelect = React.memo(
                 }
 
                 if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
                     input.blur();
                 }
             },

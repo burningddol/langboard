@@ -11,6 +11,7 @@ export interface ICollaborativeInputProps extends Omit<InputProps, "value" | "on
     field: string;
     section?: number | string;
     uid?: number | string;
+    preserveSyncedValue?: bool;
     onChange?: React.ChangeEventHandler<HTMLInputElement>;
     onCollaborativeValueReady?: (updateValue: ((value: string) => void) | null) => void;
     onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
@@ -50,6 +51,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             uid,
             defaultValue,
             disabled,
+            preserveSyncedValue,
             onChange,
             onSelect,
             onKeyUp,
@@ -73,6 +75,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             uid,
             defaultValue,
             disabled,
+            preserveSyncedValue,
             onValueChange,
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});

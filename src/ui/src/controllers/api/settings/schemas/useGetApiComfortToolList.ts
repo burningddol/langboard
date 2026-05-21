@@ -1,23 +1,21 @@
+import { Routing } from "@langboard/core/constants";
 import { api } from "@/core/helpers/Api";
 import { TMutationOptions, useQueryMutation } from "@/core/helpers/QueryMutation";
+import { ApiComfortToolModel } from "@/core/models";
 
-export interface IApiComfortTool {
-    label: string;
-    description: string;
-    api_names: string[];
-}
-
-const useGetApiComfortToolList = (options?: TMutationOptions<{}, Record<string, IApiComfortTool>>) => {
+const useGetApiComfortToolList = (options?: TMutationOptions) => {
     const { mutate } = useQueryMutation();
 
     const getApiComfortToolList = async () => {
-        const res = await api.get("/schema/api/comfort", {
+        const res = await api.get(Routing.API.SETTINGS.SCHEMAS.API_COMFORT_TOOLS, {
             env: {
                 noToast: options?.interceptToast,
             } as never,
         });
 
-        return res.data.comfort_tools;
+        ApiComfortToolModel.Model.fromArray(res.data.api_comfort_tools ?? [], true);
+
+        return {};
     };
 
     const result = mutate(["get-api-comfort-tool-list"], getApiComfortToolList, {

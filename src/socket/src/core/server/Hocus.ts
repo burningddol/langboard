@@ -228,6 +228,8 @@ const getAppSettingsTopicID = (sectionName: string | null): ESettingSocketTopicI
             return ESettingSocketTopicID.Bot;
         case "global-relationship":
             return ESettingSocketTopicID.GlobalRelationship;
+        case "api-comfort-tool":
+            return ESettingSocketTopicID.ApiComfortTool;
         case "internal-bot":
         case "internal-bot-value":
             return ESettingSocketTopicID.InternalBot;

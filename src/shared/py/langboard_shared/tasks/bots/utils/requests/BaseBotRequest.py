@@ -149,9 +149,7 @@ class BaseBotRequest(ABC):
         log, scope_log = bot_log
         log.log_type = log_type
         log_stack = BotLogMessage(message=stack, log_type=log_type)
-        message_stack = log.message_stack
-        message_stack.append(log_stack)
-        log.message_stack = message_stack
+        log.message_stack = [*log.message_stack, log_stack]
 
         with DbSession.use(readonly=False) as db:
             db.update(log)

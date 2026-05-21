@@ -2,7 +2,7 @@ from typing import Any
 from ..core.publisher import BaseSocketPublisher, SocketPublishModel
 from ..core.routing import GLOBAL_TOPIC_ID, SettingSocketTopicID, SocketTopic
 from ..core.utils.decorators import staticclass
-from ..domain.models import McpToolGroup, NotificationScheduleRule, WebhookSetting
+from ..domain.models import ApiComfortTool, McpToolGroup, NotificationScheduleRule, WebhookSetting
 
 
 @staticclass
@@ -214,3 +214,45 @@ class AppSettingPublisher(BaseSocketPublisher):
         )
 
         AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def api_comfort_tool_created(comfort_tool: ApiComfortTool):
+        model = {"api_comfort_tool": comfort_tool.api_response()}
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.ApiComfortTool.value,
+            event="settings:api-comfort-tool:created",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def api_comfort_tool_updated(comfort_tool: ApiComfortTool):
+        model = {"api_comfort_tool": comfort_tool.api_response()}
+        for event in [
+            "settings:api-comfort-tool:updated",
+            f"settings:api-comfort-tool:updated:{comfort_tool.get_uid()}",
+        ]:
+            publish_model = SocketPublishModel(
+                topic=SocketTopic.AppSettings,
+                topic_id=SettingSocketTopicID.ApiComfortTool.value,
+                event=event,
+                data_keys=list(model.keys()),
+            )
+            AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
+    def api_comfort_tool_deleted(uid: str, name: str):
+        model = {"uid": uid, "name": name}
+        for event in [
+            "settings:api-comfort-tool:deleted",
+            f"settings:api-comfort-tool:deleted:{uid}",
+        ]:
+            publish_model = SocketPublishModel(
+                topic=SocketTopic.AppSettings,
+                topic_id=SettingSocketTopicID.ApiComfortTool.value,
+                event=event,
+                data_keys=list(model.keys()),
+            )
+            AppSettingPublisher.put_dispather(model, publish_model)

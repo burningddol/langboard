@@ -32,6 +32,7 @@ class SettingSocketTopicID(Enum):
     Webhook = "webhook"
     NotificationSchedule = "notification_schedule"
     Ollama = "ollama"
+    ApiComfortTool = "api_comfort_tool"
 
     # MCP Server management
     McpToolGroup = "mcp_tool_group"

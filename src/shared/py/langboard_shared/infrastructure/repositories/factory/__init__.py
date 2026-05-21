@@ -1,4 +1,5 @@
 from .ActivityRepository import ActivityRepository
+from .ApiComfortToolRepository import ApiComfortToolRepository
 from .ApiKeyRepository import ApiKeyRepository
 from .ApiKeyUsageRepository import ApiKeyUsageRepository
 from .BotDefaultScopeBranchRepository import BotDefaultScopeBranchRepository
@@ -53,6 +54,7 @@ from .WebhookSettingRepository import WebhookSettingRepository
 
 __all__ = [
     "ActivityRepository",
+    "ApiComfortToolRepository",
     "ApiKeyRepository",
     "ApiKeyUsageRepository",
     "BotDefaultScopeBranchRepository",

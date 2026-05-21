@@ -22,6 +22,7 @@ import { useCollaborativeText } from "@/components/Collaborative";
 import { BotValueDefaultInputProvider, useBotValueDefaultInput } from "@/components/bots/BotValueInput/DefaultProvider";
 import DefaultTypedInput from "@/components/bots/BotValueInput/DefaultTypedInput";
 import { providerIconMap } from "@/components/bots/BotValueInput/utils";
+import { ApiComfortToolModel } from "@/core/models";
 import { Utils } from "@langboard/core/utils";
 
 interface IApiSelectionMeta {
@@ -92,13 +93,12 @@ function BotValueDefaultInputDisplay({
         setComfortToolDescriptions,
         apiList,
         setApiList,
-        comfortToolList,
-        setComfortToolList,
         showableInputs,
         collaborationType,
         uid,
         section,
     } = useBotValueDefaultInput();
+    const comfortToolList = ApiComfortToolModel.Model.useModels(() => true);
     const providerCollaboration = useCollaborativeText({
         collaborationType,
         uid,
@@ -247,6 +247,9 @@ function BotValueDefaultInputDisplay({
     const changeSelectedComfortTools = (nextComfortTools: string[]) => {
         const addedComfortToolName = nextComfortTools.find((comfortToolName) => !selectedComfortTools.includes(comfortToolName)) ?? "";
         const removedComfortToolName = selectedComfortTools.find((comfortToolName) => !nextComfortTools.includes(comfortToolName)) ?? "";
+        const nextDefinitionMap = Object.fromEntries(
+            nextComfortTools.map((comfortToolName) => [comfortToolName, comfortToolMap[comfortToolName]]).filter(([, comfortTool]) => !!comfortTool)
+        );
 
         comfortToolNamesCollaboration.updateMeta(
             addedComfortToolName || removedComfortToolName
@@ -262,6 +265,7 @@ function BotValueDefaultInputDisplay({
         );
         setSelectedComfortTools(nextComfortTools);
         setValue("comfort_tool_names")(nextComfortTools);
+        setValue("comfort_tool_definitions")(nextDefinitionMap);
         setComfortToolDescriptions(nextDescriptionMap);
         setValue("comfort_tool_descriptions")(nextDescriptionMap);
         comfortToolNamesCollaboration.updateValue(JSON.stringify(nextComfortTools));
@@ -309,7 +313,11 @@ function BotValueDefaultInputDisplay({
     };
     const allApiNames = useMemo(() => Object.keys(apiList), [apiList]);
     const isAllApiSelected = !!allApiNames.length && allApiNames.every((apiName) => selectedApis.includes(apiName));
-    const allComfortToolNames = useMemo(() => Object.keys(comfortToolList), [comfortToolList]);
+    const comfortToolMap = useMemo(
+        () => Object.fromEntries([...comfortToolList].map((comfortTool) => [comfortTool.name, comfortTool])),
+        [comfortToolList]
+    );
+    const allComfortToolNames = useMemo(() => [...comfortToolList].map((comfortTool) => comfortTool.name), [comfortToolList]);
     const isAllComfortToolSelected =
         !!allComfortToolNames.length && allComfortToolNames.every((comfortToolName) => selectedComfortTools.includes(comfortToolName));
 
@@ -319,13 +327,20 @@ function BotValueDefaultInputDisplay({
 
     useEffect(() => {
         setValue("comfort_tool_names")(selectedComfortTools);
-    }, [selectedComfortTools, setValue]);
+        setValue("comfort_tool_definitions")(
+            Object.fromEntries(
+                selectedComfortTools
+                    .map((comfortToolName) => [comfortToolName, comfortToolMap[comfortToolName]])
+                    .filter(([, comfortTool]) => !!comfortTool)
+            )
+        );
+    }, [comfortToolMap, selectedComfortTools, setValue]);
 
     useEffect(() => {
         const getApiLists = async () => {
-            const [apiList, comfortToolList] = await Promise.all([getApiListMutateAsync({}), getApiComfortToolListMutateAsync({})]);
+            const apiList = await getApiListMutateAsync({});
+            await getApiComfortToolListMutateAsync({});
             setApiList(apiList || {});
-            setComfortToolList(comfortToolList || {});
         };
         getApiLists();
     }, []);
@@ -369,7 +384,7 @@ function BotValueDefaultInputDisplay({
                                 </Flex>
                                 <MultiSelect
                                     placeholder={t("bot.agent.Select comfort tool(s) to use")}
-                                    selections={allComfortToolNames.map((value) => ({ label: comfortToolList[value].label, value }))}
+                                    selections={allComfortToolNames.map((value) => ({ label: comfortToolMap[value].label || value, value }))}
                                     selectedValue={selectedComfortTools}
                                     listClassName="absolute w-[calc(100%_-_theme(spacing.6))]"
                                     badgeListClassName="max-h-28 overflow-y-auto relative"
@@ -401,9 +416,9 @@ function BotValueDefaultInputDisplay({
                                                         </span>
                                                     </Tooltip.Trigger>
                                                     <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">
-                                                        <Box>{comfortToolList[value]?.description}</Box>
+                                                        <Box>{comfortToolMap[value]?.description}</Box>
                                                         <Box mt="1" textSize="xs" className="text-muted-foreground">
-                                                            {comfortToolList[value]?.api_names.join(", ")}
+                                                            {comfortToolMap[value]?.api_names.join(", ")}
                                                         </Box>
                                                     </Tooltip.Content>
                                                 </Tooltip.Root>
@@ -443,7 +458,7 @@ function BotValueDefaultInputDisplay({
                                                 field={`comfort_tool_description_${comfortToolName}`}
                                                 defaultValue={comfortToolDescriptions[comfortToolName] ?? ""}
                                                 placeholder={t("bot.agent.Add comfort tool description", {
-                                                    tool: comfortToolList[comfortToolName]?.label ?? comfortToolName,
+                                                    tool: comfortToolMap[comfortToolName]?.label ?? comfortToolName,
                                                 })}
                                                 resize="none"
                                                 className="min-h-16"
@@ -465,11 +480,11 @@ function BotValueDefaultInputDisplay({
                                             <Tooltip.Root key={`default-bot-comfort-tool-view-${comfortToolName}`}>
                                                 <Tooltip.Trigger asChild>
                                                     <Badge variant="secondary" className="max-w-full">
-                                                        <span className="truncate">{comfortToolList[comfortToolName]?.label ?? comfortToolName}</span>
+                                                        <span className="truncate">{comfortToolMap[comfortToolName]?.label ?? comfortToolName}</span>
                                                     </Badge>
                                                 </Tooltip.Trigger>
                                                 <Tooltip.Content className="max-w-[min(95vw,theme(spacing.96))]">
-                                                    <Box>{comfortToolList[comfortToolName]?.description}</Box>
+                                                    <Box>{comfortToolMap[comfortToolName]?.description}</Box>
                                                     {comfortToolDescriptions[comfortToolName] ? (
                                                         <Box mt="1">{comfortToolDescriptions[comfortToolName]}</Box>
                                                     ) : null}

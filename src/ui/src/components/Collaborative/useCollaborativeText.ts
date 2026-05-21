@@ -14,6 +14,7 @@ export interface IUseCollaborativeTextProps {
     uid?: number | string;
     defaultValue?: string | number | readonly string[];
     disabled?: bool;
+    preserveSyncedValue?: bool;
     onValueChange?: (value: string) => void;
 }
 
@@ -85,6 +86,7 @@ export const useCollaborativeText = ({
     uid,
     defaultValue,
     disabled,
+    preserveSyncedValue,
     onValueChange,
 }: IUseCollaborativeTextProps) => {
     const socket = useSocket();
@@ -145,6 +147,15 @@ export const useCollaborativeText = ({
 
     useEffect(() => {
         fallbackValueRef.current = fallbackValue;
+    }, [fallbackValue]);
+
+    useEffect(() => {
+        if (ytextRef.current) {
+            return;
+        }
+
+        valueRef.current = fallbackValue;
+        setValue(fallbackValue);
     }, [fallbackValue]);
 
     useEffect(() => {
@@ -273,7 +284,7 @@ export const useCollaborativeText = ({
             setIsSynced(true);
             const fallbackValue = fallbackValueRef.current;
             const currentValue = text.toString();
-            if (currentValue !== fallbackValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
+            if (currentValue !== fallbackValue && !preserveSyncedValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
                 text.doc?.transact(() => {
                     text.delete(0, text.length);
                     if (fallbackValue) {
@@ -405,7 +416,7 @@ export const useCollaborativeText = ({
             providerRef.current = null;
             ytextRef.current = null;
         };
-    }, [currentUserUID, disabled, fallbackValue, field, hasActiveRemoteFieldEditor, resolvedDocumentID, socket]);
+    }, [currentUserUID, disabled, field, hasActiveRemoteFieldEditor, preserveSyncedValue, resolvedDocumentID, socket]);
 
     const updateValue = useCallback((nextValue: string) => {
         hasLocalDirtyValueRef.current = nextValue !== fallbackValueRef.current;

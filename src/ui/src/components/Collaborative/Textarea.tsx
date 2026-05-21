@@ -11,6 +11,7 @@ export interface ICollaborativeTextareaProps extends Omit<TextareaProps, "value"
     field: string;
     section?: number | string;
     uid?: number | string;
+    preserveSyncedValue?: bool;
     onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;
     onCollaborativeValueReady?: (updateValue: ((value: string) => void) | null) => void;
     onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
@@ -58,6 +59,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             uid,
             defaultValue,
             disabled,
+            preserveSyncedValue,
             onChange,
             onSelect,
             onKeyUp,
@@ -83,6 +85,7 @@ const CollaborativeTextarea = React.forwardRef<HTMLTextAreaElement, ICollaborati
             uid,
             defaultValue,
             disabled,
+            preserveSyncedValue,
             onValueChange,
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});

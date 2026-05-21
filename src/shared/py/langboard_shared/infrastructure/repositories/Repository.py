@@ -192,6 +192,10 @@ class Repository(Factory):
         return self._create_or_get_product(factory.ApiKeyUsageRepository)
 
     @property
+    def api_comfort_tool(self):
+        return self._create_or_get_product(factory.ApiComfortToolRepository)
+
+    @property
     def user_sign_in_history(self):
         return self._create_or_get_product(factory.UserSignInHistoryRepository)
 

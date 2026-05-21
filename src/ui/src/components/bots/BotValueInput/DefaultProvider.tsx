@@ -28,8 +28,6 @@ export interface IBotValueDefaultInputContext {
     setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     apiList: Record<string, string>;
     setApiList: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    comfortToolList: TComfortToolList;
-    setComfortToolList: React.Dispatch<React.SetStateAction<TComfortToolList>>;
     setValue: (name: string) => (value: any) => void;
     setInputRef: (name: string) => (element: HTMLElement | null) => void;
     required?: bool;
@@ -40,8 +38,6 @@ export interface IBotValueDefaultInputContext {
 interface IBotValueDefaultInputProviderProps extends TSharedBotValueInputProps {
     children: React.ReactNode;
 }
-
-type TComfortToolList = Record<string, { label: string; description: string; api_names: string[] }>;
 
 const initialContext = {
     platform: EBotPlatform.Default,
@@ -61,8 +57,6 @@ const initialContext = {
     setErrors: () => {},
     apiList: {} as Record<string, string>,
     setApiList: () => {},
-    comfortToolList: {} as TComfortToolList,
-    setComfortToolList: () => {},
     setValue: () => () => {},
     setInputRef: () => () => {},
     required: false,
@@ -112,7 +106,6 @@ export const BotValueDefaultInputProvider = ({
         [syncValue]
     );
     const [apiList, setApiList] = useState<Record<string, string>>({});
-    const [comfortToolList, setComfortToolList] = useState<TComfortToolList>({});
     const showableInputs = useMemo(() => {
         return showableDefaultInputs[platform]?.[platformRunningType] ?? [];
     }, [platform, platformRunningType]);
@@ -233,8 +226,6 @@ export const BotValueDefaultInputProvider = ({
                 setErrors,
                 apiList,
                 setApiList,
-                comfortToolList,
-                setComfortToolList,
                 setValue,
                 setInputRef,
                 required,

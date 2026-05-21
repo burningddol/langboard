@@ -39,6 +39,12 @@ class SettingRoleAction(Enum):
     NotificationScheduleUpdate = "notification_schedule_update"
     NotificationScheduleDelete = "notification_schedule_delete"
 
+    # API Comfort Tool Management
+    ApiComfortToolRead = "api_comfort_tool_read"
+    ApiComfortToolCreate = "api_comfort_tool_create"
+    ApiComfortToolUpdate = "api_comfort_tool_update"
+    ApiComfortToolDelete = "api_comfort_tool_delete"
+
     # Ollama Management
     OllamaRead = "ollama_read"
 
@@ -50,6 +56,7 @@ class SettingRoleCategory(Enum):
     GlobalRelationship = "global_relationship"
     Webhook = "webhook"
     NotificationSchedule = "notification_schedule"
+    ApiComfortTool = "api_comfort_tool"
     Ollama = "ollama"
 
 
@@ -68,6 +75,7 @@ class SettingRole(BaseRoleModel, table=True):
             SettingRoleAction.GlobalRelationshipRead,
             SettingRoleAction.WebhookRead,
             SettingRoleAction.NotificationScheduleRead,
+            SettingRoleAction.ApiComfortToolRead,
             SettingRoleAction.OllamaRead,
         ]
 

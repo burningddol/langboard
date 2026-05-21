@@ -49,6 +49,10 @@ const routes: RouteObject[] = [
                 element: <></>,
             },
             {
+                path: ROUTES.SETTINGS.API_COMFORT_TOOLS,
+                element: <></>,
+            },
+            {
                 path: ROUTES.SETTINGS.WEBHOOKS,
                 element: <></>,
             },

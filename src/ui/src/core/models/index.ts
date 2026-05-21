@@ -1,4 +1,5 @@
 export * as ActivityModel from "@/core/models/ActivityModel";
+export * as ApiComfortToolModel from "@/core/models/ApiComfortToolModel";
 export * as ApiKeySettingModel from "@/core/models/ApiKeySettingModel";
 export * as AuthUser from "@/core/models/AuthUser";
 export * as BotDefaultScopeBranchModel from "@/core/models/BotDefaultScopeBranchModel";

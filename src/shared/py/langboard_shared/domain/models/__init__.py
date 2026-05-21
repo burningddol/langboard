@@ -1,3 +1,4 @@
+from .ApiComfortTool import ApiComfortTool
 from .ApiKeyRole import ApiKeyRole
 from .ApiKeySetting import ApiKeySetting
 from .ApiKeyUsage import ApiKeyUsage
@@ -66,7 +67,7 @@ from .WebhookSetting import WebhookSetting
 
 
 __all__ = [
-    "SettingRole",
+    "ApiComfortTool",
     "ApiKeyRole",
     "ApiKeySetting",
     "ApiKeyUsage",
@@ -121,6 +122,7 @@ __all__ = [
     "ProjectWikiAssignedUser",
     "ProjectWikiAttachment",
     "ProjectWikiMetadata",
+    "SettingRole",
     "User",
     "UserActivity",
     "UserEmail",

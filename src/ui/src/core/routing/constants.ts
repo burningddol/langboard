@@ -73,6 +73,7 @@ export const ROUTES = {
         INTERNAL_BOT_DETAILS: (uid: string) => `/settings/internal-bots/${uid}`,
         GLOBAL_RELATIONSHIPS: "/settings/global-relationships",
         CREATE_GLOBAL_RELATIONSHIP: "/settings/global-relationships/create",
+        API_COMFORT_TOOLS: "/settings/api-comfort-tools",
         WEBHOOKS: "/settings/webhooks",
         CREATE_WEBHOOK: "/settings/webhooks/create",
         NOTIFICATION_SCHEDULE: "/settings/notification-schedule",

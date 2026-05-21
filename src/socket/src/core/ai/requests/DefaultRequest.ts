@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IRequestData, IRequestExecuteParams } from "@/core/ai/requests/BaseRequest";
 import { LangboardCalledAPIToolsComponent, LangboardCalledVariablesComponent } from "@/core/ai/helpers/TweaksComponent";
-import { createApiComfortToolPrompt, expandApiNamesWithComfortTools } from "@/core/ai/helpers/ApiComfortTools";
+import { createApiComfortToolPrompt, expandApiNamesWithComfortTools, IApiComfortTool } from "@/core/ai/helpers/ApiComfortTools";
 import { IBotRequestModel } from "@/core/ai/types";
 import { Utils } from "@langboard/core/utils";
 import { OLLAMA_API_URL } from "@/Constants";
@@ -44,13 +44,10 @@ class DefaultRequest extends LangflowRequest {
             const agentLLM = botValue.agent_llm;
             delete botValue.agent_llm;
 
-            if (["Ollama", "LM Studio"].includes(agentLLM)) {
-                tweaks[agentLLM] = botValue;
-            } else {
-                botValue.agent_llm = agentLLM;
-                tweaks.Agent = botValue;
-            }
-
+            const configuredApiNames = Array.isArray(botValue.api_names)
+                ? botValue.api_names.filter((apiName): apiName is string => Utils.Type.isString(apiName))
+                : [];
+            const configuredSystemPrompt = Utils.Type.isString(botValue.system_prompt) ? botValue.system_prompt : "";
             const comfortToolNames = Array.isArray(botValue.comfort_tool_names)
                 ? botValue.comfort_tool_names.filter((comfortToolName): comfortToolName is string => Utils.Type.isString(comfortToolName))
                 : [];
@@ -58,8 +55,22 @@ class DefaultRequest extends LangflowRequest {
                 botValue.comfort_tool_descriptions && Utils.Type.isObject(botValue.comfort_tool_descriptions)
                     ? (botValue.comfort_tool_descriptions as Record<string, string>)
                     : {};
+            const comfortToolDefinitions =
+                botValue.comfort_tool_definitions && Utils.Type.isObject(botValue.comfort_tool_definitions)
+                    ? (botValue.comfort_tool_definitions as Record<string, IApiComfortTool>)
+                    : {};
             delete botValue.comfort_tool_names;
             delete botValue.comfort_tool_descriptions;
+            delete botValue.comfort_tool_definitions;
+            delete botValue.api_names;
+            delete botValue.system_prompt;
+
+            if (["Ollama", "LM Studio"].includes(agentLLM)) {
+                tweaks[agentLLM] = botValue;
+            } else {
+                botValue.agent_llm = agentLLM;
+                tweaks.Agent = botValue;
+            }
 
             if (tweaks.base_url) {
                 delete tweaks.base_url;
@@ -69,41 +80,31 @@ class DefaultRequest extends LangflowRequest {
                 tweaks.Ollama.base_url = OLLAMA_API_URL;
             }
 
-            const possibleAgents = ["", "Agent", "Ollama", "LM Studio"];
-            for (let i = 0; i < possibleAgents.length; ++i) {
-                const possibleKey = possibleAgents[i];
-                const agentData = possibleKey ? (tweaks[possibleKey] ?? {}) : tweaks;
-                const comfortToolPrompt = createApiComfortToolPrompt(comfortToolNames, comfortToolDescriptions);
+            const comfortToolPrompt = createApiComfortToolPrompt(comfortToolNames, comfortToolDescriptions, comfortToolDefinitions);
+            let systemPrompt = "";
+            if (requestModel.isTitle) {
+                systemPrompt = this.getTitlePrompt();
+            } else if (this.internalBotSettings) {
+                systemPrompt = this.internalBotSettings.prompt;
+            } else {
+                systemPrompt = configuredSystemPrompt;
+            }
 
-                if (agentData.system_prompt || comfortToolPrompt) {
-                    let systemPrompt = "";
-                    if (requestModel.isTitle) {
-                        systemPrompt = this.getTitlePrompt();
-                    } else {
-                        if (this.internalBotSettings) {
-                            systemPrompt = this.internalBotSettings.prompt;
-                        } else {
-                            systemPrompt = agentData.system_prompt;
-                        }
-                    }
+            if (!requestModel.isTitle && comfortToolPrompt) {
+                systemPrompt = [systemPrompt, comfortToolPrompt].filter(Boolean).join("\n\n");
+            }
 
-                    if (!requestModel.isTitle && comfortToolPrompt) {
-                        systemPrompt = [systemPrompt, comfortToolPrompt].filter(Boolean).join("\n\n");
-                    }
+            if (systemPrompt) {
+                tweaks.Prompt = {
+                    prompt: systemPrompt,
+                };
+            }
 
-                    delete agentData.system_prompt;
-                    tweaks.Prompt = {
-                        prompt: systemPrompt,
-                    };
-                }
-
-                const apiNames = expandApiNamesWithComfortTools(Array.isArray(agentData.api_names) ? agentData.api_names : [], comfortToolNames);
-                delete agentData.api_names;
-                if (apiNames.length) {
-                    const apiToolsComponent = new LangboardCalledAPIToolsComponent(apiNames);
-                    tweaks[LangboardCalledVariablesComponent.name].api_names = apiNames;
-                    tweaks = { ...tweaks, ...apiToolsComponent.toTweaks(), ...apiToolsComponent.toData() };
-                }
+            const apiNames = expandApiNamesWithComfortTools(configuredApiNames, comfortToolNames, comfortToolDefinitions);
+            if (apiNames.length) {
+                const apiToolsComponent = new LangboardCalledAPIToolsComponent(apiNames);
+                tweaks[LangboardCalledVariablesComponent.name].api_names = apiNames;
+                tweaks = { ...tweaks, ...apiToolsComponent.toTweaks(), ...apiToolsComponent.toData() };
             }
         } catch {
             // Ignore parsing errors

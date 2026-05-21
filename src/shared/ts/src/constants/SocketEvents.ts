@@ -206,6 +206,11 @@ const SERVER = {
                 SELECTIONS_DELETED: "settings:notification-schedule:rule:deleted",
             },
         },
+        API_COMFORT_TOOL: {
+            CREATED: "settings:api-comfort-tool:created",
+            UPDATED: "settings:api-comfort-tool:updated:{uid}",
+            DELETED: "settings:api-comfort-tool:deleted:{uid}",
+        },
     },
 } as const;
 

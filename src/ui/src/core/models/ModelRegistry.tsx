@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Model as ActivityModel } from "@/core/models/ActivityModel";
+import type { Model as ApiComfortToolModel } from "@/core/models/ApiComfortToolModel";
 import type { Model as ApiKeySettingModel } from "@/core/models/ApiKeySettingModel";
 import type { Model as AuthUserModel } from "@/core/models/AuthUser";
 import type { Model as BotDefaultScopeBranchModel } from "@/core/models/BotDefaultScopeBranchModel";
@@ -39,6 +40,7 @@ import { createContext, useContext } from "react";
 
 export interface IModelMap {
     ActivityModel: IModelRegistry<typeof ActivityModel>;
+    ApiComfortToolModel: IModelRegistry<typeof ApiComfortToolModel>;
     ApiKeySettingModel: IModelRegistry<typeof ApiKeySettingModel>;
     AuthUser: IModelRegistry<typeof AuthUserModel>;
     BotDefaultScopeBranchModel: IModelRegistry<typeof BotDefaultScopeBranchModel>;
