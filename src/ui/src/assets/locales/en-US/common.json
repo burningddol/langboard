@@ -38,6 +38,8 @@
   "Starting...": "Starting...",
   "Stopping...": "Stopping...",
   "Saving...": "Saving...",
+  "Syncing draft...": "Syncing draft...",
+  "Realtime sync unavailable.": "Realtime sync unavailable.",
   "Add members from group": "Add members from group",
   "Add \"{value}\"": "Add <highlight>\"{{value}}\"</highlight>",
   "Go to Dashboard": "Go to Dashboard",

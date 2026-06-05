@@ -5,7 +5,7 @@ import { Plate } from "platejs/react";
 import { TUseCreateEditor, useCreateEditor } from "@/components/Editor/useCreateEditor";
 import { Editor, EditorContainer } from "@/components/plate-ui/editor";
 import { IEditorContent } from "@/core/models/Base";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Value } from "platejs";
 import { FocusScope } from "@radix-ui/react-focus-scope";
 import { EditorDataProvider, TEditorDataProviderProps, useEditorData } from "@/core/providers/EditorDataProvider";
@@ -18,6 +18,8 @@ import { useSocket } from "@/core/providers/SocketProvider";
 import { EEditorType } from "@langboard/core/constants";
 import { ESocketTopic } from "@langboard/core/enums";
 import type { TSocketScopedTopic } from "@/core/stores/socket/types";
+import { useTranslation } from "react-i18next";
+import SyncBlocker from "@/components/Collaborative/SyncBlocker";
 
 interface IEditorSyncRichPatchRequest {
     document_name: string;
@@ -31,6 +33,17 @@ interface IRichPatchSocketTarget {
 
 const EDITOR_SYNC_RICH_PATCH_REQUEST_EVENT = "editor-sync:rich-draft-patch-request";
 const EMPTY_EDITOR_VALUE: Value = [{ type: "p", children: [{ text: "" }] }];
+const YJS_SELECTION_MISMATCH_ERROR = "Path doesn't match yText";
+
+type TEditorOnChange = () => void;
+
+const isYjsSelectionMismatchError = (error: unknown) => {
+    return error instanceof Error && error.message.includes(YJS_SELECTION_MISMATCH_ERROR);
+};
+
+const isEditorOnChange = (value: unknown): value is TEditorOnChange => {
+    return typeof value === "function";
+};
 
 interface IBasePlateEditorProps extends Omit<TUseCreateEditor, "plugins"> {
     setValue?: (value: IEditorContent) => void;
@@ -90,16 +103,25 @@ function EditorWrapper({
         editorRef = useRef<TEditor>(null);
     }
 
+    const [t] = useTranslation();
     const internalEditorComponentRef = useRef<HTMLDivElement>(null);
+    const [isCollaborativeReady, setIsCollaborativeReady] = useState(false);
+    const [showSyncUnavailable, setShowSyncUnavailable] = useState(false);
+    const [collaborativeRetryKey, setCollaborativeRetryKey] = useState(0);
+    const handleCollaborativeSyncChange = useCallback((isSynced: bool) => {
+        setIsCollaborativeReady(isSynced);
+    }, []);
     const editor = useCreateEditor({
         value,
         readOnly,
         deserializedValue,
+        onCollaborativeSyncChange: handleCollaborativeSyncChange,
         ...props,
     } as TUseCreateEditor);
     const mounted = useMounted();
     const socket = useSocket();
     const { documentID, editorType, form } = useEditorData();
+    const isWaitingForCollaborativeReady = !readOnly && !!documentID && !isCollaborativeReady;
     const valueRef = useRef(value);
     const deserializedValueRef = useRef(deserializedValue);
     valueRef.current = value;
@@ -225,7 +247,7 @@ function EditorWrapper({
     );
 
     useEffect(() => {
-        if (readOnly || !documentID) {
+        if (readOnly || !documentID || !isCollaborativeReady) {
             onCollaborativeValueReady?.(null);
             return;
         }
@@ -234,10 +256,10 @@ function EditorWrapper({
         return () => {
             onCollaborativeValueReady?.(null);
         };
-    }, [documentID, onCollaborativeValueReady, readOnly, updateCollaborativeValue]);
+    }, [documentID, isCollaborativeReady, onCollaborativeValueReady, readOnly, updateCollaborativeValue]);
 
     useEffect(() => {
-        if (readOnly || !documentID) {
+        if (readOnly || !documentID || !isCollaborativeReady) {
             onCollaborativeValueResetReady?.(null);
             return;
         }
@@ -246,7 +268,11 @@ function EditorWrapper({
         return () => {
             onCollaborativeValueResetReady?.(null);
         };
-    }, [documentID, onCollaborativeValueResetReady, readOnly, resetCollaborativeValue]);
+    }, [documentID, isCollaborativeReady, onCollaborativeValueResetReady, readOnly, resetCollaborativeValue]);
+
+    useEffect(() => {
+        setIsCollaborativeReady(readOnly || !documentID);
+    }, [documentID, readOnly]);
 
     useEffect(() => {
         if (!mounted || readOnly || !documentID || !richPatchSocketTarget) {
@@ -290,16 +316,70 @@ function EditorWrapper({
             return;
         }
 
+        setIsCollaborativeReady(false);
+        const originalOnChange = editor.onChange;
+        if (!isEditorOnChange(originalOnChange)) {
+            return;
+        }
+
+        editor.onChange = () => {
+            try {
+                originalOnChange();
+            } catch (error) {
+                if (!isYjsSelectionMismatchError(error)) {
+                    throw error;
+                }
+
+                editor.selection = null;
+                originalOnChange();
+            }
+        };
+
+        try {
+            editor.tf.blur();
+        } catch {
+            // The editor can be between mount and editable registration here.
+        }
+        editor.selection = null;
         yjsApi.init({
             id: documentID,
+            autoSelect: false,
+            selection: null,
             value: getEditorValue(editor),
-            onReady: focusEditor,
+            onReady: () => {
+                if (editor.getOptions(YjsPlugin)?._isSynced) {
+                    setIsCollaborativeReady(true);
+                }
+            },
         });
 
         return () => {
+            editor.onChange = originalOnChange;
+            setIsCollaborativeReady(false);
             yjsApi.destroy();
         };
-    }, [documentID, editor, focusEditor, getEditorValue, mounted, readOnly]);
+    }, [collaborativeRetryKey, documentID, editor, focusEditor, getEditorValue, mounted, readOnly]);
+
+    useEffect(() => {
+        if (isCollaborativeReady) {
+            focusEditor();
+        }
+    }, [focusEditor, isCollaborativeReady]);
+
+    useEffect(() => {
+        if (!isWaitingForCollaborativeReady) {
+            setShowSyncUnavailable(false);
+            return;
+        }
+
+        const timeoutID = window.setTimeout(() => {
+            setShowSyncUnavailable(true);
+        }, 5_000);
+
+        return () => {
+            window.clearTimeout(timeoutID);
+        };
+    }, [isWaitingForCollaborativeReady]);
 
     useEffect(() => {
         if (!mounted || readOnly || !focusOnReady || documentID) {
@@ -330,9 +410,18 @@ function EditorWrapper({
     return (
         <FocusScope trapped={false} loop={false} className="w-full outline-none">
             <Plate editor={editor} readOnly={readOnly} onValueChange={handleValueChange}>
-                <EditorContainer className={containerClassName}>
-                    <Editor variant={variant} className={className} placeholder={placeholder} readOnly={readOnly} ref={setEditorComponentRefs} />
-                </EditorContainer>
+                <div className="relative">
+                    <EditorContainer className={containerClassName}>
+                        <Editor variant={variant} className={className} placeholder={placeholder} readOnly={readOnly} ref={setEditorComponentRefs} />
+                    </EditorContainer>
+                    {isWaitingForCollaborativeReady && (
+                        <SyncBlocker
+                            actionLabel={showSyncUnavailable ? t("common.Refresh") : undefined}
+                            label={t(showSyncUnavailable ? "common.Realtime sync unavailable." : "common.Syncing draft...")}
+                            onAction={showSyncUnavailable ? () => setCollaborativeRetryKey((prev) => prev + 1) : undefined}
+                        />
+                    )}
+                </div>
             </Plate>
         </FocusScope>
     );

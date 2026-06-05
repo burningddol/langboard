@@ -26,7 +26,6 @@ class ProjectWikiRepository(BaseOrderRepository[ProjectWiki, Project]):
                 SqlBuilder.select.table(ProjectWiki)
                 .where(ProjectWiki.column("project_id") == project_id)
                 .order_by(ProjectWiki.column("order").asc())
-                .group_by(ProjectWiki.column("id"), ProjectWiki.column("order"))
             )
             wikis = result.all()
         return wikis

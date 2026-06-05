@@ -60,13 +60,7 @@ class CheckitemRepository(BaseOrderRepository[Checkitem, Checklist]):
             .join(Card, Card.column("id") == Checklist.column("card_id"))
             .join(Project, Project.column("id") == Card.column("project_id"))
             .where((Checkitem.column("user_id") == user_id) & (Checkitem.column("created_at") <= pagination.refer_time))
-            .order_by(Checkitem.column("created_at").desc())
-            .group_by(
-                Checkitem.column("id"),
-                Checkitem.column("created_at"),
-                Card.column("id"),
-                Project.column("id"),
-            )
+            .order_by(Checkitem.column("created_at").desc(), Checkitem.column("id").desc())
         )
         query = InfraHelper.paginate(query, pagination.page, pagination.limit)
 

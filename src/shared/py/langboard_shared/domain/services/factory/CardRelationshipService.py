@@ -40,7 +40,7 @@ class CardRelationshipService(BaseDomainService):
         card: TCardParam | None,
         is_parent: bool,
         relationships: list[tuple[str, str]],
-    ) -> bool | None:
+    ) -> list[dict[str, Any]] | None:
         params = InfraHelper.get_records_with_foreign_by_params((Project, project), (Card, card))
         if not params:
             return None
@@ -107,4 +107,4 @@ class CardRelationshipService(BaseDomainService):
         )
         CardBotTask.card_relationship_updated(user_or_bot, project, card)
 
-        return True
+        return new_relationships

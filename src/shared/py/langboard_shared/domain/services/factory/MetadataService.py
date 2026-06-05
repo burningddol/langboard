@@ -1,5 +1,5 @@
 from typing import Any, Literal, TypeVar, overload
-from ....core.db import BaseSqlModel
+from ....core.db import BaseDbModel
 from ....core.domain import BaseDomainService
 from ...models.bases import BaseMetadataModel
 
@@ -15,14 +15,14 @@ class MetadataService(BaseDomainService):
 
     @overload
     def get_all_as_api(
-        self, model: type[_TMetadata], foreign_model: BaseSqlModel, as_dict: Literal[False]
+        self, model: type[_TMetadata], foreign_model: BaseDbModel, as_dict: Literal[False]
     ) -> list[dict[str, Any]]: ...
     @overload
     def get_all_as_api(
-        self, model: type[_TMetadata], foreign_model: BaseSqlModel, as_dict: Literal[True]
+        self, model: type[_TMetadata], foreign_model: BaseDbModel, as_dict: Literal[True]
     ) -> dict[str, Any]: ...
     def get_all_as_api(
-        self, model: type[_TMetadata], foreign_model: BaseSqlModel, as_dict: bool = False
+        self, model: type[_TMetadata], foreign_model: BaseDbModel, as_dict: bool = False
     ) -> list[dict[str, Any]] | dict[str, Any]:
         metadata_list = self.repo.metadata.get_list(model, foreign_model)
         if not as_dict:
@@ -33,17 +33,15 @@ class MetadataService(BaseDomainService):
             metadata[data.key] = data.value
         return metadata
 
-    def get_by_key_as_api(
-        self, model: type[_TMetadata], foreign_model: BaseSqlModel, key: str
-    ) -> dict[str, Any] | None:
+    def get_by_key_as_api(self, model: type[_TMetadata], foreign_model: BaseDbModel, key: str) -> dict[str, Any] | None:
         metadata = self.repo.metadata.get_by_key(model, foreign_model, key)
         return metadata.api_response() if metadata else None
 
     def save(
-        self, model: type[_TMetadata], foreign_model: BaseSqlModel, key: str, value: str, old_key: str | None = None
+        self, model: type[_TMetadata], foreign_model: BaseDbModel, key: str, value: str, old_key: str | None = None
     ) -> _TMetadata | None:
         metadata = self.repo.metadata.save(model, foreign_model, key, value, old_key)
         return metadata
 
-    def delete(self, model: type[_TMetadata], foreign_model: BaseSqlModel, keys: str | list[str]) -> bool:
+    def delete(self, model: type[_TMetadata], foreign_model: BaseDbModel, keys: str | list[str]) -> bool:
         return self.repo.metadata.delete(model, foreign_model, keys)

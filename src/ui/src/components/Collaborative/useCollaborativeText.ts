@@ -15,6 +15,7 @@ export interface IUseCollaborativeTextProps {
     defaultValue?: string | number | readonly string[];
     disabled?: bool;
     preserveSyncedValue?: bool;
+    resetSyncedValueToDefault?: bool;
     onValueChange?: (value: string) => void;
 }
 
@@ -60,6 +61,7 @@ interface ISharedProviderEntry {
     document: Y.Doc;
     provider: HocuspocusProvider;
     refCount: number;
+    cleanupTimeoutID?: number;
     state: ISharedProviderState;
     stateListeners: Set<(state: ISharedProviderState) => void>;
 }
@@ -87,6 +89,7 @@ export const useCollaborativeText = ({
     defaultValue,
     disabled,
     preserveSyncedValue,
+    resetSyncedValueToDefault,
     onValueChange,
 }: IUseCollaborativeTextProps) => {
     const socket = useSocket();
@@ -267,6 +270,9 @@ export const useCollaborativeText = ({
 
             sharedEntry.provider = provider;
             sharedProviderEntries.set(providerKey, sharedEntry);
+        } else if (sharedEntry.cleanupTimeoutID !== undefined) {
+            window.clearTimeout(sharedEntry.cleanupTimeoutID);
+            sharedEntry.cleanupTimeoutID = undefined;
         }
 
         sharedEntry.refCount += 1;
@@ -284,12 +290,24 @@ export const useCollaborativeText = ({
             setIsSynced(true);
             const fallbackValue = fallbackValueRef.current;
             const currentValue = text.toString();
-            if (currentValue !== fallbackValue && !preserveSyncedValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
+            if (resetSyncedValueToDefault && currentValue !== fallbackValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
                 text.doc?.transact(() => {
                     text.delete(0, text.length);
                     if (fallbackValue) {
                         text.insert(0, fallbackValue);
                     }
+                });
+                hasLocalDirtyValueRef.current = false;
+                valueRef.current = fallbackValue;
+                setValue(fallbackValue);
+                onValueChangeRef.current?.(fallbackValue);
+                return;
+            }
+
+            if (!currentValue && fallbackValue && !preserveSyncedValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
+                text.doc?.transact(() => {
+                    text.delete(0, text.length);
+                    text.insert(0, fallbackValue);
                 });
                 hasLocalDirtyValueRef.current = false;
                 valueRef.current = fallbackValue;
@@ -380,6 +398,21 @@ export const useCollaborativeText = ({
             }
 
             const nextValue = text.toString();
+            const fallbackValue = fallbackValueRef.current;
+            if (resetSyncedValueToDefault && nextValue !== fallbackValue && !hasLocalDirtyValueRef.current && !hasActiveRemoteFieldEditor()) {
+                text.doc?.transact(() => {
+                    text.delete(0, text.length);
+                    if (fallbackValue) {
+                        text.insert(0, fallbackValue);
+                    }
+                });
+                hasLocalDirtyValueRef.current = false;
+                valueRef.current = fallbackValue;
+                setValue(fallbackValue);
+                onValueChangeRef.current?.(fallbackValue);
+                return;
+            }
+
             isApplyingRemoteChangeRef.current = true;
             valueRef.current = nextValue;
             setValue(nextValue);
@@ -409,14 +442,20 @@ export const useCollaborativeText = ({
             sharedEntry!.stateListeners.delete(handleSharedProviderStateChange);
             sharedEntry!.refCount -= 1;
             if (sharedEntry!.refCount <= 0) {
-                provider.destroy();
-                document.destroy();
-                sharedProviderEntries.delete(providerKey);
+                sharedEntry!.cleanupTimeoutID = window.setTimeout(() => {
+                    if (!sharedEntry || sharedEntry.refCount > 0) {
+                        return;
+                    }
+
+                    provider.destroy();
+                    document.destroy();
+                    sharedProviderEntries.delete(providerKey);
+                }, 30_000);
             }
             providerRef.current = null;
             ytextRef.current = null;
         };
-    }, [currentUserUID, disabled, field, hasActiveRemoteFieldEditor, preserveSyncedValue, resolvedDocumentID, socket]);
+    }, [currentUserUID, disabled, field, hasActiveRemoteFieldEditor, preserveSyncedValue, resetSyncedValueToDefault, resolvedDocumentID, socket]);
 
     const updateValue = useCallback((nextValue: string) => {
         hasLocalDirtyValueRef.current = nextValue !== fallbackValueRef.current;
@@ -497,11 +536,28 @@ export const useCollaborativeText = ({
         [currentUser, field, userColor, userName]
     );
 
+    const retrySync = useCallback(() => {
+        const provider = providerRef.current;
+        if (!provider) {
+            socket.reconnect();
+            return;
+        }
+
+        setIsConnected(false);
+        setIsSynced(false);
+        provider.disconnect();
+        provider.connect().catch(() => {
+            setIsConnected(false);
+            setIsSynced(false);
+        });
+    }, [socket]);
+
     return {
         isConnected,
         isSynced,
         remoteMeta,
         remoteCursors,
+        retrySync,
         updateMeta,
         updateSelection,
         value,

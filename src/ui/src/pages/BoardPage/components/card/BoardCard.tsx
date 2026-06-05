@@ -2,6 +2,7 @@ import Box from "@/components/base/Box";
 import Button from "@/components/base/Button";
 import Dialog from "@/components/base/Dialog";
 import Flex from "@/components/base/Flex";
+import Floating from "@/components/base/Floating";
 import IconComponent from "@/components/base/IconComponent";
 import ScrollArea from "@/components/base/ScrollArea";
 import ShineBorder from "@/components/base/ShineBorder";
@@ -14,10 +15,9 @@ import { BoardCardProvider, useBoardCard, useBoardCardPanel } from "@/core/provi
 import { useBoardController } from "@/core/providers/BoardController";
 import { ROUTES } from "@/core/routing/constants";
 import BoardCardActionList, { SkeletonBoardCardActionList } from "@/pages/BoardPage/components/card/action/BoardCardActionList";
-import BoardCardActionAttachFile from "@/pages/BoardPage/components/card/action/file/BoardCardActionAttachFile";
 import BoardCardActionRelationship from "@/pages/BoardPage/components/card/action/relationship/BoardCardActionRelationship";
 import BoardCardChecklistGroup, { SkeletonBoardCardChecklistGroup } from "@/pages/BoardPage/components/card/checklist/BoardCardChecklistGroup";
-import { useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
+import { useBoardCardSectionSaveActions } from "@/pages/BoardPage/components/card/BoardCardSectionSaveProvider";
 import BoardCardColumnName, { SkeletonBoardCardColumnName } from "@/pages/BoardPage/components/card/BoardCardColumnName";
 import BoardCardDeadline, { SkeletonBoardCardDeadline } from "@/pages/BoardPage/components/card/BoardCardDeadline";
 import BoardCardDescription, { SkeletonBoardCardDescription } from "@/pages/BoardPage/components/card/BoardCardDescription";
@@ -38,9 +38,9 @@ import useCardDeletedHandlers from "@/controllers/socket/card/useCardDeletedHand
 import { EHttpStatus, ESocketTopic } from "@langboard/core/enums";
 import { getEditorStore } from "@/core/stores/EditorStore";
 import { useHasRunningBot } from "@/core/stores/BotStatusStore";
-import { ProjectRole } from "@/core/models/roles";
 import { cn } from "@/core/utils/ComponentUtils";
 import { useBoardChat } from "@/core/providers/BoardChatProvider";
+import { useIsMobile } from "@/core/hooks/useIsMobile";
 
 export interface IBoardCardProps {
     projectUID: string;
@@ -50,10 +50,20 @@ export interface IBoardCardProps {
     isExpanded?: bool;
     setIsExpanded?: React.Dispatch<React.SetStateAction<bool>>;
     onClose?: () => void;
+    onEditModeStateChange?: (isEditing: bool, cancelEdit: (() => void) | null) => void;
 }
 
 const BoardCard = memo(
-    ({ projectUID, cardUID, currentUser, viewportRef, isExpanded = false, setIsExpanded, onClose }: IBoardCardProps): React.JSX.Element => {
+    ({
+        projectUID,
+        cardUID,
+        currentUser,
+        viewportRef,
+        isExpanded = false,
+        setIsExpanded,
+        onClose,
+        onEditModeStateChange,
+    }: IBoardCardProps): React.JSX.Element => {
         const { setPageAliasRef } = usePageHeader();
         const { data: cardData, isFetching, error } = useGetCardDetails({ project_uid: projectUID, card_uid: cardUID });
         const [t] = useTranslation();
@@ -106,7 +116,12 @@ const BoardCard = memo(
                     <SkeletonBoardCard />
                 ) : (
                     <BoardCardProvider projectUID={projectUID} card={cardData.card} currentUser={currentUser} viewportRef={viewportRef}>
-                        <BoardCardResult isExpanded={isExpanded} setIsExpanded={setIsExpanded} onClose={onClose} />
+                        <BoardCardResult
+                            isExpanded={isExpanded}
+                            setIsExpanded={setIsExpanded}
+                            onClose={onClose}
+                            onEditModeStateChange={onEditModeStateChange}
+                        />
                     </BoardCardProvider>
                 )}
             </>
@@ -189,12 +204,14 @@ interface IBoardCardResultProps {
     isExpanded: bool;
     setIsExpanded?: React.Dispatch<React.SetStateAction<bool>>;
     onClose?: () => void;
+    onEditModeStateChange?: (isEditing: bool, cancelEdit: (() => void) | null) => void;
 }
 
-function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResultProps): React.JSX.Element {
-    const { card } = useBoardCard();
+function BoardCardResult({ isExpanded, setIsExpanded, onClose, onEditModeStateChange }: IBoardCardResultProps): React.JSX.Element {
+    const { card, isCardEditing, leaveCardEditMode } = useBoardCard();
     const { isActionPanelOpen } = useBoardCardPanel();
     const { boardChat } = useBoardController();
+    const { cancelSections } = useBoardCardSectionSaveActions();
     const [t] = useTranslation();
     const attachments = ProjectCardAttachment.Model.useModels((model) => model.card_uid === card.uid);
     const checklists = ProjectChecklist.Model.useModels((model) => model.card_uid === card.uid);
@@ -206,6 +223,19 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
             getEditorStore().setCurrentEditor(null);
         };
     }, []);
+
+    useEffect(() => {
+        const cancelCardEdit = () => {
+            cancelSections();
+            leaveCardEditMode();
+        };
+
+        onEditModeStateChange?.(isCardEditing, isCardEditing ? cancelCardEdit : null);
+
+        return () => {
+            onEditModeStateChange?.(false, null);
+        };
+    }, [cancelSections, isCardEditing, leaveCardEditMode, onEditModeStateChange]);
 
     return (
         <>
@@ -314,7 +344,7 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose }: IBoardCardResul
                         </Box>
                     </Box>
                 </Flex>
-                <BoardCardFloatingNav />
+                <BoardCardFloatingNav isExpanded={isExpanded} />
             </Flex>
         </>
     );
@@ -418,20 +448,17 @@ function BoardCardExpandedChatScope({ isExpanded }: { isExpanded: bool }): null 
     return null;
 }
 
-function BoardCardFloatingNav(): React.JSX.Element {
+function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.Element {
     const { projectUID, card } = useBoardCard();
     const { isCommentPanelOpen, toggleCommentPanel, isActionPanelOpen, toggleActionPanel } = useBoardCardPanel();
-    const { hasRoleAction, canEditCard, isCardEditing, enterCardEditMode, leaveCardEditMode } = useBoardCard();
-    const { getHasUnsavedChanges, saveDirtySections, cancelDirtySections, resetAll } = useBoardCardUnsavedActions();
+    const { canEditCard, isCardEditing, enterCardEditMode, leaveCardEditMode } = useBoardCard();
+    const { boardChat, chatResizableSidebar, setChatResizableSidebar } = useBoardController();
+    const { cancelSections, saveSections } = useBoardCardSectionSaveActions();
     const [t] = useTranslation();
     const [isSaving, setIsSaving] = useState(false);
-    const canAttachFile = hasRoleAction(ProjectRole.EAction.CardUpdate) && isCardEditing;
+    const isMobile = useIsMobile();
     const { mutateAsync: changeCardDetailsMutateAsync } = useChangeCardDetails({ interceptToast: true });
-
-    const handleCancelEditing = useCallback(() => {
-        cancelDirtySections();
-        leaveCardEditMode();
-    }, [cancelDirtySections, leaveCardEditMode]);
+    const shouldShowChatButton = !!boardChat && !!chatResizableSidebar && (isExpanded || isMobile);
 
     const handleSaveEditing = useCallback(async () => {
         if (isSaving) {
@@ -441,113 +468,110 @@ function BoardCardFloatingNav(): React.JSX.Element {
         setIsSaving(true);
 
         try {
-            if (getHasUnsavedChanges()) {
-                const details = await saveDirtySections();
-                if (!details) {
-                    Toast.Add.error(t("card.unsavedChanges.Keep editing"));
+            const details = await saveSections();
+            if (!details) {
+                Toast.Add.error(t("card.unsavedChanges.Keep editing"));
+                return;
+            }
+
+            if (Object.keys(details).length > 0) {
+                const promise = changeCardDetailsMutateAsync({
+                    project_uid: projectUID,
+                    card_uid: card.uid,
+                    ...details,
+                });
+
+                Toast.Add.promise(promise, {
+                    loading: t("common.Changing..."),
+                    error: (error) => {
+                        const messageRef = { message: "" };
+                        const { handle } = setupApiErrorHandler({}, messageRef);
+
+                        handle(error);
+                        return messageRef.message;
+                    },
+                    success: () => t("successes.Card changed successfully."),
+                });
+
+                try {
+                    await promise;
+                } catch {
                     return;
                 }
-
-                if (Object.keys(details).length > 0) {
-                    const promise = changeCardDetailsMutateAsync({
-                        project_uid: projectUID,
-                        card_uid: card.uid,
-                        ...details,
-                    });
-
-                    Toast.Add.promise(promise, {
-                        loading: t("common.Changing..."),
-                        error: (error) => {
-                            const messageRef = { message: "" };
-                            const { handle } = setupApiErrorHandler({}, messageRef);
-
-                            handle(error);
-                            return messageRef.message;
-                        },
-                        success: () => t("successes.Card changed successfully."),
-                    });
-
-                    try {
-                        await promise;
-                    } catch {
-                        return;
-                    }
-                }
-
-                resetAll();
             }
 
             leaveCardEditMode();
         } finally {
             setIsSaving(false);
         }
-    }, [card, changeCardDetailsMutateAsync, getHasUnsavedChanges, isSaving, leaveCardEditMode, projectUID, resetAll, saveDirtySections]);
+    }, [card, changeCardDetailsMutateAsync, isSaving, leaveCardEditMode, projectUID, saveSections]);
+
+    const handleCancelEditing = useCallback(() => {
+        cancelSections();
+        leaveCardEditMode();
+    }, [cancelSections, leaveCardEditMode]);
 
     return (
-        <Flex justify="center" className="pointer-events-none z-[110] shrink-0">
-            <Flex items="center" gap="1" className={cn("pointer-events-auto rounded-full border bg-background shadow-lg backdrop-blur")}>
-                {canEditCard && (
-                    <>
-                        {!isCardEditing ? (
-                            <Button type="button" variant="ghost" className="h-10 gap-1 rounded-full px-3 sm:px-4" onClick={enterCardEditMode}>
-                                <IconComponent icon="pen" size="4" />
-                                <span className="hidden sm:inline">{t("common.Edit")}</span>
-                            </Button>
-                        ) : (
-                            <>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
-                                    onClick={handleCancelEditing}
-                                >
-                                    <IconComponent icon="x" size="4" />
-                                    <span className="hidden sm:inline">{t("common.Cancel")}</span>
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="default"
-                                    disabled={isSaving}
-                                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
-                                    onClick={handleSaveEditing}
-                                >
-                                    <IconComponent icon="save" size="4" />
-                                    <span className="hidden sm:inline">{t("common.Save")}</span>
-                                </Button>
-                            </>
-                        )}
-                    </>
-                )}
-                {canAttachFile && (
-                    <BoardCardActionAttachFile
-                        buttonClassName={"h-10 gap-1 rounded-full border-0 bg-transparent px-3 text-sm shadow-none hover:bg-accent sm:px-4"}
-                    >
-                        <>
-                            <IconComponent icon="file-up" size="4" />
-                            <span className="hidden sm:inline">{t("card.Attach file")}</span>
-                        </>
-                    </BoardCardActionAttachFile>
-                )}
-                <Button
-                    type="button"
-                    variant={isActionPanelOpen ? "default" : "ghost"}
-                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
-                    onClick={toggleActionPanel}
-                >
-                    <IconComponent icon="list" size="4" />
-                    <span className="hidden sm:inline">{t("card.Actions")}</span>
-                </Button>
-                <Button
-                    type="button"
-                    variant={isCommentPanelOpen ? "default" : "ghost"}
-                    className="h-10 gap-1 rounded-full px-3 sm:px-4"
-                    onClick={toggleCommentPanel}
-                >
-                    <IconComponent icon="message-square" size="4" />
-                    <span className="hidden sm:inline">{t("card.Comments")}</span>
-                </Button>
-            </Flex>
-        </Flex>
+        <>
+            <Floating.Nav
+                className={cn("z-[110]", !isExpanded && "max-w-[100vw] sm:max-w-[90vw] lg:max-w-[1120px]")}
+                contentClassName="bg-background"
+                itemClassName="h-10 px-3"
+                labelClassName="hidden md:inline"
+                items={[
+                    {
+                        key: "chat",
+                        label: t("project.Chat with AI"),
+                        icon: "message-circle",
+                        hidden: !shouldShowChatButton,
+                        active: !chatResizableSidebar?.hidden,
+                        onClick: () => setChatResizableSidebar((prev) => (prev ? { ...prev, hidden: !prev.hidden } : prev)),
+                    },
+                    ...(!canEditCard
+                        ? []
+                        : !isCardEditing
+                          ? [
+                                {
+                                    key: "edit",
+                                    label: t("common.Edit"),
+                                    icon: "pen",
+                                    onClick: enterCardEditMode,
+                                },
+                            ]
+                          : [
+                                {
+                                    key: "cancel",
+                                    label: t("common.Cancel"),
+                                    icon: "x",
+                                    variant: "outline" as const,
+                                    onClick: handleCancelEditing,
+                                },
+                                {
+                                    key: "save",
+                                    label: t("common.Save"),
+                                    icon: "save",
+                                    variant: "default" as const,
+                                    disabled: isSaving,
+                                    onClick: handleSaveEditing,
+                                },
+                            ]),
+                    {
+                        key: "actions",
+                        label: t("card.Actions"),
+                        icon: "list",
+                        active: isActionPanelOpen,
+                        onClick: toggleActionPanel,
+                    },
+                    {
+                        key: "comments",
+                        label: t("card.Comments"),
+                        icon: "message-square",
+                        active: isCommentPanelOpen,
+                        onClick: toggleCommentPanel,
+                    },
+                ]}
+            />
+        </>
     );
 }
 

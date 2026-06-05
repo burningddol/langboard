@@ -1,6 +1,5 @@
 from ....core.db import DbSession, SqlBuilder
 from ....core.domain import BaseRepository
-from ....core.types import SafeDateTime
 from ....domain.models import User, UserEmail, UserProfile
 from ....helpers import InfraHelper
 
@@ -14,21 +13,11 @@ class UserRepository(BaseRepository[User]):
     def name() -> str:
         return "user"
 
-    def count_users_scroller(self, refer_time: SafeDateTime) -> int:
-        outdated_query = SqlBuilder.select.count(User, User.column("id")).where(
-            (User.column("created_at") > refer_time) & (User.column("deleted_at") == None)  # noqa
-        )
-
-        count = 0
-        with DbSession.use(readonly=True) as db:
-            count = db.exec(outdated_query).first() or 0
-        return count
-
-    def get_all_with_profile_scroller(self, refer_time: SafeDateTime):
+    def get_all_with_profile_in_settings(self):
         query = (
             SqlBuilder.select.tables(User, UserProfile)
             .outerjoin(UserProfile, User.column("id") == UserProfile.column("user_id"))
-            .where(User.column("created_at") <= refer_time)
+            .where(User.column("deleted_at") == None)  # noqa
             .order_by(User.column("created_at").desc(), User.column("id").desc())
         )
 
@@ -37,6 +26,25 @@ class UserRepository(BaseRepository[User]):
             result = db.exec(query)
             records = result.all()
         return records
+
+    def count_not_deleted(self) -> int:
+        with DbSession.use(readonly=True) as db:
+            return (
+                db.exec(
+                    SqlBuilder.select.count(User, User.column("id")).where(User.column("deleted_at") == None)  # noqa
+                ).first()
+                or 0
+            )
+
+    def get_not_deleted_page(self, offset: int, limit: int) -> list[User]:
+        with DbSession.use(readonly=True) as db:
+            return db.exec(
+                SqlBuilder.select.table(User)
+                .where(User.column("deleted_at") == None)  # noqa
+                .order_by(User.column("created_at").asc(), User.column("id").asc())
+                .offset(offset)
+                .limit(limit)
+            ).all()
 
     def get_by_email(self, email: str | None):
         user = InfraHelper.get_by(User, "email", email)

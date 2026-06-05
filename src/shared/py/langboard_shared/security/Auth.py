@@ -1,10 +1,10 @@
-from typing import Any, Literal, overload
+from typing import Any, Literal, TypeVar, overload
 from fastapi import Depends, Request, status
 from jwt import ExpiredSignatureError, InvalidTokenError
 from starlette.datastructures import Headers
 from starlette.requests import cookie_parser
 from ..core.caching import Cache
-from ..core.db import DbSession, SqlBuilder
+from ..core.db import BaseDbModel, DbSession, SqlBuilder
 from ..core.routing import ApiErrorCode, ApiException
 from ..core.security import AuthSecurity, KeyVault
 from ..core.utils.decorators import staticclass
@@ -14,8 +14,21 @@ from ..domain.models.BaseBotModel import BaseBotModel, BotPlatform
 from ..Env import Env
 
 
+_TModel = TypeVar("_TModel", bound=BaseDbModel)
+
+
 @staticclass
 class Auth:
+    @staticmethod
+    def __get_model_by_columns(model_cls: type[_TModel], *where: Any) -> _TModel | None:
+        statement = SqlBuilder.select.table(model_cls)
+        if where:
+            statement = statement.where(*where)
+        statement = statement.limit(1)
+
+        with DbSession.use(readonly=True) as db:
+            return db.exec(statement).first()
+
     @overload
     @staticmethod
     def scope(where: Literal["all"]) -> User | Bot: ...
@@ -87,10 +100,7 @@ class Auth:
             pass
 
         try:
-            user = None
-            with DbSession.use(readonly=True) as db:
-                result = db.exec(SqlBuilder.select.table(User).where(User.column("id") == user_id).limit(1))
-                user = result.first()
+            user = Auth.__get_model_by_columns(User, User.column("id") == user_id)
             if not user:
                 return InvalidTokenError("Invalid token")
 
@@ -122,10 +132,7 @@ class Auth:
             pass
 
         try:
-            bot = None
-            with DbSession.use(readonly=True) as db:
-                result = db.exec(SqlBuilder.select.table(Bot).where(Bot.column("app_api_token") == api_token).limit(1))
-                bot = result.first()
+            bot = Auth.__get_model_by_columns(Bot, Bot.column("app_api_token") == api_token)
             if not bot:
                 return None
 
@@ -233,10 +240,7 @@ class Auth:
             return status.HTTP_401_UNAUTHORIZED
 
         try:
-            user = None
-            with DbSession.use(readonly=True) as db:
-                result = db.exec(SqlBuilder.select.table(User).where(User.column("id") == user_id).limit(1))
-                user = result.first()
+            user = Auth.__get_model_by_columns(User, User.column("id") == user_id)
             if not user:
                 return status.HTTP_401_UNAUTHORIZED
         except Exception:

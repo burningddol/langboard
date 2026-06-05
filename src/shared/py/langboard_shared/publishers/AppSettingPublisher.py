@@ -31,6 +31,17 @@ class AppSettingPublisher(BaseSocketPublisher):
         AppSettingPublisher.put_dispather(model, publish_model)
 
     @staticmethod
+    def user_updated(uid: str, model: dict[str, Any]):
+        publish_model = SocketPublishModel(
+            topic=SocketTopic.AppSettings,
+            topic_id=SettingSocketTopicID.User.value,
+            event=f"settings:user:updated:{uid}",
+            data_keys=list(model.keys()),
+        )
+
+        AppSettingPublisher.put_dispather(model, publish_model)
+
+    @staticmethod
     def global_relationship_created(model: dict[str, Any]):
         publish_model = SocketPublishModel(
             topic=SocketTopic.Global,

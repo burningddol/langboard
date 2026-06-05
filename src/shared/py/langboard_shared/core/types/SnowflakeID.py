@@ -63,6 +63,21 @@ class SnowflakeID(int):
         yield cls.validate
 
     @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        from pydantic_core import core_schema
+
+        return core_schema.with_info_plain_validator_function(
+            cls.validate,
+            json_schema_input_schema=core_schema.union_schema(
+                [core_schema.int_schema(), core_schema.str_schema(), core_schema.none_schema()]
+            ),
+        )
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):
+        return {"type": "string"}
+
+    @classmethod
     def validate(cls, value: Any, _, **kwargs):
         if value is None:
             return cls()

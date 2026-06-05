@@ -2,7 +2,7 @@ import re
 from hashlib import sha1
 from typing import Any, ClassVar, NotRequired, TypedDict
 from sqlalchemy import JSON, TEXT
-from ...core.db import ApiField, BaseSqlModel, CSVType, Field
+from ...core.db import ApiField, BaseDbModel, CSVType, Field
 
 
 class ApiComfortToolMap(TypedDict):
@@ -15,7 +15,7 @@ class ApiComfortToolMap(TypedDict):
     api_forms: NotRequired[dict[str, dict[str, Any]]]
 
 
-class ApiComfortTool(BaseSqlModel, table=True):
+class ApiComfortTool(BaseDbModel, table=True):
     DEFAULT_TOOLS: ClassVar[dict[str, ApiComfortToolMap]] = {
         "card_lookup": {
             "label": "Card lookup",

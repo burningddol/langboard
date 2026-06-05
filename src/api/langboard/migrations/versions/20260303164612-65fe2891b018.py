@@ -8,8 +8,6 @@ Create Date: 2026-03-03 16:46:12.615403
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import CSVType, SnowflakeIDType
 
@@ -32,7 +30,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.Column("url", sa.TEXT(), nullable=False),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("total_used_count", sa.Integer(), nullable=False),

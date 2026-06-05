@@ -33,7 +33,6 @@ const ProjectCardStarButton = memo(({ isUpdating, setIsUpdating, updateStarredPr
             },
             {
                 onSuccess: async () => {
-                    project.starred = !starred;
                     updateStarredProjects();
                 },
                 onError: (error) => {

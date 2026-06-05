@@ -26,7 +26,6 @@ export const usePageNavigate = () => {
 
             if (Utils.Type.isNullOrUndefined(options.smooth)) {
                 navigateOptions.viewTransition = false;
-                navigateOptions.flushSync = true;
             } else if (options.smooth) {
                 navigateOptions.viewTransition = true;
             }

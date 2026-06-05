@@ -26,11 +26,6 @@ class CardRelationshipRepository(BaseRepository[CardRelationship]):
                     GlobalCardRelationshipType,
                     CardRelationship.column("relationship_type_id") == GlobalCardRelationshipType.column("id"),
                 )
-                .join(
-                    Card,
-                    (CardRelationship.column("card_id_parent") == Card.column("id"))
-                    | (CardRelationship.column("card_id_child") == Card.column("id")),
-                )
                 .where(
                     (CardRelationship.column("card_id_parent") == card_id)
                     | (CardRelationship.column("card_id_child") == card_id)
@@ -52,8 +47,7 @@ class CardRelationshipRepository(BaseRepository[CardRelationship]):
                 )
                 .join(
                     Card,
-                    (CardRelationship.column("card_id_parent") == Card.column("id"))
-                    | (CardRelationship.column("card_id_child") == Card.column("id")),
+                    CardRelationship.column("card_id_parent") == Card.column("id"),
                 )
                 .join(Project, (Card.column("project_id") == Project.column("id")))
                 .where(Project.column("id") == project_id)

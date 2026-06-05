@@ -66,17 +66,20 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
         () => assignedMembers.filter((item) => isAssignableWikiMember(item, currentUser.uid)),
         [assignedMembers, currentUser]
     );
+    const showableAssignees = useMemo(() => assignedMembers.filter((member) => member.isValidUser()), [assignedMembers]);
     const assignedMemberUIDs = useMemo(() => assignedMembers.map((member) => member.uid), [assignedMembers]);
     const defaultSelectedMemberUIDs = useMemo(() => JSON.stringify(assignedMemberUIDs), [assignedMemberUIDs]);
     const [isAssigneePopoverOpen, setIsAssigneePopoverOpen] = useState(false);
-    const { remoteMeta, resetValue, updateMeta, updateValue, value } = useCollaborativeText({
+    const { isSynced, remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
         defaultValue: defaultSelectedMemberUIDs,
         disabled: isPublic || !isAssigneePopoverOpen,
         collaborationType: EEditorCollaborationType.Wiki,
         uid: wiki.uid,
         section: "private-assignees",
         field: "selected-member-uids",
+        resetSyncedValueToDefault: true,
     });
+    const isWaitingForAssigneeSync = !isPublic && isAssigneePopoverOpen && !isSynced;
     const selectedMemberUIDs = parseCollaborativeMemberUIDs(value, assignedMemberUIDs);
     const collaborativeAssignees = useMemo(
         () =>
@@ -179,7 +182,7 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
     };
 
     const saveAssignees = (items: TUserLikeModel[]) => {
-        if (isValidating || isPublic) {
+        if (isValidating || isPublic || isWaitingForAssigneeSync) {
             return;
         }
 
@@ -231,10 +234,9 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
                     flushSelectedMemberUIDsTimeoutRef.current = null;
                 }
                 updateMeta(null);
-                resetValue(defaultSelectedMemberUIDs);
             }
         },
-        [defaultSelectedMemberUIDs, resetValue, updateMeta]
+        [updateMeta]
     );
 
     const flushSelectedMemberUIDs = useCallback(
@@ -260,6 +262,10 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
 
     const handleAssigneesChange = useCallback(
         (items: (string | TUserLikeModel)[]) => {
+            if (isWaitingForAssigneeSync) {
+                return;
+            }
+
             const nextSelectedMemberUIDs = getUserUIDs(items);
             if (wiki.assigned_members.some((member) => member.uid === currentUser.uid) && !nextSelectedMemberUIDs.includes(currentUser.uid)) {
                 nextSelectedMemberUIDs.unshift(currentUser.uid);
@@ -279,7 +285,7 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
             );
             flushSelectedMemberUIDs(nextSelectedMemberUIDs);
         },
-        [currentUser, flushSelectedMemberUIDs, selectedMemberUIDs, updateMeta, wiki]
+        [currentUser, flushSelectedMemberUIDs, isWaitingForAssigneeSync, selectedMemberUIDs, updateMeta, wiki]
     );
 
     return (
@@ -297,6 +303,9 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
                         className: "size-8",
                         title: t("project.Assign members"),
                     }}
+                    helperContent={
+                        isWaitingForAssigneeSync ? <div className="text-xs text-muted-foreground">{t("common.Syncing draft...")}</div> : null
+                    }
                     popoverContentProps={{
                         className: cn(
                             "max-w-[calc(100vw_-_theme(spacing.20))]",
@@ -316,7 +325,7 @@ const WikiPrivateOption = memo(({ wiki, changeTab }: IWikiPrivateOptionProps) =>
                     allSelectables={allItems}
                     selectedAssignees={visibleCollaborativeAssignees}
                     originalAssignees={originalAssignees}
-                    showableAssignees={assignedMembers}
+                    showableAssignees={showableAssignees}
                     tagContentProps={{
                         scope: {
                             projectUID: project.uid,

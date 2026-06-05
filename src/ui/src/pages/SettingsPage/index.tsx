@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useSocket } from "@/core/providers/SocketProvider";
 import { EHttpStatus, ESettingSocketTopicID, ESocketTopic } from "@langboard/core/enums";
 import { IS_OLLAMA_RUNNING } from "@/constants";
+import { Navigate } from "react-router";
 import BotsPage from "@/pages/SettingsPage/BotsPage";
 import ApiComfortToolsPage from "@/pages/SettingsPage/ApiComfortToolsPage";
 import GlobalRelationshipsPage from "@/pages/SettingsPage/GlobalRelationshipsPage";
@@ -25,6 +26,7 @@ import McpServerPage from "@/pages/SettingsPage/McpServerPage";
 import { AuthUser } from "@/core/models";
 import useRoleActionFilter from "@/core/hooks/useRoleActionFilter";
 import { ApiKeyRole, McpRole, SettingRole } from "@/core/models/roles";
+import useGetOllamaHealth from "@/controllers/api/settings/ollama/useGetOllamaHealth";
 
 function SettingsProxy(): React.JSX.Element {
     const { currentUser } = useAuth();
@@ -33,6 +35,13 @@ function SettingsProxy(): React.JSX.Element {
     const pathname = location.pathname.split("/").slice(0, 3).join("/");
     const { data, isFetching, error } = useGetSettingRoles();
     const [isReady, setIsReady] = useState(false);
+    const [isOllamaAvailable, setIsOllamaAvailable] = useState(false);
+    const [isOllamaHealthChecked, setIsOllamaHealthChecked] = useState(!IS_OLLAMA_RUNNING);
+    const { mutateAsync: getOllamaHealthMutateAsync } = useGetOllamaHealth({ interceptToast: false });
+
+    if (pathname === ROUTES.SETTINGS.OLLAMA && !IS_OLLAMA_RUNNING) {
+        return <Navigate to={ROUTES.SETTINGS.API_KEYS} replace />;
+    }
 
     useEffect(() => {
         if (!error) {
@@ -71,6 +80,38 @@ function SettingsProxy(): React.JSX.Element {
         };
     }, [currentUser, data, isFetching, socket]);
 
+    useEffect(() => {
+        if (!IS_OLLAMA_RUNNING) {
+            setIsOllamaAvailable(false);
+            setIsOllamaHealthChecked(true);
+            return;
+        }
+
+        let isMounted = true;
+
+        getOllamaHealthMutateAsync({})
+            .then((health) => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setIsOllamaAvailable(health.available);
+                setIsOllamaHealthChecked(true);
+            })
+            .catch(() => {
+                if (!isMounted) {
+                    return;
+                }
+
+                setIsOllamaAvailable(false);
+                setIsOllamaHealthChecked(true);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     let skeletonContent;
     switch (pathname) {
         case ROUTES.SETTINGS.API_KEYS:
@@ -107,8 +148,8 @@ function SettingsProxy(): React.JSX.Element {
 
     return (
         <>
-            {isReady && currentUser ? (
-                <SettingsProxyDisplay currentUser={currentUser} />
+            {isReady && isOllamaHealthChecked && currentUser ? (
+                <SettingsProxyDisplay currentUser={currentUser} isOllamaAvailable={isOllamaAvailable} />
             ) : (
                 <DashboardStyledLayout headerNavs={[]} sidebarNavs={[]}>
                     {skeletonContent}
@@ -118,7 +159,7 @@ function SettingsProxy(): React.JSX.Element {
     );
 }
 
-function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel }): React.JSX.Element {
+function SettingsProxyDisplay({ currentUser, isOllamaAvailable }: { currentUser: AuthUser.TModel; isOllamaAvailable: bool }): React.JSX.Element {
     const [t] = useTranslation();
     const navigate = usePageNavigateRef();
     const pathname = location.pathname.split("/").slice(0, 3).join("/");
@@ -206,7 +247,7 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
         },
     };
 
-    if (IS_OLLAMA_RUNNING) {
+    if (IS_OLLAMA_RUNNING && isOllamaAvailable) {
         sidebarNavs[ROUTES.SETTINGS.OLLAMA] = {
             icon: "ollama",
             name: t("settings.Ollama"),
@@ -251,7 +292,7 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
             pageContent = <McpServerPage />;
             break;
         case ROUTES.SETTINGS.OLLAMA:
-            pageContent = <OllamaPage />;
+            pageContent = IS_OLLAMA_RUNNING && isOllamaAvailable ? <OllamaPage /> : null;
             break;
     }
 
@@ -304,12 +345,12 @@ function SettingsProxyDisplay({ currentUser }: { currentUser: AuthUser.TModel })
                 }
                 break;
             case ROUTES.SETTINGS.OLLAMA:
-                if (!hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.Ollama)) {
+                if (!IS_OLLAMA_RUNNING || !isOllamaAvailable || !hasSettingRoleAction(...SettingRole.CATEGORIZED_MAP.Ollama)) {
                     navigate(foundAvailableRoute ?? ROUTES.DASHBOARD.PROJECTS.ALL, { replace: true });
                 }
                 break;
         }
-    }, [hasApiKeyRoleAction, hasSettingRoleAction, hasMcpRoleAction]);
+    }, [hasApiKeyRoleAction, hasSettingRoleAction, hasMcpRoleAction, isOllamaAvailable]);
 
     return (
         <DashboardStyledLayout headerNavs={Object.values(headerNavs)} sidebarNavs={Object.values(sidebarNavs)}>

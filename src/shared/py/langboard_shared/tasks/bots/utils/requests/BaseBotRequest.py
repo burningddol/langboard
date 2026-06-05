@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, TypedDict
 from httpx import TimeoutException, post
-from .....core.db import BaseSqlModel, DbSession
+from .....core.db import BaseDbModel, DbSession
 from .....core.logger import Logger
 from .....core.utils.Converter import convert_python_data
 from .....domain.models import Bot, BotLog, Project
@@ -29,7 +29,7 @@ class BaseBotRequest(ABC):
         event: str,
         data: dict[str, Any],
         project: Project | None,
-        scope_model: BaseSqlModel | None,
+        scope_model: BaseDbModel | None,
     ):
         self._bot = bot
         self._base_url = base_url.rstrip("/")

@@ -20,6 +20,7 @@ interface IBaseUseCreateEditor {
     value?: IEditorContent;
     readOnly?: bool;
     deserializedValue?: Value;
+    onCollaborativeSyncChange?: (isSynced: bool) => void;
 }
 
 export interface IUseReadonlyEditor extends IBaseUseCreateEditor {
@@ -36,7 +37,7 @@ export type TUseCreateEditor = IUseReadonlyEditor | IUseEditor;
 
 export const useCreateEditor = (props: TUseCreateEditor) => {
     const socket = useSocket();
-    const { value, readOnly = false, plugins: customPlugins, deserializedValue } = props;
+    const { value, readOnly = false, plugins: customPlugins, deserializedValue, onCollaborativeSyncChange } = props;
     const { currentUser, socketEvents, chatEventKey, copilotEventKey, form, documentID } = useEditorData();
     const firstname = currentUser.useField("firstname");
     const lastname = currentUser.useField("lastname");
@@ -64,14 +65,14 @@ export const useCreateEditor = (props: TUseCreateEditor) => {
             );
 
             if (documentID) {
-                const yjsKit = createYjsKit({ socket, userName: fullName, documentID });
+                const yjsKit = createYjsKit({ socket, userName: fullName, documentID, onSyncChange: onCollaborativeSyncChange });
                 if (yjsKit) {
                     pluginList.push(yjsKit);
                 }
             }
         }
         return pluginList;
-    }, [readOnly, socketEvents, chatEventKey, copilotEventKey, documentID, fullName, customPlugins]);
+    }, [readOnly, socketEvents, chatEventKey, copilotEventKey, documentID, fullName, customPlugins, onCollaborativeSyncChange]);
     const normalizeEditorValue = useCallback((value: Value) => {
         if (value.length) {
             return value;

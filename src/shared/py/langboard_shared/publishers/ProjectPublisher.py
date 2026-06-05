@@ -40,6 +40,23 @@ class ProjectPublisher(BaseSocketPublisher):
         ProjectPublisher.put_dispather(model, publish_models)
 
     @staticmethod
+    def assigned_to_users(project: Project, users: list[User]):
+        topic_id = project.get_uid()
+        model = {"project_uid": topic_id}
+        publish_models = [
+            SocketPublishModel(
+                topic=SocketTopic.UserPrivate,
+                topic_id=user.get_uid(),
+                event="user:project:assigned",
+                data_keys="project_uid",
+            )
+            for user in users
+        ]
+
+        if publish_models:
+            ProjectPublisher.put_dispather(model, publish_models)
+
+    @staticmethod
     def user_roles_updated(project: Project, target_user: User, roles: list[str]):
         topic_id = project.get_uid()
         model = {"user_uid": target_user.get_uid(), "roles": roles}

@@ -1,5 +1,6 @@
 from typing import Any
-from fastapi import Depends, Request, status
+from fastapi import Depends, Request, Response, status
+from langboard_shared.core.exceptions import ScimProvisioningException
 from langboard_shared.core.routing import ApiErrorCode, ApiException, ApiPermission, AppRouter, JsonResponse
 from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.domain.services import DomainService
@@ -99,11 +100,14 @@ def list_scim_users(
     service: DomainService = DomainService.scope(),
 ) -> JsonResponse:
     Auth.ensure_scim_authorized(request.headers)
-    result = service.scim_provisioning.list_users(
-        start_index=pagination.start_index,
-        count=pagination.count,
-        filter_value=pagination.filter,
-    )
+    try:
+        result = service.scim_provisioning.list_users(
+            start_index=pagination.start_index,
+            count=pagination.count,
+            filter_value=pagination.filter,
+        )
+    except ScimProvisioningException.Unavailable as error:
+        raise ApiException.ServiceUnavailable_503(ApiErrorCode.OP0000) from error
     return JsonResponse(content=result)
 
 
@@ -148,7 +152,12 @@ def create_scim_user(
 ) -> JsonResponse:
     Auth.ensure_scim_authorized(request.headers)
     payload = form.model_dump(exclude_unset=True)
-    user = service.scim_provisioning.create_or_upsert_user(payload)
+    try:
+        user = service.scim_provisioning.create_or_upsert_user(payload)
+    except ScimProvisioningException.InvalidRequest as error:
+        raise ApiException.BadRequest_400(ApiErrorCode.VA0000) from error
+    except ScimProvisioningException.Conflict as error:
+        raise ApiException.Conflict_409(ApiErrorCode.EX1003) from error
 
     return JsonResponse(status_code=status.HTTP_201_CREATED, content=service.scim_provisioning.build_scim_user(user))
 
@@ -180,7 +189,10 @@ def replace_scim_user(
         raise ApiException.NotFound_404(ApiErrorCode.NF1004)
 
     payload = form.model_dump(exclude_unset=True)
-    service.scim_provisioning.apply_user_mutations(user, payload)
+    try:
+        service.scim_provisioning.apply_user_mutations(user, payload)
+    except ScimProvisioningException.Conflict as error:
+        raise ApiException.Conflict_409(ApiErrorCode.EX1003) from error
     return JsonResponse(content=service.scim_provisioning.build_scim_user(user))
 
 
@@ -212,7 +224,10 @@ def patch_scim_user(
 
     operations = [op.model_dump(exclude_unset=True) for op in form.Operations]
     normalized_payload = service.scim_provisioning.normalize_patch_payload(operations)
-    service.scim_provisioning.apply_user_mutations(user, normalized_payload)
+    try:
+        service.scim_provisioning.apply_user_mutations(user, normalized_payload)
+    except ScimProvisioningException.Conflict as error:
+        raise ApiException.Conflict_409(ApiErrorCode.EX1003) from error
 
     return JsonResponse(content=service.scim_provisioning.build_scim_user(user))
 
@@ -229,11 +244,11 @@ def patch_scim_user(
         .get()
     ),
 )
-def delete_scim_user(user_id: str, request: Request, service: DomainService = DomainService.scope()) -> JsonResponse:
+def delete_scim_user(user_id: str, request: Request, service: DomainService = DomainService.scope()) -> Response:
     Auth.ensure_scim_authorized(request.headers)
     user = service.scim_provisioning.resolve_user(user_id)
     if not user:
         raise ApiException.NotFound_404(ApiErrorCode.NF1004)
 
     service.scim_provisioning.deactivate_user(user)
-    return JsonResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

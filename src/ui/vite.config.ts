@@ -81,6 +81,7 @@ export default defineConfig(({ mode }) => {
             strictPort: true,
         },
         optimizeDeps: {
+            include: ["react/jsx-runtime", "papaparse"],
             exclude: ["@langboard/core"],
         },
     };

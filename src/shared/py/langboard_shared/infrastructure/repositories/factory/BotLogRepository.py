@@ -1,5 +1,5 @@
 from typing import TypeVar
-from ....core.db import BaseSqlModel, DbSession, SqlBuilder
+from ....core.db import BaseDbModel, DbSession, SqlBuilder
 from ....core.domain import BaseRepository
 from ....core.schema import TimeBasedPagination
 from ....core.types.ParamTypes import TBotParam
@@ -24,7 +24,7 @@ class BotLogRepository(BaseRepository[BotLog]):
         self,
         log_model_class: type[_TBotLogModel],
         bot: TBotParam,
-        scope_model: BaseSqlModel,
+        scope_model: BaseDbModel,
         pagination: TimeBasedPagination | None = None,
     ) -> list[tuple[_TBotLogModel, BotLog]]:
         bot_id = InfraHelper.convert_id(bot)

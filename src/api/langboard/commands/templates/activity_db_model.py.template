@@ -9,7 +9,8 @@ class {class_name}ActivityType(Enum):
     pass
 
 
-class {class_name}Activity(BaseActivityModel, table=True):
+class {class_name}Activity(BaseActivityModel):
+    __db_table__ = True
     activity_type: {class_name}ActivityType = Field(nullable=False, api_field=ApiField())
 
     def api_response(self) -> dict[str, Any]:

@@ -14,9 +14,6 @@ export enum ESocketTopic {
 }
 
 export enum ESettingSocketTopicID {
-    // Api Key role management
-    ApiKey = "api_key",
-
     // Setting role management
     User = "user",
     Bot = "bot",

@@ -1,5 +1,5 @@
 from typing import Literal, TypeVar, cast, overload
-from ....core.db import BaseSqlModel, DbSession, SqlBuilder
+from ....core.db import BaseDbModel, DbSession, SqlBuilder
 from ....core.domain import BaseRepository
 from ....core.types.ParamTypes import TBaseParam, TUserOrBot
 from ....domain.models import Bot, User
@@ -16,7 +16,7 @@ class ReactionRepository(BaseRepository):
         return "reaction"
 
     def get_all(
-        self, model_cls: type[_TReactionModel], targets: BaseSqlModel | TBaseParam | list[BaseSqlModel | TBaseParam]
+        self, model_cls: type[_TReactionModel], targets: BaseDbModel | TBaseParam | list[BaseDbModel | TBaseParam]
     ):
         if not isinstance(targets, list):
             targets = [targets]
@@ -38,7 +38,7 @@ class ReactionRepository(BaseRepository):
         self,
         user_or_bot: TUserOrBot,
         model_cls: type[_TReactionModel],
-        target: BaseSqlModel | TBaseParam,
+        target: BaseDbModel | TBaseParam,
         reaction_type: str,
     ) -> _TReactionModel | None:
         target_id = InfraHelper.convert_id(target)
@@ -63,7 +63,7 @@ class ReactionRepository(BaseRepository):
         self,
         user_or_bot: TUserOrBot,
         model_cls: type[_TReactionModel],
-        target: BaseSqlModel | TBaseParam,
+        target: BaseDbModel | TBaseParam,
         should_react: Literal[True],
         reaction_type: str,
         reaction: None = None,
@@ -73,7 +73,7 @@ class ReactionRepository(BaseRepository):
         self,
         user_or_bot: TUserOrBot,
         model_cls: type[_TReactionModel],
-        target: BaseSqlModel | TBaseParam,
+        target: BaseDbModel | TBaseParam,
         should_react: Literal[False],
         reaction_type: str,
         reaction: _TReactionModel,
@@ -82,7 +82,7 @@ class ReactionRepository(BaseRepository):
         self,
         user_or_bot: TUserOrBot,
         model_cls: type[_TReactionModel],
-        target: BaseSqlModel | TBaseParam,
+        target: BaseDbModel | TBaseParam,
         should_react: bool,
         reaction_type: str,
         reaction: _TReactionModel | None = None,

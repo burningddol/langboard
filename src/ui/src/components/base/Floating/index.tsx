@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as Button from "@/components/base/Floating/Button";
+import Nav from "@/components/base/Floating/Nav";
 import Form from "@/components/base/Form";
 import BaseInput, { InputProps } from "@/components/base/Input";
 import BaseLabel from "@/components/base/Label";
@@ -126,5 +127,6 @@ export default {
     LabelInput,
     LabelTextarea,
     LabelSelect,
+    Nav,
     Textarea,
 };

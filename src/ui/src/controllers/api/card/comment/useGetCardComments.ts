@@ -25,10 +25,9 @@ const useGetCardComments = (params: IGetCardCommentsForm, options?: TQueryOption
         });
 
         const comments = ProjectCardComment.Model.fromArray(res.data.comments);
+        const commentUIDs = new Set<string>(comments.map((comment) => comment.uid));
 
-        ProjectCardComment.Model.deleteModels(
-            (model) => model.card_uid === params.card_uid && !comments.some((comment: ProjectCardComment.TModel) => comment.uid === model.uid)
-        );
+        ProjectCardComment.Model.deleteModels((model) => model.card_uid === params.card_uid && !commentUIDs.has(model.uid));
 
         return {
             comments,

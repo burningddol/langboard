@@ -1,5 +1,5 @@
 from typing import Any, Literal, cast, overload
-from ....core.db import BaseSqlModel
+from ....core.db import BaseDbModel
 from ....core.domain import BaseDomainService
 from ....core.schema import TimeBasedPagination
 from ....core.types.ParamTypes import TCardParam, TColumnParam, TProjectParam, TUserOrBotParam, TUserParam, TWikiParam
@@ -310,7 +310,7 @@ class ActivityService(BaseDomainService):
         return references
 
     def __get_converted_references(
-        self, cached_references: dict[str, BaseSqlModel], activity: BaseActivityModel
+        self, cached_references: dict[str, BaseDbModel], activity: BaseActivityModel
     ) -> dict[str, Any] | None:
         activity_references = {}
         if isinstance(activity, (ProjectActivity, ProjectWikiActivity)) and activity.project_id:

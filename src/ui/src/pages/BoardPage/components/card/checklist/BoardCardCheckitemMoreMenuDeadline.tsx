@@ -56,17 +56,19 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
     const deadline = checkitem.useField("deadline_at");
     const [draftDeadline, setDraftDeadline] = useState<Date | undefined>(deadline ?? undefined);
     const [isOpened, setIsOpened] = useState(false);
-    const { remoteMeta, updateMeta, updateValue } = useCollaborativeText({
+    const { isSynced, remoteMeta, updateMeta, updateValue } = useCollaborativeText({
         defaultValue: serializeDeadline(deadline ?? undefined),
         disabled: !isOpened,
         collaborationType: EEditorCollaborationType.Card,
         uid: card.uid,
         section: `checkitem-${checkitem.uid}-deadline`,
         field: "value",
+        resetSyncedValueToDefault: true,
         onValueChange: (value) => {
             setDraftDeadline(parseDeadline(value));
         },
     });
+    const isWaitingForSync = isOpened && !isSynced;
     const latestRemoteMeta = remoteMeta.reduce<ICollaborativeTextMeta<ICheckitemDeadlineMeta> | null>((acc, meta) => {
         const value = meta.value;
         if (!value || !Utils.Type.isObject(value) || !Utils.Type.isNumber((value as Record<string, unknown>).updatedAt)) {
@@ -82,6 +84,10 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
     }, null);
 
     const changeDeadline = (endCallback: (shouldClose: bool) => void) => {
+        if (isWaitingForSync) {
+            return;
+        }
+
         const nextDeadline = normalizeDeadline(draftDeadline);
 
         if (getDeadlineTime(nextDeadline) === getDeadlineTime(deadline)) {
@@ -127,11 +133,19 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
     };
 
     const clearDraftDeadline = () => {
+        if (isWaitingForSync) {
+            return;
+        }
+
         updateMeta({ updatedAt: Date.now() } satisfies ICheckitemDeadlineMeta);
         updateValue("");
     };
 
     const updateDraftDeadline = (deadline: Date | undefined) => {
+        if (isWaitingForSync) {
+            return;
+        }
+
         const nextDeadline = normalizeDeadline(deadline);
         updateMeta({ updatedAt: Date.now() } satisfies ICheckitemDeadlineMeta);
         updateValue(serializeDeadline(nextDeadline));
@@ -148,6 +162,7 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
             <Flex items="center" position="relative">
                 <DateTimePicker
                     value={draftDeadline}
+                    disabled={isWaitingForSync}
                     min={new Date(new Date().setMinutes(new Date().getMinutes() + 30))}
                     onChange={updateDraftDeadline}
                     timePicker={{
@@ -161,9 +176,14 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
                             variant={draftDeadline ? "default" : "outline"}
                             className={cn("h-8 gap-2 px-3 lg:h-10", draftDeadline && "rounded-r-none")}
                             title={t("card.Set deadline")}
+                            disabled={isWaitingForSync}
                         >
                             <IconComponent icon="calendar" size="4" />
-                            {draftDeadline ? Utils.String.formatDateLocale(draftDeadline) : t("card.Set deadline")}
+                            {isWaitingForSync
+                                ? t("common.Syncing draft...")
+                                : draftDeadline
+                                  ? Utils.String.formatDateLocale(draftDeadline)
+                                  : t("card.Set deadline")}
                         </Button>
                     )}
                 />
@@ -173,6 +193,7 @@ function BoardCardCheckitemMoreMenuDeadline(): React.JSX.Element {
                         variant="default"
                         className="h-8 gap-2 rounded-l-none border-l border-l-secondary/70 px-2 lg:h-10"
                         onClick={clearDraftDeadline}
+                        disabled={isWaitingForSync}
                     >
                         <IconComponent icon="trash-2" size="4" />
                     </Button>

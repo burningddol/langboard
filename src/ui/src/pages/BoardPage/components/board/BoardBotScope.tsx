@@ -35,31 +35,40 @@ function BoardBotScope({ project, ...props }: IBoardBotScopeProps) {
 }
 
 function BoardBotScopeDisplay({ project, isOpened, setIsOpened }: IBoardBotScopeProps) {
-    const bots = BotModel.Model.useModels(() => true);
     const { onInteractOutside, onPointerDownOutside } = useHandleInteractOutside({ pointerDownOutside: () => setIsOpened(false) }, [setIsOpened]);
 
     return (
         <Drawer.Root open={isOpened} onOpenChange={setIsOpened}>
             <Drawer.Content
                 focusGuards={false}
+                className="md:left-[var(--board-chat-sidebar-width,0px)] md:w-[calc(100%_-_var(--board-chat-sidebar-width,0px))]"
+                overlayClassName="md:left-[var(--board-chat-sidebar-width,0px)]"
                 onInteractOutside={onInteractOutside}
                 onPointerDownOutside={onPointerDownOutside}
                 {...{ [DISABLE_DRAGGING_ATTR]: "" }}
             >
                 <Drawer.Title hidden />
                 <Drawer.Description hidden />
-                <ScrollArea.Root className="py-1">
-                    <Flex direction="col" gap="2" px="2.5" className="max-h-[50vh]">
-                        {bots.map((bot) => (
-                            <BoardBotScopeItem key={bot.uid} bot={bot} project={project} />
-                        ))}
-                    </Flex>
-                </ScrollArea.Root>
+                <BoardBotScopeList project={project} className="max-h-[50vh]" />
             </Drawer.Content>
         </Drawer.Root>
     );
 }
 BoardBotScopeDisplay.displayName = "Board.BotScopeDisplay";
+
+export function BoardBotScopeList({ project, className }: { project: Project.TModel; className?: string }) {
+    const bots = BotModel.Model.useModels(() => true);
+
+    return (
+        <ScrollArea.Root className="h-full py-1">
+            <Flex direction="col" gap="2" px="2.5" className={className}>
+                {bots.map((bot) => (
+                    <BoardBotScopeItem key={bot.uid} bot={bot} project={project} />
+                ))}
+            </Flex>
+        </ScrollArea.Root>
+    );
+}
 
 interface IBoardBotScopeItemProps {
     project: Project.TModel;

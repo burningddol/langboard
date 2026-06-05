@@ -174,7 +174,7 @@ function NotificationRuleEditor({ rule, schema, disabled, isExpanded, isSelected
         ignoreRemoteDraftTimerRef.current = setTimeout(() => {
             ignoreRemoteDraftRef.current = false;
             ignoreRemoteDraftTimerRef.current = null;
-        }, 1000);
+        }, 0);
     }, [editingOriginalRule, isEditing, ruleDraftSync]);
 
     useEffect(() => {

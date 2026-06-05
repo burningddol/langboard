@@ -49,8 +49,12 @@ function ApiComfortToolList({ createDialogOpen, setCreateDialogOpen }: IApiComfo
     const canUpdate = hasRoleAction(SettingRole.EAction.ApiComfortToolUpdate);
     const canDelete = hasRoleAction(SettingRole.EAction.ApiComfortToolDelete);
     const comfortToolModels = ApiComfortToolModel.Model.useModels(() => true);
-    const comfortTools = Object.fromEntries(
-        [...comfortToolModels].sort((a, b) => a.name.localeCompare(b.name)).map((comfortTool) => [comfortTool.name, comfortTool])
+    const comfortTools = useMemo(
+        () =>
+            Object.fromEntries(
+                [...comfortToolModels].sort((a, b) => a.name.localeCompare(b.name)).map((comfortTool) => [comfortTool.name, comfortTool])
+            ),
+        [comfortToolModels]
     );
     const resetCollaborativeLabelRef = useRef<((value: string) => void) | null>(null);
     const resetCollaborativeNameRef = useRef<((value: string) => void) | null>(null);
@@ -253,9 +257,9 @@ function ApiComfortToolList({ createDialogOpen, setCreateDialogOpen }: IApiComfo
                     return nextDrafts;
                 });
             }
-            resetForm();
             setCreateDialogOpen(false);
             setEditDialogOpen(false);
+            resetForm();
             Toast.Add.success(
                 editingName ? t("successes.API comfort tool updated successfully.") : t("successes.API comfort tool created successfully.")
             );

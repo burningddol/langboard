@@ -1,6 +1,6 @@
 from typing import Any, Callable, TypeVar
-from sqlmodel.sql.expression import SelectOfScalar
-from ..core.db import BaseSqlModel, DbSession, SqlBuilder
+from ..core.db import BaseDbModel, DbSession, SqlBuilder
+from ..core.db.queries.Select import SelectOfScalar
 from ..core.types.ParamTypes import TBaseParam, TBotParam
 from ..core.utils.decorators import staticclass
 from ..domain.models import Bot, BotDefaultScopeBranch
@@ -45,7 +45,7 @@ class BotScopeHelper:
     def create(
         model_cls: type[_TBotScopeModel],
         bot: TBotParam | None,
-        scope: BaseSqlModel,
+        scope: BaseDbModel,
         conditions: list[BotTriggerCondition],
         **kwargs: Any,
     ) -> _TBotScopeModel | None:
@@ -72,7 +72,7 @@ class BotScopeHelper:
     def upsert_conditions(
         model_cls: type[_TBotScopeModel],
         bot: TBotParam | None,
-        scope: BaseSqlModel,
+        scope: BaseDbModel,
         conditions: list[BotTriggerCondition],
         **kwargs: Any,
     ) -> tuple[_TBotScopeModel, bool] | None:
@@ -152,7 +152,7 @@ class BotScopeHelper:
         return model
 
     @staticmethod
-    def delete_by_scope(model_cls: type[_TBotScopeModel], scope: BaseSqlModel) -> list[_TBotScopeModel]:
+    def delete_by_scope(model_cls: type[_TBotScopeModel], scope: BaseDbModel) -> list[_TBotScopeModel]:
         query = SqlBuilder.select.table(model_cls).where(
             model_cls.column(model_cls.get_scope_column_name()) == scope.id
         )
@@ -175,7 +175,7 @@ class BotScopeHelper:
     def apply_default_scope(
         model_cls: type[_TBotScopeModel],
         bot: TBotParam | None,
-        scope: BaseSqlModel,
+        scope: BaseDbModel,
         default_scope_branch_uid: str | None,
     ) -> tuple[_TBotScopeModel, bool] | None:
         bot = InfraHelper.get_by_id_like(Bot, bot)

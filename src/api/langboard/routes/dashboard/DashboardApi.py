@@ -11,7 +11,13 @@ from .DashboardForm import DashboardPagination, DashboardProjectCreateForm
 @AppRouter.api.get(
     "/dashboard/user/projects/starred",
     tags=["Dashboard"],
-    responses=OpenApiSchema().suc({"projects": [Project]}).auth().forbidden().get(),
+    responses=(
+        OpenApiSchema()
+        .suc({"projects": [(Project, {"schema": {"starred": "bool", "last_viewed_at": "string"}})]})
+        .auth()
+        .forbidden()
+        .get()
+    ),
 )
 @AuthFilter.add("user")
 def get_starred_projects(

@@ -71,7 +71,6 @@ class CardService(BaseDomainService):
             return []
 
         raw_cards = self.repo.card.get_board_list(project)
-
         raw_members = self.repo.card_assigned_user.get_all_by_project(project)
         members: dict[int, list[str]] = {}
         for user, card_assigned_user in raw_members:
@@ -98,11 +97,12 @@ class CardService(BaseDomainService):
 
         cards = []
         for card, count_comment in raw_cards:
-            api_card = card.api_response()
-            api_card["count_comment"] = count_comment
-            api_card["member_uids"] = members.get(card.id, [])
-            api_card["relationships"] = relationships.get(card.id, [])
-            api_card["labels"] = labels.get(card.id, [])
+            api_card = card.board_api_response(
+                count_comment=count_comment,
+                member_uids=members.get(card.id, []),
+                relationships=relationships.get(card.id, []),
+                labels=labels.get(card.id, []),
+            )
             cards.append(api_card)
 
         return cards

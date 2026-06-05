@@ -119,7 +119,7 @@ const BoardSettingsInternalBotSettings = memo(({ botType }: IBoardSettingsIntern
     const [t] = useTranslation();
     const { project } = useBoardSettings();
     const internalBotSettings = project.useField("internal_bot_settings");
-    const settings = useMemo(() => internalBotSettings[botType] || { prompt: "", use_default_prompt: true }, [internalBotSettings, botType]);
+    const settings = useMemo(() => internalBotSettings?.[botType] || { prompt: "", use_default_prompt: true }, [internalBotSettings, botType]);
     const [isValidating, setIsValidating] = useState(false);
     const { mutateAsync } = useChangeProjectInternalBotSettings(project.uid);
 
@@ -236,6 +236,7 @@ function BoardSettingsInternalBotSettingsPromptDialog({ botType, settings }: IBo
                         section={`internal-bot-prompt-${botType}`}
                         field="prompt"
                         defaultValue={settings.prompt}
+                        resetSyncedValueToDefault
                         autoFocus
                         resize="none"
                         className="h-36"

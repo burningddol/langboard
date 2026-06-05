@@ -1,7 +1,11 @@
 import Box from "@/components/base/Box";
+import Button from "@/components/base/Button";
 import Collaborative from "@/components/Collaborative";
+import Flex from "@/components/base/Flex";
+import IconComponent from "@/components/base/IconComponent";
 import Toast from "@/components/base/Toast";
 import useChangeWikiDetails from "@/controllers/api/wiki/useChangeWikiDetails";
+import useResizeEvent from "@/core/hooks/useResizeEvent";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import { ProjectWiki } from "@/core/models";
@@ -27,10 +31,66 @@ const WikiTitle = memo(({ wiki }: IWikiTitleProps) => {
     const title = wiki.useField("title");
     const forbidden = wiki.useField("forbidden");
     const canStartEditing = isWikiEditing && canEditWiki(wiki.uid) && !forbidden;
+    const titleSpanRef = useRef<HTMLSpanElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [draftTitle, setDraftTitle] = useState(title);
     const [height, setHeight] = useState(0);
+    const [isOpened, setIsOpened] = useState(false);
+    const [isTitleWrapping, setIsTitleWrapping] = useState(false);
+    const [titleMaxHeight, setTitleMaxHeight] = useState(32);
+    const [showCollapse, setShowCollapse] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+
+    const updateShowCollapse = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        if (!titleSpan) {
+            setShowCollapse(false);
+            return;
+        }
+
+        const isOverflowed = isTitleWrapping ? showCollapse : titleSpan.scrollWidth > titleSpan.clientWidth;
+        setShowCollapse(isOverflowed);
+        setTitleMaxHeight(isTitleWrapping ? titleSpan.scrollHeight : 32);
+    }, [isTitleWrapping, showCollapse]);
+
+    const openTitle = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        setIsOpened(true);
+        setIsTitleWrapping(true);
+        setTitleMaxHeight(titleSpan?.clientHeight || 32);
+
+        requestAnimationFrame(() => {
+            const nextTitleSpan = titleSpanRef.current;
+            if (!nextTitleSpan) {
+                return;
+            }
+
+            setTitleMaxHeight(nextTitleSpan.scrollHeight);
+        });
+    }, []);
+
+    const closeTitle = useCallback(() => {
+        const titleSpan = titleSpanRef.current;
+        setIsOpened(false);
+        setTitleMaxHeight(titleSpan?.scrollHeight || 32);
+
+        requestAnimationFrame(() => {
+            setTitleMaxHeight(32);
+        });
+
+        window.setTimeout(() => {
+            setIsTitleWrapping(false);
+        }, 200);
+    }, []);
+
+    const handleToggleOpened = useCallback(() => {
+        if (isOpened) {
+            closeTitle();
+            return;
+        }
+
+        openTitle();
+    }, [closeTitle, isOpened, openTitle]);
 
     const syncHeight = useCallback(() => {
         if (!textareaRef.current) {
@@ -84,7 +144,7 @@ const WikiTitle = memo(({ wiki }: IWikiTitleProps) => {
     }, [resetSection, title]);
 
     const handleStartEditing = useCallback(
-        (e: PointerEvent<HTMLHeadingElement>) => {
+        (e: PointerEvent<HTMLSpanElement>) => {
             if (!canStartEditing) {
                 return;
             }
@@ -134,6 +194,12 @@ const WikiTitle = memo(({ wiki }: IWikiTitleProps) => {
         setDraftTitle(title);
     }, [isEditing, title]);
 
+    useLayoutEffect(() => {
+        requestAnimationFrame(updateShowCollapse);
+    }, [title, updateShowCollapse]);
+
+    useResizeEvent({ doneCallback: updateShowCollapse }, [updateShowCollapse]);
+
     useEffect(() => {
         if (!isWikiEditing) {
             setIsEditing(false);
@@ -156,11 +222,32 @@ const WikiTitle = memo(({ wiki }: IWikiTitleProps) => {
     return (
         <Box p="2">
             {!isEditing ? (
-                <h1
-                    className={cn("min-h-8 break-all border-b border-border text-xl md:text-2xl", canStartEditing ? "cursor-text" : "cursor-default")}
-                    onPointerDown={handleStartEditing}
-                >
-                    {title}
+                <h1 className="min-h-8 border-b border-border text-xl md:text-2xl">
+                    <Flex className="min-w-0">
+                        <span
+                            className={cn(
+                                "block min-w-0 overflow-hidden transition-[max-height] duration-200 ease-in-out",
+                                isTitleWrapping ? "whitespace-normal break-all" : "truncate",
+                                canStartEditing ? "cursor-text rounded-sm hover:bg-accent/40" : "cursor-default"
+                            )}
+                            style={{ maxHeight: titleMaxHeight }}
+                            ref={titleSpanRef}
+                            onPointerDown={handleStartEditing}
+                        >
+                            {title}
+                        </span>
+                        <Flex items="start" gap="1" ml="1" className="shrink-0">
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={handleToggleOpened}
+                                title={t(`card.${isOpened ? "Hide" : "Show"} title`)}
+                                className={showCollapse ? "" : "hidden"}
+                            >
+                                <IconComponent icon="chevron-down" size="5" className={cn("transition-all", isOpened ? "rotate-180" : "")} />
+                            </Button>
+                        </Flex>
+                    </Flex>
                 </h1>
             ) : (
                 <Collaborative.Textarea

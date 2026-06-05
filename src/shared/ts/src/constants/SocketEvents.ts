@@ -140,6 +140,7 @@ const SERVER = {
         API_KEY_ROLES_UPDATED: "user:api-key-roles:updated:{uid}",
         SETTING_ROLES_UPDATED: "user:setting-roles:updated:{uid}",
         MCP_ROLES_UPDATED: "user:mcp-roles:updated:{uid}",
+        PROJECT_ASSIGNED: "user:project:assigned",
         PROJECT_ROLES_UPDATED: "user:project-roles:updated",
         DELETED: "user:deleted:{uid}",
         DEACTIVATED: "user:deactivated:{uid}",
@@ -171,6 +172,7 @@ const SERVER = {
     SETTINGS: {
         USERS: {
             CREATED: "settings:user:created",
+            UPDATED: "settings:user:updated:{uid}",
             SELECTIONS_DELETED: "user:deleted",
         },
         BOTS: {
@@ -208,7 +210,9 @@ const SERVER = {
         },
         API_COMFORT_TOOL: {
             CREATED: "settings:api-comfort-tool:created",
+            UPDATED_ANY: "settings:api-comfort-tool:updated",
             UPDATED: "settings:api-comfort-tool:updated:{uid}",
+            DELETED_ANY: "settings:api-comfort-tool:deleted",
             DELETED: "settings:api-comfort-tool:deleted:{uid}",
         },
     },

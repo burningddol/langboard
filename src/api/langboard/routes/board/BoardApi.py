@@ -212,10 +212,9 @@ def get_project_cards(project_uid: str, service: DomainService = DomainService.s
     column_bot_scopes = service.project_column.get_api_bot_scopes_by_project(project)
     column_bot_schedules = service.project_column.get_api_bot_schedule_list_by_project(project, columns)
 
+    column_names_by_uid = {col["uid"]: col["name"] for col in columns}
     for card in cards:
-        card["project_column_name"] = next(
-            (col["name"] for col in columns if col["uid"] == card["project_column_uid"]), ""
-        )
+        card["project_column_name"] = column_names_by_uid.get(card["project_column_uid"], "")
 
     return JsonResponse(
         content={

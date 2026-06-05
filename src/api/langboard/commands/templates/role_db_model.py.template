@@ -9,7 +9,8 @@ class {class_name}RoleAction(Enum):
     Update = "update"
     Delete = "delete"
 
-class {class_name}Role(BaseRoleModel, table=True):
+class {class_name}Role(BaseRoleModel):
+    __db_table__ = True
     
 
     @staticmethod

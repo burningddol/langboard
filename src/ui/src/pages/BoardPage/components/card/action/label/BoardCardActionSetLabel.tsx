@@ -35,7 +35,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
     const { mutateAsync: updateCardLabelsMutateAsync } = useUpdateCardLabels({ interceptToast: true });
     const currentCardLabelUIDs = labels.map((label) => label.uid);
     const defaultSelectedLabelUIDs = JSON.stringify(currentCardLabelUIDs);
-    const { remoteMeta, resetValue, updateMeta, updateValue, value } = useCollaborativeText({
+    const { isSynced, remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
         defaultValue: defaultSelectedLabelUIDs,
         disabled: !isOpened,
         collaborationType: EEditorCollaborationType.Card,
@@ -43,6 +43,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
         section: "labels",
         field: "selected-label-uids",
     });
+    const isWaitingForSync = isOpened && !isSynced;
     const selectedLabelUIDs = parseCollaborativeStringList(value, currentCardLabelUIDs);
     const remoteLabelStates = remoteMeta.reduce<Record<string, ICollaborativeTextMeta<ILabelToggleMeta>>>((acc, meta) => {
         const value = meta.value;
@@ -72,12 +73,15 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
 
         if (!opened) {
             updateMeta(null);
-            resetValue(defaultSelectedLabelUIDs);
         }
         setIsOpened(opened);
     };
 
     const handleSelectedLabelUIDsChange: React.Dispatch<React.SetStateAction<string[]>> = (value) => {
+        if (isWaitingForSync) {
+            return;
+        }
+
         const nextValue = Utils.Type.isFunction(value) ? value(selectedLabelUIDs) : value;
         const changedLabelUID =
             selectedLabelUIDs.find((uid) => !nextValue.includes(uid)) || nextValue.find((uid) => !selectedLabelUIDs.includes(uid));
@@ -92,7 +96,7 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
     };
 
     const updateLabels = () => {
-        if (isValidating) {
+        if (isValidating || isWaitingForSync) {
             return;
         }
 
@@ -140,15 +144,21 @@ const BoardCardActionSetLabel = memo(({ buttonClassName }: IBoardCardActionSetLa
                     {t("card.Set label")}
                 </Box>
                 <BoardCardActionLabelList
+                    disabled={isWaitingForSync}
                     remoteLabelStates={remoteLabelStates}
                     selectedLabelUIDs={selectedLabelUIDs}
                     setSelectedLabelUIDs={handleSelectedLabelUIDsChange}
                 />
+                {isWaitingForSync && (
+                    <Box mt="2" textSize="xs" className="text-muted-foreground">
+                        {t("common.Syncing draft...")}
+                    </Box>
+                )}
                 <Flex items="center" justify="end" gap="1" mt="2">
                     <Button type="button" variant="secondary" size="sm" disabled={isValidating} onClick={() => changeOpenedState(false)}>
                         {t("common.Cancel")}
                     </Button>
-                    <SubmitButton type="button" size="sm" onClick={updateLabels} isValidating={isValidating}>
+                    <SubmitButton type="button" size="sm" onClick={updateLabels} isValidating={isValidating} disabled={isWaitingForSync}>
                         {t("common.Save")}
                     </SubmitButton>
                 </Flex>

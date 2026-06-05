@@ -10,7 +10,7 @@ import type { TUserLikeModel } from "@/core/models/ModelRegistry";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
-import { useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
+import { useBoardCardSectionSaveActions } from "@/pages/BoardPage/components/card/BoardCardSectionSaveProvider";
 import { EEditorType } from "@langboard/core/constants";
 import { AIChatPlugin, AIPlugin } from "@platejs/ai/react";
 import { memo, startTransition, type MouseEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -45,8 +45,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     const description = card.useField("description");
     const [isEditing, setIsEditing] = useState(false);
     const pointerDownPositionRef = useRef<{ x: number; y: number } | null>(null);
-    const { markSectionDirty, resetSection, getHasUnsavedChanges, registerSectionSaveHandler, registerSectionCancelHandler } =
-        useBoardCardUnsavedActions();
+    const { registerSectionCancelHandler, registerSectionSaveHandler } = useBoardCardSectionSaveActions();
     const canEdit = hasRoleAction(ProjectRole.EAction.CardUpdate);
     const canStartEditing = canEdit && isCardEditing;
     const stopEditing = useCallback(() => {
@@ -64,17 +63,6 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     const contentLines = description?.content?.split("\n").length ?? 0;
     const shouldCollapse = !isEditing && contentLines > MAX_COLLAPSE_LINES;
     const [visibleChunkCount, setVisibleChunkCount] = useState(1);
-    const handleEditorChange = useCallback(
-        (editor: TEditor) => {
-            const hasContentChange = editor.operations.some((operation) => operation.type !== "set_selection");
-            if (!hasContentChange) {
-                return;
-            }
-
-            markSectionDirty("description", true);
-        },
-        [markSectionDirty]
-    );
     const handleCollaborativeValueReady = useCallback((updateValue: ((value: string) => void) | null) => {
         updateCollaborativeDescriptionRef.current = updateValue;
     }, []);
@@ -89,7 +77,6 @@ const BoardCardDescription = memo((): React.JSX.Element => {
 
         if (nextContent === originalContent) {
             resetCollaborativeDescriptionRef.current?.(description?.content ?? "");
-            resetSection("description");
             setIsEditing(false);
             return null;
         }
@@ -100,25 +87,20 @@ const BoardCardDescription = memo((): React.JSX.Element => {
                 content: nextContent,
             },
         };
-    }, [description, resetSection]);
+    }, [description]);
 
     const handleCancel = useCallback(() => {
-        if (!isEditing) {
-            return;
-        }
-
         resetCollaborativeDescriptionRef.current?.(description?.content ?? "");
-        resetSection("description");
         stopEditing();
         setIsEditing(false);
-    }, [description, isEditing, resetSection, stopEditing]);
+    }, [description, stopEditing]);
 
     useEffect(() => {
-        if (!isCardEditing && isEditing && !getHasUnsavedChanges()) {
+        if (!isCardEditing && isEditing) {
             stopEditing();
             setIsEditing(false);
         }
-    }, [getHasUnsavedChanges, isCardEditing, isEditing, stopEditing]);
+    }, [isCardEditing, isEditing, stopEditing]);
 
     const handlePointerDown = useCallback(
         (e: PointerEvent<HTMLDivElement>) => {
@@ -189,7 +171,6 @@ const BoardCardDescription = memo((): React.JSX.Element => {
                         }}
                         placeholder={!isEditing ? t("card.No description") : undefined}
                         setValue={() => {}}
-                        onEditorChange={handleEditorChange}
                         onCollaborativeValueReady={handleCollaborativeValueReady}
                         onCollaborativeValueResetReady={handleCollaborativeValueResetReady}
                         serializeOnChange={false}

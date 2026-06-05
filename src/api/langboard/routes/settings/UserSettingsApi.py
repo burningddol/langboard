@@ -1,5 +1,4 @@
-from typing import Any, cast
-from fastapi import Depends, status
+from fastapi import status
 from langboard_shared.core.filter import AuthFilter
 from langboard_shared.core.routing import (
     ApiErrorCode,
@@ -31,7 +30,6 @@ from .Form import (
     UpdateMcpRoleForm,
     UpdateSettingRoleForm,
     UpdateUserForm,
-    UsersPagination,
 )
 
 
@@ -66,23 +64,13 @@ from .Form import (
 )
 @RoleFilter.add(SettingRole, [SettingRoleAction.UserRead], RoleFinder.setting, allowed_all_admin=False)
 @AuthFilter.add("admin")
-def get_users_in_settings(
-    pagination: UsersPagination = Depends(), service: DomainService = DomainService.scope()
-) -> JsonResponse:
-    result = service.user.get_api_list_in_settings(refer_time=pagination.refer_time, only_count=pagination.only_count)
-    if pagination.only_count:
-        count_new_records = cast(int, result)
-        return JsonResponse(content=PaginatedList(count_new_records=count_new_records))
-    users, count_new_records = cast(tuple[list[dict[str, Any]], int], result)
-
+def get_users_in_settings(service: DomainService = DomainService.scope()) -> JsonResponse:
+    users = service.user.get_api_list_in_settings()
     full_access_emails = Env.FULL_ADMIN_ACCESS_EMAILS
 
     return JsonResponse(
         content={
-            **PaginatedList(
-                records=users,
-                count_new_records=count_new_records,
-            ).model_dump(),
+            **PaginatedList(records=users).model_dump(),
             "full_access_emails": list(full_access_emails),
         }
     )

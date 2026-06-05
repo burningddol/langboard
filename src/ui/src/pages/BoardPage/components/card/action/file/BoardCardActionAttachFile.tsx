@@ -20,7 +20,7 @@ import { ProjectRole } from "@/core/models/roles";
 export interface IBoardCardActionAttachFileProps extends ISharedBoardCardActionProps {}
 
 const BoardCardActionAttachFile = memo(({ buttonClassName, children }: React.PropsWithChildren<IBoardCardActionAttachFileProps>) => {
-    const { hasRoleAction, isCardEditing } = useBoardCard();
+    const { hasRoleAction } = useBoardCard();
     const [t] = useTranslation();
     const [isOpened, setIsOpened] = useState(false);
     const [isValidating, setIsValidating] = useState(false);
@@ -113,7 +113,7 @@ const BoardCardActionAttachFile = memo(({ buttonClassName, children }: React.Pro
         setIsOpened(opened);
     };
 
-    if (!hasRoleAction(ProjectRole.EAction.CardUpdate) || !isCardEditing) {
+    if (!hasRoleAction(ProjectRole.EAction.CardUpdate)) {
         return null;
     }
 

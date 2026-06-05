@@ -122,7 +122,9 @@ class Env:
 
     @property
     def MAIN_DATABASE_URL(self) -> str:
-        return self.__get_from_cache("MAIN_DATABASE_URL", f"sqlite:///{self.PROJECT_NAME}.db")
+        return self.__get_from_cache(
+            "MAIN_DATABASE_URL", f"sqlite:///{(self.ROOT_DIR / f'{self.PROJECT_NAME}.db').as_posix()}"
+        )
 
     @property
     def READONLY_DATABASE_URL(self) -> str:
@@ -134,7 +136,35 @@ class Env:
 
     @property
     def DB_TCP_USER_TIMEOUT(self) -> int:
-        return int(self.__get_from_cache("DB_TCP_USER_TIMEOUT", "1000"))
+        return int(self.__get_from_cache("DB_TCP_USER_TIMEOUT", "30000"))
+
+    @property
+    def DB_POOL_SIZE(self) -> int:
+        return int(self.__get_from_cache("DB_POOL_SIZE", "5"))
+
+    @property
+    def DB_MAX_OVERFLOW(self) -> int:
+        return int(self.__get_from_cache("DB_MAX_OVERFLOW", "10"))
+
+    @property
+    def DB_POOL_TIMEOUT(self) -> int:
+        return int(self.__get_from_cache("DB_POOL_TIMEOUT", "30"))
+
+    @property
+    def DB_POOL_RECYCLE(self) -> int:
+        return int(self.__get_from_cache("DB_POOL_RECYCLE", "1800"))
+
+    @property
+    def DB_QUERY_CACHE_SIZE(self) -> int:
+        return int(self.__get_from_cache("DB_QUERY_CACHE_SIZE", "0"))
+
+    @property
+    def DB_SELECT_RETRY_ATTEMPTS(self) -> int:
+        return int(self.__get_from_cache("DB_SELECT_RETRY_ATTEMPTS", "3"))
+
+    @property
+    def DB_READONLY_FALLBACK_TO_MAIN(self) -> bool:
+        return self.__get_from_cache("DB_READONLY_FALLBACK_TO_MAIN", "true").lower() == "true"
 
     @property
     def TERMINAL_LOGGING_LEVEL(self) -> str:

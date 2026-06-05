@@ -149,8 +149,14 @@ function BoardCommentHeader(): React.JSX.Element {
 }
 
 function BoardCommentUserHeader({ user }: { user: User.TModel }): React.JSX.Element {
+    const [t] = useTranslation();
+    const type = user.useField("type");
     const firstname = user.useField("firstname");
     const lastname = user.useField("lastname");
+
+    if (user.isDeletedUser(type)) {
+        return <>{t("common.Unknown User")}</>;
+    }
 
     return (
         <>

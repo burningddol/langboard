@@ -177,16 +177,6 @@ const WikiContent = memo(({ wiki }: IWikiContentProps) => {
         }
     }, [getHasUnsavedChanges, isEditing, isWikiEditing, stopEditing]);
 
-    useEffect(() => {
-        if (!isEditing) {
-            return;
-        }
-
-        requestAnimationFrame(() => {
-            editorRef.current?.tf.focus();
-        });
-    }, [isEditing]);
-
     const handleStartEditing = useCallback(
         (e: PointerEvent<HTMLDivElement>) => {
             if (!isWikiEditing || !canStartEditing || isEditing) {
@@ -242,7 +232,7 @@ const WikiContent = memo(({ wiki }: IWikiContentProps) => {
     }, [cancelDirtySections, setIsWikiEditing]);
 
     return (
-        <Box className="max-h-[calc(100vh_-_theme(spacing.36))] overflow-y-auto">
+        <Box className="max-h-[calc(100vh_-_theme(spacing.36))] overflow-y-auto pb-20 md:pb-0">
             <WikiPrivateOption wiki={wiki} changeTab={changeTab} />
             <WikiTitle wiki={wiki} />
             <Box
@@ -260,10 +250,13 @@ const WikiContent = memo(({ wiki }: IWikiContentProps) => {
                         "h-full px-6 py-3",
                         isEditing
                             ? cn(
-                                  "max-h-[calc(100vh_-_theme(spacing.72)_-_theme(spacing.6)_-_1px)]",
-                                  "min-h-[calc(100vh_-_theme(spacing.72)_-_theme(spacing.6)_-_1px)]"
+                                  "max-h-[calc(100vh_-_theme(spacing.72)_-_theme(spacing.6)_-_theme(spacing.20)_-_1px)]",
+                                  "min-h-[calc(100vh_-_theme(spacing.72)_-_theme(spacing.6)_-_theme(spacing.20)_-_1px)]"
                               )
-                            : "max-h-[calc(100vh_-_theme(spacing.64)_-_theme(spacing.5))] min-h-[calc(100vh_-_theme(spacing.64)_-_theme(spacing.5))]"
+                            : cn(
+                                  "max-h-[calc(100vh_-_theme(spacing.64)_-_theme(spacing.5)_-_theme(spacing.20))]",
+                                  "min-h-[calc(100vh_-_theme(spacing.64)_-_theme(spacing.5)_-_theme(spacing.20))]"
+                              )
                     )}
                     readOnly={!isEditing}
                     editorType={EEditorType.WikiContent}
@@ -276,6 +269,7 @@ const WikiContent = memo(({ wiki }: IWikiContentProps) => {
                     onEditorChange={handleEditorChange}
                     serializeOnChange={false}
                     editorRef={editorRef}
+                    focusOnReady={isEditing}
                 />
             </Box>
             <Flex items="center" justify="start" pt="2" mx="2" gap="2" className="border-t">

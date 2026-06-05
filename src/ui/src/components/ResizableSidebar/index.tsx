@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Box from "@/components/base/Box";
 import Button from "@/components/base/Button";
 import Floating from "@/components/base/Floating";
@@ -65,9 +65,9 @@ function ResizableSidebar({
         };
     }, [defaultCollapsed, hidden, initialWidth, widthCssVariable]);
 
-    const sidebarId = `resizable-sidebar-${Utils.String.Token.shortUUID()}`;
+    const sidebarIdRef = useRef(`resizable-sidebar-${Utils.String.Token.shortUUID()}`);
     const setCollapsedAttr = (collapsed: bool, sidebar?: HTMLElement, widthSize?: number) => {
-        sidebar = sidebar ?? document.getElementById(sidebarId)!;
+        sidebar = sidebar ?? document.getElementById(sidebarIdRef.current)!;
         if (!widthSize) {
             if (collapsed) {
                 widthSize = collapsedWidth;
@@ -135,7 +135,7 @@ function ResizableSidebar({
                     className="group/sidebar border-r transition-all data-[resizing=true]:transition-none"
                     style={{ maxWidth: `${initialWidth}px` }}
                     data-collapsed={isCollapsed ? "true" : "false"}
-                    id={sidebarId}
+                    id={sidebarIdRef.current}
                     hidden={hidden}
                 >
                     <aside
@@ -177,11 +177,11 @@ function ResizableSidebar({
             </Box>
             {!hidden && !floatingHidden && (
                 <Floating.Button.Root fullScreen={floatingFullScreen}>
-                    <Floating.Button.Content key={Utils.String.Token.uuid()}>
+                    <Floating.Button.Content>
                         {floatingFullScreen && <Floating.Button.CloseButton />}
                         {isMobile && children}
                     </Floating.Button.Content>
-                    <Floating.Button.Trigger key={Utils.String.Token.uuid()} icon={floatingIcon} title={floatingTitle} titleSide="right" />
+                    <Floating.Button.Trigger icon={floatingIcon} title={floatingTitle} titleSide="right" />
                 </Floating.Button.Root>
             )}
         </>

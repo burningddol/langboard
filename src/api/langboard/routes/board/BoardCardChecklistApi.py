@@ -104,7 +104,7 @@ def create_checklist(
     "/board/{project_uid}/card/{card_uid}/checklist/{checklist_uid}/checkitem",
     tags=["Board.Card.Checklist"],
     description="Create a checkitem.",
-    responses=OpenApiSchema(201).auth().forbidden().err(404, ApiErrorCode.NF2010).get(),
+    responses=OpenApiSchema().suc({"checkitem": Checkitem}, 201).auth().forbidden().err(404, ApiErrorCode.NF2010).get(),
 )
 @RoleFilter.add(ProjectRole, [ProjectRoleAction.CardUpdate], RoleFinder.project)
 @AuthFilter.add()
@@ -120,7 +120,9 @@ def create_checkitem(
     if not result:
         raise ApiException.NotFound_404(ApiErrorCode.NF2010)
 
-    return JsonResponse(status_code=status.HTTP_201_CREATED)
+    return JsonResponse(
+        content={"checkitem": {**result.api_response(), "card_uid": card_uid}}, status_code=status.HTTP_201_CREATED
+    )
 
 
 @AppRouter.schema(form=CardChecklistNotifyForm, permission=ApiPermission.Create)

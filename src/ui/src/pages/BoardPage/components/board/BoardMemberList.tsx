@@ -1,6 +1,4 @@
 import MultiSelectAssignee, { IFormProps, TSaveHandler } from "@/components/MultiSelectAssignee";
-import CollaborativeControlOverlay from "@/components/Collaborative/ControlOverlay";
-import { useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import Toast from "@/components/base/Toast";
 import { EMAIL_REGEX } from "@/constants";
 import useUpdateProjectAssignedUsers from "@/controllers/api/board/useUpdateProjectAssignedUsers";
@@ -9,29 +7,13 @@ import { BotModel, User } from "@/core/models";
 import { TUserLikeModel } from "@/core/models/ModelRegistry";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoard } from "@/core/providers/BoardProvider";
-import { getInviteEmails, parseBoardMemberItems, serializeBoardMemberItems } from "@/core/utils/CollaborativeSelectionUtils";
 import { cn } from "@/core/utils/ComponentUtils";
-import { EEditorCollaborationType } from "@langboard/core/constants";
 import { Utils } from "@langboard/core/utils";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface IBoardMemberListProps {
     isSelectCardView: bool;
-}
-
-interface IBoardMemberSelectionMeta {
-    added: bool;
-    key: string;
-    kind: "email" | "member";
-    updatedAt: number;
-}
-
-interface IRemoteBoardMemberMetaState {
-    actorName: string;
-    added: bool;
-    borderColor: string;
-    updatedAt: number;
 }
 
 const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
@@ -43,116 +25,28 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
     const invitedMemberUIDs = project.useField("invited_member_uids");
     const currentUserUID = currentUser.useField("uid");
     const groups = currentUser.useForeignFieldArray("user_groups");
-    const collaborativeSelectables = useMemo(() => allMemebers.filter((model) => model.uid !== ownerUID), [allMemebers, ownerUID]);
+    const visibleMembers = useMemo(() => allMemebers.filter((model) => !model.isDeletedUser()), [allMemebers]);
     const allSelectables = useMemo(
-        () => collaborativeSelectables.filter((model) => model.uid !== currentUserUID),
-        [collaborativeSelectables, currentUserUID]
+        () => visibleMembers.filter((model) => model.uid !== ownerUID && model.uid !== currentUserUID),
+        [currentUserUID, ownerUID, visibleMembers]
     );
     const showableAssignees = useMemo(
-        () => [...allMemebers.filter((model) => model.isValidUser() && !invitedMemberUIDs.includes(model.uid))].slice(0, 6),
-        [allMemebers, invitedMemberUIDs]
+        () => [...visibleMembers.filter((model) => model.isValidUser() && !invitedMemberUIDs.includes(model.uid))].slice(0, 6),
+        [invitedMemberUIDs, visibleMembers]
     );
-    const selectedAssignees = useMemo(() => allMemebers.filter((model) => model.uid !== ownerUID), [allMemebers, ownerUID]);
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-    const { mutateAsync: updateProjectAssignedUsersMutateAsync } = useUpdateProjectAssignedUsers({ interceptToast: true });
-    const defaultSelectedValues = useMemo(() => serializeBoardMemberItems(selectedAssignees), [selectedAssignees]);
-    const { remoteMeta, updateMeta, updateValue, value } = useCollaborativeText({
-        defaultValue: defaultSelectedValues,
-        disabled: !isPopoverOpen,
-        collaborationType: EEditorCollaborationType.BoardSettings,
-        uid: project.uid,
-        section: "members",
-        field: "selected-values",
-    });
-    const collaborativeItems = useMemo(
-        () => parseBoardMemberItems(value, selectedAssignees, collaborativeSelectables),
-        [collaborativeSelectables, selectedAssignees, value]
-    );
-    const collaborativeSelectedAssignees = useMemo(
-        () => collaborativeItems.filter((item): item is TUserLikeModel => !Utils.Type.isString(item)),
-        [collaborativeItems]
-    );
-    const collaborativeInviteEmails = useMemo(
-        () => collaborativeItems.filter((item): item is string => Utils.Type.isString(item)),
-        [collaborativeItems]
-    );
+    const selectedAssignees = useMemo(() => visibleMembers.filter((model) => model.uid !== ownerUID), [ownerUID, visibleMembers]);
     const hiddenCurrentUserAssignee = useMemo(
-        () =>
-            collaborativeSelectedAssignees.find((item) => item.uid === currentUserUID) ??
-            selectedAssignees.find((item) => item.uid === currentUserUID),
-        [collaborativeSelectedAssignees, currentUserUID, selectedAssignees]
+        () => selectedAssignees.find((item) => item.uid === currentUserUID),
+        [currentUserUID, selectedAssignees]
     );
-    const visibleCollaborativeSelectedAssignees = useMemo(
-        () => collaborativeSelectedAssignees.filter((item) => item.uid !== currentUserUID),
-        [collaborativeSelectedAssignees, currentUserUID]
+    const visibleSelectedAssignees = useMemo(
+        () => selectedAssignees.filter((item) => item.uid !== currentUserUID),
+        [currentUserUID, selectedAssignees]
     );
-    const displayItems = useMemo(
-        () => [...visibleCollaborativeSelectedAssignees, ...collaborativeInviteEmails],
-        [collaborativeInviteEmails, visibleCollaborativeSelectedAssignees]
-    );
-    const lastRenderedItemsRef = useRef<(string | TUserLikeModel)[]>(displayItems);
-    const isSyncingFromRemoteRef = useRef(false);
-    const remoteMetaMaps = useMemo(() => {
-        return remoteMeta.reduce<{
-            emails: Record<string, IRemoteBoardMemberMetaState>;
-            members: Record<string, IRemoteBoardMemberMetaState>;
-        }>(
-            (acc, meta) => {
-                const value = meta.value;
-                if (
-                    !value ||
-                    !Utils.Type.isObject(value) ||
-                    !Utils.Type.isString((value as Record<string, unknown>).key) ||
-                    !Utils.Type.isString((value as Record<string, unknown>).kind) ||
-                    !Utils.Type.isBool((value as Record<string, unknown>).added) ||
-                    !Utils.Type.isNumber((value as Record<string, unknown>).updatedAt)
-                ) {
-                    return acc;
-                }
-
-                const parsedValue = value as IBoardMemberSelectionMeta;
-                const target = parsedValue.kind === "email" ? acc.emails : acc.members;
-                const previous = target[parsedValue.key];
-                if (!previous || previous.updatedAt < parsedValue.updatedAt) {
-                    target[parsedValue.key] = {
-                        actorName: meta.name,
-                        added: parsedValue.added,
-                        borderColor: meta.color,
-                        updatedAt: parsedValue.updatedAt,
-                    };
-                }
-
-                return acc;
-            },
-            { emails: {}, members: {} }
-        );
-    }, [remoteMeta]);
-    const pendingSerializedSelectionRef = useRef<string | null>(null);
-    const flushSelectionTimeoutRef = useRef<number | null>(null);
-
-    useEffect(() => {
-        return () => {
-            if (flushSelectionTimeoutRef.current) {
-                clearTimeout(flushSelectionTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        isSyncingFromRemoteRef.current = true;
-        lastRenderedItemsRef.current = displayItems;
-        const timeout = window.setTimeout(() => {
-            isSyncingFromRemoteRef.current = false;
-        }, 0);
-
-        return () => {
-            clearTimeout(timeout);
-        };
-    }, [displayItems]);
+    const { mutateAsync: updateProjectAssignedUsersMutateAsync } = useUpdateProjectAssignedUsers({ interceptToast: true });
 
     const save = (items: (string | User.TModel)[]) => {
         const mergedItems = hiddenCurrentUserAssignee ? [...items, hiddenCurrentUserAssignee] : items;
-        updateValue(serializeBoardMemberItems(mergedItems));
         const promise = updateProjectAssignedUsersMutateAsync({
             uid: project.uid,
             emails: mergedItems.flatMap((item) => {
@@ -181,77 +75,8 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
         return promise;
     };
 
-    const handleOpenChange = useCallback(
-        (open: bool) => {
-            setIsPopoverOpen(open);
-            if (!open) {
-                pendingSerializedSelectionRef.current = null;
-                if (flushSelectionTimeoutRef.current) {
-                    clearTimeout(flushSelectionTimeoutRef.current);
-                    flushSelectionTimeoutRef.current = null;
-                }
-                updateMeta(null);
-            }
-        },
-        [updateMeta]
-    );
-
-    const flushSerializedSelection = useCallback(
-        (nextSerializedSelection: string) => {
-            pendingSerializedSelectionRef.current = nextSerializedSelection;
-            if (flushSelectionTimeoutRef.current) {
-                clearTimeout(flushSelectionTimeoutRef.current);
-            }
-
-            flushSelectionTimeoutRef.current = window.setTimeout(() => {
-                const latestSerializedSelection = pendingSerializedSelectionRef.current;
-                pendingSerializedSelectionRef.current = null;
-                flushSelectionTimeoutRef.current = null;
-                if (latestSerializedSelection === null) {
-                    return;
-                }
-
-                updateValue(latestSerializedSelection);
-            }, 0);
-        },
-        [updateValue]
-    );
-
-    const handleSelectedAssigneesChange = useCallback(
-        (items: (string | TUserLikeModel)[]) => {
-            const effectiveItems = items;
-            lastRenderedItemsRef.current = effectiveItems;
-            const effectiveInviteEmails = getInviteEmails(effectiveItems);
-            const effectiveVisibleMemberAssignees = effectiveItems.filter((item): item is TUserLikeModel => !Utils.Type.isString(item));
-            const nextMemberAssignees = hiddenCurrentUserAssignee
-                ? [...effectiveVisibleMemberAssignees, hiddenCurrentUserAssignee]
-                : effectiveVisibleMemberAssignees;
-            const nextMemberUIDs = nextMemberAssignees.flatMap((item) => (item.uid ? [item.uid] : []));
-            const previousMemberUIDs = collaborativeSelectedAssignees.flatMap((item) => (item.uid ? [item.uid] : []));
-            const addedMemberUID =
-                effectiveInviteEmails.length === collaborativeInviteEmails.length
-                    ? (nextMemberUIDs.find((uid) => !previousMemberUIDs.includes(uid)) ?? "")
-                    : "";
-            const addedInviteEmail = effectiveInviteEmails.find((email) => !collaborativeInviteEmails.includes(email)) ?? "";
-            const removedMemberUID = previousMemberUIDs.find((uid) => !nextMemberUIDs.includes(uid)) ?? "";
-
-            if (!isSyncingFromRemoteRef.current && (addedMemberUID || addedInviteEmail || removedMemberUID)) {
-                updateMeta({
-                    added: !!(addedMemberUID || addedInviteEmail),
-                    key: addedMemberUID || addedInviteEmail || removedMemberUID,
-                    kind: addedInviteEmail ? "email" : "member",
-                    updatedAt: Date.now(),
-                } satisfies IBoardMemberSelectionMeta);
-            }
-            flushSerializedSelection(serializeBoardMemberItems([...nextMemberAssignees, ...effectiveInviteEmails]));
-        },
-        [collaborativeInviteEmails, collaborativeSelectedAssignees, flushSerializedSelection, hiddenCurrentUserAssignee, updateMeta]
-    );
-
     return (
         <MultiSelectAssignee.Popover
-            onOpenChange={handleOpenChange}
-            onSelectedAssigneesChange={handleSelectedAssigneesChange}
             popoverButtonProps={{
                 size: "icon",
                 className: cn("size-8 xs:size-10", isSelectCardView ? "hidden" : ""),
@@ -277,67 +102,24 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
                     projectUID: project.uid,
                 },
             }}
-            decorateSelectItem={
-                ((item: string | TUserLikeModel) => {
-                    if (Utils.Type.isString(item)) {
-                        const remoteEmailMeta = remoteMetaMaps.emails[item];
-                        if (!remoteEmailMeta?.added) {
-                            return {};
-                        }
-
-                        return {
-                            badgeActorName: remoteEmailMeta.actorName,
-                            badgeBorderColor: remoteEmailMeta.borderColor,
-                        };
-                    }
-
-                    const remoteMemberMeta = remoteMetaMaps.members[item.uid];
-                    if (!remoteMemberMeta?.added) {
-                        return {};
-                    }
-
-                    return {
-                        badgeActorName: remoteMemberMeta.actorName,
-                        badgeBorderColor: remoteMemberMeta.borderColor,
-                    };
-                }) as IFormProps["decorateSelectItem"]
-            }
             renderSelectableItem={
                 ((item: TUserLikeModel) => {
-                    const remoteMemberMeta = remoteMetaMaps.members[item.uid];
-                    let label: string;
-
                     if (item.MODEL_NAME === BotModel.Model.MODEL_NAME) {
                         item = item as BotModel.TModel;
-                        label = `${item.name} (${item.bot_uname})`;
-                    } else {
-                        item = item as User.TModel;
-                        const isInvited = item.isPresentableUnknownUser() || invitedMemberUIDs.includes(item.uid);
-                        const invitedText = isInvited ? ` (${t("project.invited")})` : "";
-                        label = item.isValidUser() ? `${item.firstname} ${item.lastname}${invitedText}`.trim() : `${item.email} ${invitedText}`;
+                        return `${item.name} (${item.bot_uname})`;
                     }
 
-                    if (!remoteMemberMeta || remoteMemberMeta.added) {
-                        return label;
-                    }
-
-                    return (
-                        <div className="relative w-full px-2 py-1">
-                            <CollaborativeControlOverlay
-                                color={remoteMemberMeta.borderColor}
-                                labelClassName="absolute left-2 top-0 z-[9999] -translate-y-1/2"
-                                name={remoteMemberMeta.actorName}
-                            />
-                            <span>{label}</span>
-                        </div>
-                    );
+                    item = item as User.TModel;
+                    const isInvited = item.isPresentableUnknownUser() || invitedMemberUIDs.includes(item.uid);
+                    const invitedText = isInvited ? ` (${t("project.invited")})` : "";
+                    return item.isValidUser() ? `${item.firstname} ${item.lastname}${invitedText}`.trim() : `${item.email} ${invitedText}`;
                 }) as IFormProps["renderSelectableItem"]
             }
             addIconSize="6"
             allSelectables={allSelectables}
             showableAssignees={showableAssignees}
-            selectedAssignees={displayItems}
-            originalAssignees={selectedAssignees}
+            selectedAssignees={visibleSelectedAssignees}
+            originalAssignees={visibleSelectedAssignees}
             createSearchKeywords={(item: string | TUserLikeModel) => {
                 if (Utils.Type.isString(item)) {
                     return [item];
@@ -376,6 +158,7 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
             placeholder={t("myAccount.Add an email...")}
             canAddNew
             validateNewItem={(value) => !!value && EMAIL_REGEX.test(value)}
+            saveOnChange
             save={save as TSaveHandler}
             withUserGroups
             groups={groups}

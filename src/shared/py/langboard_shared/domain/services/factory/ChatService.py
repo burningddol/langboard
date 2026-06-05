@@ -1,5 +1,5 @@
 from typing import Any, Literal, TypeVar
-from ....core.db import BaseSqlModel
+from ....core.db import BaseDbModel
 from ....core.domain import BaseDomainService
 from ....core.schema import TimeBasedPagination
 from ....core.types.ParamTypes import TBaseParam, TChatHistoryParam, TChatSessionParam, TChatTemplateParam
@@ -10,7 +10,7 @@ from ...models.bases import BaseChatSessionModel
 
 _TForeignSessionModel = TypeVar("_TForeignSessionModel", bound=BaseChatSessionModel)
 TForeignSessionParam = BaseChatSessionModel | TBaseParam
-TFilterableParam = BaseSqlModel | TBaseParam
+TFilterableParam = BaseDbModel | TBaseParam
 
 
 class ChatService(BaseDomainService):
@@ -110,7 +110,7 @@ class ChatService(BaseDomainService):
 
         return [template.api_response() for template in templates]
 
-    def create_template(self, filterable: BaseSqlModel, name: str, template: str) -> ChatTemplate:
+    def create_template(self, filterable: BaseDbModel, name: str, template: str) -> ChatTemplate:
         chat_template = ChatTemplate(
             filterable_table=filterable.__tablename__,
             filterable_id=filterable.id,

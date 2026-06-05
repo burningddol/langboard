@@ -3,10 +3,19 @@ import { ROUTES } from "@/core/routing/constants";
 import ModalPage from "@/pages/SettingsPage/ModalPage";
 import { lazy } from "react";
 import { Navigate, Outlet, RouteObject } from "react-router";
+import { IS_OLLAMA_RUNNING } from "@/constants";
 
 const SettingsProxy = lazy(() => import("./index"));
 
 const routes: RouteObject[] = [
+    ...(!IS_OLLAMA_RUNNING
+        ? [
+              {
+                  path: ROUTES.SETTINGS.OLLAMA,
+                  element: <Navigate to={ROUTES.SETTINGS.API_KEYS} replace />,
+              },
+          ]
+        : []),
     {
         path: ROUTES.SETTINGS.ROUTE,
         element: (
@@ -60,10 +69,14 @@ const routes: RouteObject[] = [
                 path: ROUTES.SETTINGS.NOTIFICATION_SCHEDULE,
                 element: <></>,
             },
-            {
-                path: ROUTES.SETTINGS.OLLAMA,
-                element: <></>,
-            },
+            ...(IS_OLLAMA_RUNNING
+                ? [
+                      {
+                          path: ROUTES.SETTINGS.OLLAMA,
+                          element: <></>,
+                      },
+                  ]
+                : []),
             {
                 path: ROUTES.SETTINGS.MCP_TOOL_GROUPS,
                 element: <></>,

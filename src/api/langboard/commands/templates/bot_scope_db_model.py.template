@@ -5,7 +5,8 @@ from ...core.types import SnowflakeID
 from .bases import BaseBotScopeModel, BotTriggerCondition
 
 
-class {class_name}BotScope(BaseBotScopeModel, table=True):
+class {class_name}BotScope(BaseBotScopeModel):
+    __db_table__ = True
     {column_name}_id: SnowflakeID = SnowflakeIDField(
         foreign_key=ProjectColumn, nullable=False, index=True, api_field=ApiField(name="{column_name}_uid")
     )

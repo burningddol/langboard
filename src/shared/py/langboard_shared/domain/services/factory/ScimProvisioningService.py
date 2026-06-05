@@ -1,8 +1,7 @@
 from re import IGNORECASE, search
 from typing import Any
-from ....core.db import DbSession, SqlBuilder
 from ....core.domain import BaseDomainService
-from ....core.routing import ApiErrorCode, ApiException
+from ....core.exceptions import ScimProvisioningException
 from ....core.types import SafeDateTime
 from ....core.utils.String import generate_random_string
 from ....Env import Env
@@ -62,29 +61,16 @@ class ScimProvisioningService(BaseDomainService):
     def list_users(self, start_index: int, count: int, filter_value: str | None) -> dict[str, Any]:
         normalized_start = self._coerce_int(start_index, default=1, min_value=1, max_value=100000)
         normalized_count = self._coerce_int(count, default=100, min_value=1, max_value=200)
-        user_name_filter = self._parse_scim_filter(filter_value)
+        user_name_filter = self._parse_scim_filter(filter_value, "userName")
         user_service = self._get_service(UserService)
 
         if user_name_filter:
-            user, _ = user_service.get_by_email(user_name_filter)
+            user, _ = user_service.get_by_email(user_name_filter.lower())
             resources = [self.build_scim_user(user)] if user else []
             return self._build_list_response(resources, 1, len(resources), len(resources))
 
-        with DbSession.use(readonly=True) as db:
-            total = (
-                db.exec(
-                    SqlBuilder.select.count(User, User.column("id")).where(User.column("deleted_at") == None)  # noqa
-                ).first()
-                or 0
-            )
-
-            users = db.exec(
-                SqlBuilder.select.table(User)
-                .where(User.column("deleted_at") == None)  # noqa
-                .order_by(User.column("created_at").asc(), User.column("id").asc())
-                .offset(normalized_start - 1)
-                .limit(normalized_count)
-            ).all()
+        total = self.repo.user.count_not_deleted()
+        users = self.repo.user.get_not_deleted_page(normalized_start - 1, normalized_count)
 
         resources = [self.build_scim_user(user) for user in users]
         return self._build_list_response(resources, normalized_start, normalized_count, int(total))
@@ -103,7 +89,7 @@ class ScimProvisioningService(BaseDomainService):
     def create_user(self, payload: dict[str, Any]) -> User:
         email = self._extract_email(payload)
         if not email:
-            raise ApiException.BadRequest_400(ApiErrorCode.VA0000)
+            raise ScimProvisioningException.InvalidRequest()
 
         firstname, lastname = self._extract_names(payload)
         firstname = firstname or "SCIM"
@@ -156,7 +142,7 @@ class ScimProvisioningService(BaseDomainService):
         if email and email != user.email:
             existing, _ = self._get_service(UserService).get_by_email(email)
             if existing and existing.id != user.id:
-                raise ApiException.Conflict_409(ApiErrorCode.EX1003)
+                raise ScimProvisioningException.Conflict()
 
             user.email = email
             self.repo.user.update(user)
@@ -249,13 +235,13 @@ class ScimProvisioningService(BaseDomainService):
         lastname = str(lastname).strip() if lastname is not None else None
         return firstname, lastname
 
-    def _parse_scim_filter(self, filter_value: str | None) -> str | None:
+    def _parse_scim_filter(self, filter_value: str | None, attr: str) -> str | None:
         if not filter_value:
             return None
-        match = search(r"userName\s+eq\s+[\"']([^\"']+)[\"']", filter_value, IGNORECASE)
+        match = search(rf"{attr}\s+eq\s+[\"']([^\"']+)[\"']", filter_value, IGNORECASE)
         if not match:
             return None
-        return match.group(1).strip().lower()
+        return match.group(1).strip()
 
     def _build_list_response(
         self, resources: list[dict[str, Any]], start_index: int, items_per_page: int, total: int

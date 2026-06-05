@@ -4,7 +4,7 @@ from ....core.domain import BaseOrderRepository
 from ....core.schema import TimeBasedPagination
 from ....core.types import SafeDateTime
 from ....core.types.ParamTypes import TColumnParam, TProjectParam, TUserParam
-from ....domain.models import Card, CardAssignedUser, CardComment, Checkitem, Project, ProjectColumn, ProjectRole
+from ....domain.models import Card, CardAssignedUser, CardComment, Project, ProjectColumn, ProjectRole
 from ....helpers import InfraHelper
 
 
@@ -21,24 +21,26 @@ class CardRepository(BaseOrderRepository[Card, ProjectColumn]):
     def name() -> str:
         return "card"
 
-    def get_board_list(self, project: TProjectParam):
+    def get_board_list(self, project: TProjectParam) -> list[tuple[Card, int]]:
         project_id = InfraHelper.convert_id(project)
+        comment_counts = (
+            SqlBuilder.select.columns(
+                CardComment.column("card_id"),
+                func.count(CardComment.column("id")).label("count_comment"),  # type: ignore
+            )
+            .join(Card, Card.column("id") == CardComment.column("card_id"))
+            .where(Card.column("project_id") == project_id)
+            .group_by(CardComment.column("card_id"))
+            .subquery()
+        )
 
         cards = []
         with DbSession.use(readonly=True) as db:
             result = db.exec(
-                SqlBuilder.select.tables(
-                    Card,
-                    func.count(CardComment.column("id")).label("count_comment"),  # type: ignore
-                )
-                .join(Project, Card.column("project_id") == Project.column("id"))
-                .outerjoin(
-                    CardComment,
-                    (Card.column("id") == CardComment.column("card_id")) & (CardComment.column("deleted_at") == None),  # noqa
-                )
-                .where(Project.column("id") == project_id)
+                SqlBuilder.select.tables(Card, func.coalesce(comment_counts.c.count_comment, 0).label("count_comment"))  # type: ignore
+                .outerjoin(comment_counts, Card.column("id") == comment_counts.c.card_id)
+                .where(Card.column("project_id") == project_id)
                 .order_by(Card.column("order").asc())
-                .group_by(Card.column("id"), Card.column("order"))
             )
             cards = result.all()
 
@@ -72,14 +74,8 @@ class CardRepository(BaseOrderRepository[Card, ProjectColumn]):
                     | ((ProjectRole.column("actions") != "*") & (CardAssignedUser.column("user_id") == user_id))
                 )
             )
-            .where(Checkitem.column("created_at") <= pagination.refer_time)
-            .order_by(Card.column("created_at").desc())
-            .group_by(
-                Card.column("id"),
-                Card.column("created_at"),
-                ProjectColumn.column("id"),
-                Project.column("id"),
-            )
+            .where(Card.column("created_at") <= pagination.refer_time)
+            .order_by(Card.column("created_at").desc(), Card.column("id").desc())
         )
         query = InfraHelper.paginate(query, pagination.page, pagination.limit)
 

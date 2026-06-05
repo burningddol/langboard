@@ -223,6 +223,7 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
         uid: relationshipSelectionSyncState?.uid ?? "relationship-selection-idle",
         section: relationshipSelectionSyncState?.section,
         field: "selected-relationships",
+        resetSyncedValueToDefault: true,
         onValueChange: handleRelationshipSelectionValueChange,
     });
 
@@ -244,43 +245,36 @@ export const BoardController = memo(({ children }: IBoardControllerProps): React
 
     const setCardSelection = (cardUID: string, relationshipUID?: string) => {
         if (!relationshipUID) {
-            setSelectedRelationshipCardUIDs((prev) => {
-                const next = prev.filter(([selectedCardUID]) => selectedCardUID !== cardUID);
-                selectedRelationshipUIDsRef.current = next;
-                return next;
-            });
-            setRelationshipSelectionActors((prev) => {
-                const next = { ...prev };
-                delete next[cardUID];
-                relationshipSelectionActorsRef.current = next;
-                return next;
-            });
+            const nextSelections = selectedRelationshipUIDsRef.current.filter(([selectedCardUID]) => selectedCardUID !== cardUID);
+            const nextSelectionActors = { ...relationshipSelectionActorsRef.current };
+            delete nextSelectionActors[cardUID];
+
+            selectedRelationshipUIDsRef.current = nextSelections;
+            relationshipSelectionActorsRef.current = nextSelectionActors;
+            setSelectedRelationshipCardUIDs(nextSelections);
+            setRelationshipSelectionActors(nextSelectionActors);
             return;
         }
 
-        setSelectedRelationshipCardUIDs((prev) => {
-            const existedSelectionIndex = prev.findIndex(([selectedCardUID]) => selectedCardUID === cardUID);
-            const next =
-                existedSelectionIndex < 0
-                    ? [...prev, [cardUID, relationshipUID] satisfies [string, string]]
-                    : prev.map((selection, index) =>
-                          index === existedSelectionIndex ? ([cardUID, relationshipUID] satisfies [string, string]) : selection
-                      );
+        const existedSelectionIndex = selectedRelationshipUIDsRef.current.findIndex(([selectedCardUID]) => selectedCardUID === cardUID);
+        const nextSelections =
+            existedSelectionIndex < 0
+                ? [...selectedRelationshipUIDsRef.current, [cardUID, relationshipUID] satisfies [string, string]]
+                : selectedRelationshipUIDsRef.current.map((selection, index) =>
+                      index === existedSelectionIndex ? ([cardUID, relationshipUID] satisfies [string, string]) : selection
+                  );
+        const nextSelectionActors = {
+            ...relationshipSelectionActorsRef.current,
+            [cardUID]: {
+                ...currentRelationshipSelectionActor,
+                updatedAt: Date.now(),
+            },
+        };
 
-            selectedRelationshipUIDsRef.current = next;
-            return next;
-        });
-        setRelationshipSelectionActors((prev) => {
-            const next = {
-                ...prev,
-                [cardUID]: {
-                    ...currentRelationshipSelectionActor,
-                    updatedAt: Date.now(),
-                },
-            };
-            relationshipSelectionActorsRef.current = next;
-            return next;
-        });
+        selectedRelationshipUIDsRef.current = nextSelections;
+        relationshipSelectionActorsRef.current = nextSelectionActors;
+        setSelectedRelationshipCardUIDs(nextSelections);
+        setRelationshipSelectionActors(nextSelectionActors);
     };
 
     const startCardSelection = ({ type, currentUID, initialSelections = [], saveCallback, cancelCallback }: IStartCardSelectionProps) => {

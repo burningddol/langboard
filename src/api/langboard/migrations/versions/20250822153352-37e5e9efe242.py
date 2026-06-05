@@ -8,8 +8,6 @@ Create Date: 2025-08-22 15:33:52.783688
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import (
     CSVType,
@@ -25,6 +23,7 @@ from langboard_shared.domain.models.BaseBotModel import BotPlatform, BotPlatform
 from langboard_shared.domain.models.bases.BotTriggerCondition import BotTriggerCondition
 from langboard_shared.domain.models.BotLog import BotLogMessage, BotLogType
 from langboard_shared.domain.models.BotSchedule import BotScheduleRunningType, BotScheduleStatus
+from langboard_shared.domain.models.Checkitem import CheckitemStatus
 from langboard_shared.domain.models.InternalBot import InternalBotType
 from langboard_shared.domain.models.ProjectActivity import ProjectActivityType
 from langboard_shared.domain.models.ProjectWikiActivity import ProjectWikiActivityType
@@ -54,12 +53,12 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("platform", EnumLikeType(BotPlatform), nullable=False),
         sa.Column("platform_running_type", EnumLikeType(BotPlatformRunningType), nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("bot_uname", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("bot_uname", sa.String(), nullable=False),
         sa.Column("avatar", ModelColumnType(FileModel), nullable=True),
-        sa.Column("api_url", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("api_key", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("app_api_token", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("api_url", sa.String(), nullable=False),
+        sa.Column("api_key", sa.String(), nullable=False),
+        sa.Column("app_api_token", sa.String(), nullable=False),
         sa.Column("ip_whitelist", CSVType(str), nullable=False),
         sa.Column("value", sa.TEXT(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -73,9 +72,9 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("filterable_table", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("filterable_table", sa.String(), nullable=True),
         sa.Column("filterable_id", SnowflakeIDType, nullable=True),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.Column("template", sa.TEXT(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -88,9 +87,9 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("parent_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("child_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("parent_name", sa.String(), nullable=False),
+        sa.Column("child_name", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -106,9 +105,9 @@ def upgrade() -> None:
         sa.Column("platform", EnumLikeType(BotPlatform), nullable=False),
         sa.Column("platform_running_type", EnumLikeType(BotPlatformRunningType), nullable=False),
         sa.Column("bot_type", EnumLikeType(InternalBotType), nullable=False),
-        sa.Column("display_name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("url", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("api_key", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("display_name", sa.String(), nullable=False),
+        sa.Column("url", sa.String(), nullable=False),
+        sa.Column("api_key", sa.String(), nullable=False),
         sa.Column("value", sa.Text(), nullable=False),
         sa.Column("is_default", sa.Boolean(), nullable=False),
         sa.Column("avatar", ModelColumnType(FileModel), nullable=True),
@@ -124,14 +123,14 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("firstname", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("lastname", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("username", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("firstname", sa.String(), nullable=False),
+        sa.Column("lastname", sa.String(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("username", sa.String(), nullable=False),
         sa.Column("password", SecretStrType, nullable=False),
         sa.Column("is_admin", sa.Boolean(), nullable=False),
         sa.Column("avatar", ModelColumnType(FileModel), nullable=True),
-        sa.Column("preferred_lang", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("preferred_lang", sa.String(), nullable=False),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("username"),
@@ -164,7 +163,7 @@ def upgrade() -> None:
         sa.Column("bot_id", SnowflakeIDType, nullable=False),
         sa.Column("running_type", EnumLikeType(BotScheduleRunningType), nullable=False),
         sa.Column("status", EnumLikeType(BotScheduleStatus), nullable=False),
-        sa.Column("interval_str", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("interval_str", sa.String(), nullable=False),
         sa.Column("start_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("end_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["bot_id"], ["bot.id"], ondelete="CASCADE"),
@@ -181,7 +180,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("filterable_table", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("filterable_table", sa.String(), nullable=False),
         sa.Column("filterable_id", SnowflakeIDType, nullable=True),
         sa.Column("sender_id", SnowflakeIDType, nullable=True),
         sa.Column("receiver_id", SnowflakeIDType, nullable=True),
@@ -201,10 +200,10 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("owner_id", SnowflakeIDType, nullable=False),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
         sa.Column("description", sa.TEXT(), nullable=True),
         sa.Column("ai_description", sa.TEXT(), nullable=True),
-        sa.Column("project_type", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("project_type", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["owner_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -222,7 +221,7 @@ def upgrade() -> None:
         sa.Column("bot_id", SnowflakeIDType, nullable=True),
         sa.Column("activity_history", sa.JSON(), nullable=False),
         sa.Column("activity_type", EnumLikeType(UserActivityType), nullable=True),
-        sa.Column("refer_activity_table", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("refer_activity_table", sa.String(), nullable=True),
         sa.Column("refer_activity_id", SnowflakeIDType, nullable=True),
         sa.ForeignKeyConstraint(["bot_id"], ["bot.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
@@ -239,7 +238,7 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
         sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -255,7 +254,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -270,7 +269,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("notifier_type", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("notifier_type", sa.String(), nullable=False),
         sa.Column("notifier_id", SnowflakeIDType, nullable=False),
         sa.Column("receiver_id", SnowflakeIDType, nullable=False),
         sa.Column("notification_type", EnumLikeType(NotificationType), nullable=False),
@@ -295,7 +294,7 @@ def upgrade() -> None:
         sa.Column("channel", EnumLikeType(NotificationChannel), nullable=False),
         sa.Column("notification_type", EnumLikeType(NotificationType), nullable=False),
         sa.Column("scope_type", EnumLikeType(NotificationScope), nullable=False),
-        sa.Column("specific_table", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("specific_table", sa.String(), nullable=True),
         sa.Column("specific_id", SnowflakeIDType, nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -316,10 +315,10 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
-        sa.Column("industry", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("purpose", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("affiliation", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column("position", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("industry", sa.String(), nullable=False),
+        sa.Column("purpose", sa.String(), nullable=False),
+        sa.Column("affiliation", sa.String(), nullable=True),
+        sa.Column("position", sa.String(), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id"),
@@ -383,7 +382,7 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("project_id", SnowflakeIDType, nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.Column("is_archive", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(["project_id"], ["project.id"], ondelete="CASCADE"),
@@ -400,8 +399,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("project_id", SnowflakeIDType, nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("token", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("token", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["project_id"], ["project.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -416,9 +415,9 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("project_id", SnowflakeIDType, nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("color", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("color", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["project_id"], ["project.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -452,7 +451,7 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("project_id", SnowflakeIDType, nullable=False),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
         sa.Column("content", ModelColumnType(EditorContentModel), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.Column("is_public", sa.Boolean(), nullable=False),
@@ -470,7 +469,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("group_id", SnowflakeIDType, nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["group_id"], ["user_group.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -489,7 +488,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("project_id", SnowflakeIDType, nullable=False),
         sa.Column("project_column_id", SnowflakeIDType, nullable=False),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
         sa.Column("description", ModelColumnType(EditorContentModel), nullable=False),
         sa.Column("ai_description", sa.TEXT(), nullable=True),
         sa.Column("deadline_at", sa.DateTime(timezone=True), nullable=True),
@@ -644,7 +643,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
         sa.Column("wiki_id", SnowflakeIDType, nullable=False),
-        sa.Column("filename", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("filename", sa.String(), nullable=False),
         sa.Column("file", ModelColumnType(FileModel), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
@@ -662,7 +661,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("key", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("key", sa.String(), nullable=False),
         sa.Column("value", sa.TEXT(), nullable=False),
         sa.Column("project_wiki_id", SnowflakeIDType, nullable=True),
         sa.ForeignKeyConstraint(["project_wiki_id"], ["project_wiki.id"], ondelete="CASCADE"),
@@ -730,7 +729,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
         sa.Column("card_id", SnowflakeIDType, nullable=False),
-        sa.Column("filename", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("filename", sa.String(), nullable=False),
         sa.Column("file", ModelColumnType(FileModel), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["card_id"], ["card.id"], ondelete="CASCADE"),
@@ -822,7 +821,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("key", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("key", sa.String(), nullable=False),
         sa.Column("value", sa.TEXT(), nullable=False),
         sa.Column("card_id", SnowflakeIDType, nullable=False),
         sa.ForeignKeyConstraint(["card_id"], ["card.id"], ondelete="CASCADE"),
@@ -863,7 +862,7 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("card_id", SnowflakeIDType, nullable=False),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.Column("is_checked", sa.Boolean(), nullable=False),
         sa.ForeignKeyConstraint(["card_id"], ["card.id"], ondelete="CASCADE"),
@@ -905,7 +904,7 @@ def upgrade() -> None:
         ),
         sa.Column("user_id", SnowflakeIDType, nullable=True),
         sa.Column("bot_id", SnowflakeIDType, nullable=True),
-        sa.Column("reaction_type", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("reaction_type", sa.String(), nullable=False),
         sa.Column("comment_id", SnowflakeIDType, nullable=False),
         sa.ForeignKeyConstraint(["bot_id"], ["bot.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["comment_id"], ["card_comment.id"], ondelete="CASCADE"),
@@ -926,8 +925,8 @@ def upgrade() -> None:
         sa.Column("checklist_id", SnowflakeIDType, nullable=False),
         sa.Column("cardified_id", SnowflakeIDType, nullable=True),
         sa.Column("user_id", SnowflakeIDType, nullable=True),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("status", sa.Enum("Started", "Paused", "Stopped", name="checkitemstatus"), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
+        sa.Column("status", EnumLikeType(CheckitemStatus), nullable=False),
         sa.Column("order", sa.Integer(), nullable=False),
         sa.Column("accumulated_seconds", sa.Integer(), nullable=False),
         sa.Column("is_checked", sa.Boolean(), nullable=False),
@@ -948,7 +947,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("checkitem_id", SnowflakeIDType, nullable=False),
-        sa.Column("status", sa.Enum("Started", "Paused", "Stopped", name="checkitemstatus"), nullable=False),
+        sa.Column("status", EnumLikeType(CheckitemStatus), nullable=False),
         sa.ForeignKeyConstraint(["checkitem_id"], ["checkitem.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

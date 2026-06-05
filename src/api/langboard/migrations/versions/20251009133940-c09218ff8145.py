@@ -8,8 +8,6 @@ Create Date: 2025-10-09 13:26:12.009514
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import SnowflakeIDType
 
@@ -32,10 +30,10 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("filterable_table", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("filterable_table", sa.String(), nullable=False),
         sa.Column("filterable_id", SnowflakeIDType, nullable=True),
         sa.Column("user_id", SnowflakeIDType, nullable=True),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("title", sa.String(), nullable=False),
         sa.Column("last_messaged_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

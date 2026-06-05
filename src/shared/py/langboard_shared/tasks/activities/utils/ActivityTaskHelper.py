@@ -1,5 +1,5 @@
 from typing import Any, Callable, Generic, Sequence, TypeVar, cast
-from ....core.db import BaseSqlModel, DbSession, SqlBuilder
+from ....core.db import BaseDbModel, DbSession, SqlBuilder
 from ....core.types import SnowflakeID
 from ....domain.models import (
     Bot,
@@ -16,7 +16,7 @@ from .ActivityHistoryHelper import ActivityHistoryHelper
 
 
 _TActivityModel = TypeVar("_TActivityModel", bound=BaseActivityModel)
-_TBaseModel = TypeVar("_TBaseModel", bound=BaseSqlModel)
+_TBaseModel = TypeVar("_TBaseModel", bound=BaseDbModel)
 
 
 class ActivityTaskHelper(Generic[_TActivityModel]):

@@ -15,6 +15,25 @@ _OLLAMA_PULLING_MODELS_CACHE_KEY = "ollama:pulling:models"
 
 
 @AppRouter.api.get(
+    "/settings/ollama/health",
+    tags=["AppSettings.Ollama"],
+    responses=OpenApiSchema().suc({"configured": "boolean", "available": "boolean"}).auth().forbidden().get(),
+)
+@RoleFilter.add(SettingRole, [SettingRoleAction.OllamaRead], RoleFinder.setting, allowed_all_admin=False)
+@AuthFilter.add("admin")
+def get_ollama_health() -> JsonResponse:
+    if not Env.OLLAMA_API_URL:
+        return JsonResponse(content={"configured": False, "available": False})
+
+    try:
+        response = requests.get(f"{Env.OLLAMA_API_URL}/api/tags", timeout=3)
+        response.raise_for_status()
+        return JsonResponse(content={"configured": True, "available": True})
+    except Exception:
+        return JsonResponse(content={"configured": True, "available": False})
+
+
+@AppRouter.api.get(
     "/settings/ollama/models",
     tags=["AppSettings.Ollama"],
     responses=(

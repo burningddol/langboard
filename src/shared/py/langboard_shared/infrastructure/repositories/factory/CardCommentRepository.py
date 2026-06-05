@@ -42,10 +42,4 @@ class CardCommentRepository(BaseRepository[CardComment]):
                 CardComment.column("created_at").desc(),
                 CardComment.column("id").desc(),
             )
-            .group_by(
-                CardComment.column("id"),
-                CardComment.column("created_at"),
-                User.column("id"),
-                Bot.column("id"),
-            )
         )

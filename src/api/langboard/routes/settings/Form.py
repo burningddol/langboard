@@ -13,11 +13,6 @@ from pydantic import BaseModel, Field, field_validator
 from ...Constants import EMAIL_REGEX
 
 
-class UsersPagination(BaseModel):
-    refer_time: SafeDateTime = SafeDateTime.now()
-    only_count: bool = False
-
-
 @form_model
 class CreateUserForm(BaseFormModel):
     firstname: str
@@ -184,6 +179,8 @@ class DeleteSelectedApiKeysForm(BaseFormModel):
 
 
 class ApiKeysPagination(BaseModel):
+    page: int = 1
+    limit: int = 0
     refer_time: SafeDateTime = SafeDateTime.now()
     only_count: bool = False
 

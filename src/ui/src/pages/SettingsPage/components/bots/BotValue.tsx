@@ -30,6 +30,7 @@ const BotValue = memo(() => {
     const platformRunningType = internalBot.useField("platform_running_type");
     const value = internalBot.useField("value");
     const valueType = useMemo(() => getValueType(platform, platformRunningType), [platform, platformRunningType]);
+    const shouldUseEditMode = valueType === "default";
     const { mutateAsync } = useUpdateBot(internalBot, { interceptToast: true });
     const newValueRef = useRef<string>(value);
     const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | TBotValueDefaultInputRefLike | null>(null);
@@ -133,7 +134,7 @@ const BotValue = memo(() => {
                 cancelEditing={cancelEditing}
                 change={change}
                 required
-                disabled={!canUpdateBot || !isEditing}
+                disabled={!canUpdateBot || (shouldUseEditMode && !isEditing)}
                 ref={inputRef}
             />
         </Box>

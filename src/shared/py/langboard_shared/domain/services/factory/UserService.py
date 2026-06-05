@@ -1,6 +1,6 @@
 from json import dumps as json_dumps
 from json import loads as json_loads
-from typing import Any, Literal, Sequence, cast, overload
+from typing import Any, Sequence, cast
 from urllib.parse import urlparse
 from ....core.caching import Cache
 from ....core.domain import BaseDomainService
@@ -34,18 +34,10 @@ class UserService(BaseDomainService):
     def create_cache_name(self, cache_type: str, email: str) -> str:
         return f"{cache_type}:{email}"
 
-    @overload
-    def get_api_list_in_settings(self, refer_time: SafeDateTime, only_count: Literal[True]) -> int: ...
-    @overload
-    def get_api_list_in_settings(
-        self, refer_time: SafeDateTime, only_count: Literal[False]
-    ) -> tuple[list[dict[str, Any]], int]: ...
-    def get_api_list_in_settings(self, refer_time: SafeDateTime, only_count: bool = False):
-        count = self.repo.user.count_users_scroller(refer_time)
-        if only_count:
-            return count
-
-        users = self.repo.user.get_all_with_profile_scroller(refer_time)
+    def get_api_list_in_settings(self) -> list[dict[str, Any]]:
+        users = self.repo.user.get_all_with_profile_in_settings()
+        if not users:
+            return []
 
         api_key_roles = self.repo.role.api_key.get_list(user_id=cast(SnowflakeID, [user.id for user, _ in users]))
         api_key_role_actions_dicts = {role.user_id: role.actions for role in api_key_roles}
@@ -78,7 +70,7 @@ class UserService(BaseDomainService):
             api_user["mcp_role_actions"] = mcp_role_actions_dicts.get(user.id, [])
             api_list.append(api_user)
 
-        return api_list, count
+        return api_list
 
     def get_by_email(self, email: str | None):
         if not email:
@@ -211,7 +203,7 @@ class UserService(BaseDomainService):
             validators.update(
                 {
                     "is_admin": "default",
-                    "activated_at": "default",
+                    "activated_at": "nullable",
                 }
             )
             profile_validators.update(
@@ -251,6 +243,8 @@ class UserService(BaseDomainService):
                 model[key] = convert_python_data(getattr(user, key))
 
         UserPublisher.updated(user, model)
+        if from_setting and model:
+            AppSettingPublisher.user_updated(user.get_uid(), model)
         if from_setting:
             if "activated_at" in form and not user.activated_at:
                 UserPublisher.deactivated(user)

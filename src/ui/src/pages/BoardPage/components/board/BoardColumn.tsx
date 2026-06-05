@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { memo, type RefObject, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import invariant from "tiny-invariant";
 import BoardColumnCard, { BoardColumnCardShadow, SkeletonBoardColumnCard } from "@/pages/BoardPage/components/board/BoardColumnCard";
 import { useBoard } from "@/core/providers/BoardProvider";
@@ -65,6 +66,7 @@ function BoardColumn({ column, updateBoard }: IBoardColumnProps) {
     const headerRef = useRef<HTMLDivElement | null>(null);
     const innerRef = useRef<HTMLDivElement | null>(null);
     const [state, setState] = useState<TColumnState>(COLUMN_IDLE);
+    const [cardCount, setCardCount] = useState(0);
     const order = column.useField("order");
     const hasRunningBot = useHasRunningBot({ type: "project_column", targetUID: column.uid });
 
@@ -112,7 +114,7 @@ function BoardColumn({ column, updateBoard }: IBoardColumnProps) {
             >
                 {hasRunningBot && <ShineBorder />}
                 <BoardColumnHeader isDragging={state.type !== "idle"} column={column} headerProps={{ ref: headerRef }} />
-                <ScrollArea.Root viewportRef={scrollableRef} viewportClassName="!overflow-y-auto">
+                <ScrollArea.Root viewportRef={scrollableRef} viewportClassName="!overflow-y-auto" mutable={`${state.type}:${cardCount}`}>
                     <Card.Content
                         className={cn(
                             "flex flex-grow flex-col gap-2 p-3",
@@ -123,11 +125,15 @@ function BoardColumn({ column, updateBoard }: IBoardColumnProps) {
                         {...{ [BLOCK_BOARD_PANNING_ATTR]: true }}
                         ref={innerRef}
                     >
-                        <BoardColumnCardList column={column} updateBoard={updateBoard} />
+                        <BoardColumnCardList
+                            column={column}
+                            updateBoard={updateBoard}
+                            scrollableRef={scrollableRef}
+                            onCardCountChange={setCardCount}
+                        />
                         {state.type === "is-row-over" && !state.isOverChildRow && <BoardColumnCardShadow dragging={state.dragging} />}
                         <BoardColumnAddCard />
                     </Card.Content>
-                    <ScrollArea.Bar />
                 </ScrollArea.Root>
                 <Card.Footer className="px-3 py-2">
                     <BoardColumnAddCardButton />
@@ -142,7 +148,12 @@ function BoardColumn({ column, updateBoard }: IBoardColumnProps) {
  *
  * Created so that state changes to the column don't require all cards to be rendered
  */
-const BoardColumnCardList = memo(({ column, updateBoard }: IBoardColumnProps) => {
+interface IBoardColumnCardListProps extends IBoardColumnProps {
+    scrollableRef: RefObject<HTMLDivElement | null>;
+    onCardCountChange: (cardCount: number) => void;
+}
+
+const BoardColumnCardList = memo(({ column, updateBoard, scrollableRef, onCardCountChange }: IBoardColumnCardListProps) => {
     const { project, socket, filters, filterCard, shouldShowArchivedCard, filterCardMember, filterCardLabels, filterCardRelationships } = useBoard();
     const updater = useReducer((x) => x + 1, 0);
     const [_, forceUpdate] = updater;
@@ -194,7 +205,42 @@ const BoardColumnCardList = memo(({ column, updateBoard }: IBoardColumnProps) =>
         otherHandlers,
     });
 
-    return columnCards.map((card) => <BoardColumnCard key={card.uid} card={card} />);
+    useEffect(() => {
+        onCardCountChange(columnCards.length);
+    }, [columnCards.length, onCardCountChange]);
+
+    const virtualizer = useVirtualizer({
+        count: columnCards.length,
+        getScrollElement: () => scrollableRef.current,
+        estimateSize: () => 126,
+        overscan: 10,
+        getItemKey: (index) => columnCards[index]?.uid ?? index,
+    });
+    const virtualItems = virtualizer.getVirtualItems();
+    const totalSize = virtualizer.getTotalSize();
+
+    return (
+        <Box className="relative w-full flex-shrink-0" style={{ height: `${totalSize}px` }}>
+            {virtualItems.map((virtualRow) => {
+                const card = columnCards[virtualRow.index];
+                if (!card) {
+                    return null;
+                }
+
+                return (
+                    <Box
+                        key={card.uid}
+                        ref={virtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="absolute left-0 top-0 w-full pb-2"
+                        style={{ transform: `translateY(${virtualRow.start}px)` }}
+                    >
+                        <BoardColumnCard card={card} />
+                    </Box>
+                );
+            })}
+        </Box>
+    );
 });
 
 export default BoardColumn;

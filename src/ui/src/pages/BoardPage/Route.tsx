@@ -1,4 +1,4 @@
-import { Navigate, Outlet, RouteObject } from "react-router";
+import { Navigate, Outlet, type RouteObject } from "react-router";
 import { AuthGuard } from "@/core/routing/AuthGuard";
 import { ROUTES } from "@/core/routing/constants";
 import BoardProxy from "@/pages/BoardPage";

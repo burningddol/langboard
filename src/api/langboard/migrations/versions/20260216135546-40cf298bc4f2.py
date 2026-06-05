@@ -8,8 +8,6 @@ Create Date: 2026-02-16 13:55:46.581441
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import CSVType, EnumLikeType, SnowflakeIDType
 from langboard_shared.core.routing.ApiErrorCode import ApiErrorCode
@@ -36,8 +34,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("user_id", SnowflakeIDType, nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("value", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("value", sa.String(), nullable=False),
         sa.Column("provider", EnumLikeType(ApiKeyProvider), nullable=False),
         sa.Column("ip_whitelist", CSVType(str), nullable=False),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
@@ -59,8 +57,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("user_id", SnowflakeIDType, nullable=True),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
+        sa.Column("description", sa.String(), nullable=False),
         sa.Column("tools", CSVType(str), nullable=False),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], ondelete="CASCADE"),
@@ -97,7 +95,7 @@ def upgrade() -> None:
         ),
         sa.Column("api_key_id", SnowflakeIDType, nullable=True),
         sa.Column("endpoint", sa.TEXT(), nullable=False),
-        sa.Column("method", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("method", sa.String(), nullable=False),
         sa.Column("status_code", sa.Integer(), nullable=False),
         sa.Column("is_success", sa.Boolean(), nullable=False),
         sa.Column("ip_address", sa.TEXT(), nullable=True),

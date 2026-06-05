@@ -8,7 +8,7 @@ import useResizeEvent from "@/core/hooks/useResizeEvent";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { usePageHeader } from "@/core/providers/PageHeaderProvider";
 import { cn, measureTextAreaHeight } from "@/core/utils/ComponentUtils";
-import { useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
+import { useBoardCardSectionSaveActions } from "@/pages/BoardPage/components/card/BoardCardSectionSaveProvider";
 import BoardCardNotificationSettings from "@/pages/BoardPage/components/card/BoardCardNotificationSettings";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -26,7 +26,7 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
     const { setPageAliasRef } = usePageHeader();
     const { card, isCardEditing, canEditCard } = useBoardCard();
     const [t] = useTranslation();
-    const { markSectionDirty, resetSection, registerSectionSaveHandler, registerSectionCancelHandler } = useBoardCardUnsavedActions();
+    const { registerSectionCancelHandler, registerSectionSaveHandler } = useBoardCardSectionSaveActions();
     const title = card.useField("title");
     const titleSpanRef = useRef<HTMLSpanElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -119,10 +119,9 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
     const handleTitleValueChange = useCallback(
         (nextTitle: string) => {
             setDraftTitle(nextTitle);
-            markSectionDirty("title", nextTitle.trim() !== title.trim());
             requestAnimationFrame(syncHeight);
         },
-        [markSectionDirty, syncHeight, title]
+        [syncHeight]
     );
 
     const handleCollaborativeValueReady = useCallback((updateValue: ((value: string) => void) | null) => {
@@ -148,18 +147,17 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
         if (!nextTitle || nextTitle === originalTitle) {
             resetCollaborativeTitleRef.current?.(title);
             setDraftTitle(title);
-            resetSection("title");
             return null;
         }
 
         return { title: nextTitle };
-    }, [draftTitle, resetSection, title]);
+    }, [draftTitle, title]);
 
-    const cancelTitleEdit = useCallback(() => {
+    const cancelTitle = useCallback(() => {
         resetCollaborativeTitleRef.current?.(title);
         setDraftTitle(title);
-        resetSection("title");
-    }, [resetSection, title]);
+        setIsEditing(false);
+    }, [title]);
 
     useEffect(() => {
         setPageAliasRef.current(title);
@@ -169,9 +167,8 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
         if (!isCardEditing) {
             setIsEditing(false);
             setDraftTitle(title);
-            resetSection("title");
         }
-    }, [isCardEditing, resetSection, title]);
+    }, [isCardEditing, title]);
 
     useLayoutEffect(() => {
         if (!isEditing) {
@@ -189,7 +186,7 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
     useResizeEvent({ doneCallback: updateShowCollapse }, [updateShowCollapse]);
 
     useEffect(() => registerSectionSaveHandler("title", saveTitle), [registerSectionSaveHandler, saveTitle]);
-    useEffect(() => registerSectionCancelHandler("title", cancelTitleEdit), [cancelTitleEdit, registerSectionCancelHandler]);
+    useEffect(() => registerSectionCancelHandler("title", cancelTitle), [cancelTitle, registerSectionCancelHandler]);
 
     const Title = useDialogTitle ? Dialog.Title : "div";
 
@@ -230,6 +227,7 @@ function BoardCardTitle({ className, useDialogTitle = true }: { className?: stri
                     section="title"
                     field="title"
                     defaultValue={title}
+                    resetSyncedValueToDefault
                     className={cn(
                         "min-h-8 break-all rounded-none border-x-0 border-t-0 p-0 text-2xl scrollbar-hide",
                         "focus-visible:border-b-primary focus-visible:ring-0"

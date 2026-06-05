@@ -35,12 +35,12 @@ class ProjectRepository(BaseRepository[Project]):
             projects = result.all()
         return projects
 
-    def get_all_starred(self, user: TUserParam) -> list[Project]:
+    def get_all_starred(self, user: TUserParam) -> list[tuple[Project, ProjectAssignedUser]]:
         user_id = InfraHelper.convert_id(user)
         projects = []
         with DbSession.use(readonly=True) as db:
             result = db.exec(
-                SqlBuilder.select.table(Project)
+                SqlBuilder.select.tables(Project, ProjectAssignedUser)
                 .join(
                     ProjectAssignedUser,
                     ProjectAssignedUser.column("project_id") == Project.column("id"),
@@ -51,12 +51,6 @@ class ProjectRepository(BaseRepository[Project]):
                     ProjectAssignedUser.column("last_viewed_at").desc(),
                     Project.column("updated_at").desc(),
                     Project.column("id").desc(),
-                )
-                .group_by(
-                    Project.column("id"),
-                    ProjectAssignedUser.column("id"),
-                    Project.column("updated_at"),
-                    ProjectAssignedUser.column("last_viewed_at"),
                 )
             )
             projects = result.all()
@@ -72,7 +66,7 @@ class ProjectRepository(BaseRepository[Project]):
         user_b = aliased(ProjectAssignedUser)
 
         query = (
-            SqlBuilder.select.column(user_a.id)
+            SqlBuilder.select.column(user_a.id)  # type: ignore
             .join(
                 user_b,
                 cast(InstrumentedAttribute, user_a.project_id) == user_b.project_id,

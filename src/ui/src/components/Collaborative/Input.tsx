@@ -1,9 +1,11 @@
 import Input, { InputProps } from "@/components/base/Input";
+import SyncBlocker from "@/components/Collaborative/SyncBlocker";
 import CollaborativeUserLabel from "@/components/Collaborative/UserLabel";
 import { ICollaborativeTextCursor, useCollaborativeText } from "@/components/Collaborative/useCollaborativeText";
 import { composeRefs } from "@/core/utils/ComponentUtils";
 import { TEditorCollaborationType } from "@langboard/core/constants";
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ICollaborativeInputProps extends Omit<InputProps, "value" | "onChange"> {
     collaborationType?: TEditorCollaborationType;
@@ -12,6 +14,7 @@ export interface ICollaborativeInputProps extends Omit<InputProps, "value" | "on
     section?: number | string;
     uid?: number | string;
     preserveSyncedValue?: bool;
+    resetSyncedValueToDefault?: bool;
     onChange?: React.ChangeEventHandler<HTMLInputElement>;
     onCollaborativeValueReady?: (updateValue: ((value: string) => void) | null) => void;
     onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
@@ -52,6 +55,7 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             defaultValue,
             disabled,
             preserveSyncedValue,
+            resetSyncedValueToDefault,
             onChange,
             onSelect,
             onKeyUp,
@@ -62,12 +66,14 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             onCollaborativeValueReady,
             onCollaborativeValueResetReady,
             onValueChange,
+            readOnly,
             ...props
         },
         ref
     ) => {
+        const [t] = useTranslation();
         const inputRef = useRef<HTMLInputElement>(null);
-        const { remoteCursors, resetValue, updateSelection, value, updateValue } = useCollaborativeText({
+        const { isSynced, remoteCursors, resetValue, retrySync, updateSelection, value, updateValue } = useCollaborativeText({
             collaborationType,
             documentID,
             field,
@@ -76,10 +82,30 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
             defaultValue,
             disabled,
             preserveSyncedValue,
+            resetSyncedValueToDefault,
             onValueChange,
         });
         const [cursorPositions, setCursorPositions] = useState<Record<number, ICursorOverlayPosition>>({});
         const [inputType, setInputType] = useState("text");
+        const [showSyncUnavailable, setShowSyncUnavailable] = useState(false);
+        const isCollaborationEnabled = !!documentID || (!!collaborationType && uid !== undefined && uid !== null);
+        const isWaitingForSync = isCollaborationEnabled && !disabled && !readOnly && !isSynced;
+        const isInputDisabled = disabled || isWaitingForSync;
+
+        React.useEffect(() => {
+            if (!isWaitingForSync) {
+                setShowSyncUnavailable(false);
+                return;
+            }
+
+            const timeoutID = window.setTimeout(() => {
+                setShowSyncUnavailable(true);
+            }, 5_000);
+
+            return () => {
+                window.clearTimeout(timeoutID);
+            };
+        }, [isWaitingForSync]);
 
         React.useEffect(() => {
             onCollaborativeValueReady?.(updateValue);
@@ -263,7 +289,8 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
                 <Input
                     {...props}
                     ref={composeRefs(ref, inputRef)}
-                    disabled={disabled}
+                    disabled={isInputDisabled}
+                    readOnly={readOnly}
                     value={value}
                     onChange={handleChange}
                     onClick={handleClick}
@@ -273,6 +300,13 @@ const CollaborativeInput = React.forwardRef<HTMLInputElement, ICollaborativeInpu
                     onPaste={handlePaste}
                     onSelect={handleSelect}
                 />
+                {isWaitingForSync && (
+                    <SyncBlocker
+                        actionLabel={showSyncUnavailable ? t("common.Refresh") : undefined}
+                        label={t(showSyncUnavailable ? "common.Realtime sync unavailable." : "common.Syncing draft...")}
+                        onAction={showSyncUnavailable ? retrySync : undefined}
+                    />
+                )}
                 <RemoteCursors cursors={remoteCursors} positions={cursorPositions} />
             </div>
         );

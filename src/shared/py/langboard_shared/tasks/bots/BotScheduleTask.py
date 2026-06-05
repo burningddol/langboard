@@ -1,6 +1,6 @@
 from ...ai import BotDefaultTrigger, BotScheduleHelper
 from ...core.broker import Broker
-from ...core.db import BaseSqlModel, DbSession, SqlBuilder
+from ...core.db import BaseDbModel, DbSession, SqlBuilder
 from ...core.types import SafeDateTime
 from ...domain.models import Bot, Card, Project, ProjectColumn
 from ...domain.models.bases import BaseBotScheduleModel
@@ -125,7 +125,7 @@ async def _check_bot_schedule_runnable(interval_str: str):
 
 
 async def _run_scheduler(
-    bot: Bot, bot_schedule: BotSchedule, schedule_model: BaseBotScheduleModel, model: BaseSqlModel | None = None
+    bot: Bot, bot_schedule: BotSchedule, schedule_model: BaseBotScheduleModel, model: BaseDbModel | None = None
 ):
     if bot_schedule.status != BotScheduleStatus.Started:
         return

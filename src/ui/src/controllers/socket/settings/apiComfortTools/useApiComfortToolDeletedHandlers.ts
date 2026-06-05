@@ -14,7 +14,7 @@ export interface IUseApiComfortToolDeletedHandlersProps extends IBaseUseSocketHa
 
 const useApiComfortToolDeletedHandlers = ({ apiComfortTool, callback }: IUseApiComfortToolDeletedHandlersProps) => {
     const eventKey = apiComfortTool ? `api-comfort-tool-deleted-${apiComfortTool.uid}` : "api-comfort-tool-deleted";
-    const name = apiComfortTool ? SocketEvents.SERVER.SETTINGS.API_COMFORT_TOOL.DELETED : "settings:api-comfort-tool:deleted";
+    const name = apiComfortTool ? SocketEvents.SERVER.SETTINGS.API_COMFORT_TOOL.DELETED : SocketEvents.SERVER.SETTINGS.API_COMFORT_TOOL.DELETED_ANY;
     const params = apiComfortTool ? { uid: apiComfortTool.uid } : undefined;
 
     return useSocketHandler<{}, IApiComfortToolDeletedRawResponse>({

@@ -134,7 +134,7 @@ def get_chat_templates(project_uid: str, service: DomainService = DomainService.
 @AppRouter.api.post(
     "/board/{project_uid}/chat/template",
     tags=["Board.Chat"],
-    responses=OpenApiSchema(201).auth().forbidden().err(404, ApiErrorCode.NF2001).get(),
+    responses=OpenApiSchema(201).suc({"template": ChatTemplate}).auth().forbidden().err(404, ApiErrorCode.NF2001).get(),
 )
 @RoleFilter.add(ProjectRole, [ProjectRoleAction.Update], RoleFinder.project)
 @AuthFilter.add("user")
@@ -149,7 +149,7 @@ def create_chat_template(
 
     ProjectPublisher.chat_template_created(project, {"template": template.api_response()})
 
-    return JsonResponse(status_code=status.HTTP_201_CREATED)
+    return JsonResponse(content={"template": template.api_response()}, status_code=status.HTTP_201_CREATED)
 
 
 @collaborative_edit(

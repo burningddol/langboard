@@ -28,7 +28,6 @@ class ProjectLabelRepository(BaseOrderRepository[ProjectLabel, Project]):
             SqlBuilder.select.table(ProjectLabel)
             .where(ProjectLabel.column("project_id") == project_id)
             .order_by(ProjectLabel.column("order").asc())
-            .group_by(ProjectLabel.column("id"), ProjectLabel.column("order"))
         )
 
         if where_in is not None:

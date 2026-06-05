@@ -8,7 +8,7 @@ import useDeleteCardComment from "@/controllers/api/card/comment/useDeleteCardCo
 import useUpdateCardComment from "@/controllers/api/card/comment/useUpdateCardComment";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { IEditorContent } from "@/core/models/Base";
-import { ModelRegistry } from "@/core/models/ModelRegistry";
+import { isModel, ModelRegistry } from "@/core/models/ModelRegistry";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { getEditorStore } from "@/core/stores/EditorStore";
@@ -110,6 +110,7 @@ function BoardCommentFooterActions() {
     const isAdmin = currentUser.useField("is_admin");
     const [isValidating, setIsValidating] = useState(false);
     const canEdit = currentUser.uid === author.uid || isAdmin;
+    const canReply = !isModel(author, "User") || author.isValidUser();
     const { mutateAsync: deleteCommentMutateAsync } = useDeleteCardComment({ interceptToast: true });
     const startEditing = () => {
         valueRef.current = comment.content;
@@ -151,7 +152,7 @@ function BoardCommentFooterActions() {
     return (
         <>
             <BoardCommentReaction comment={comment} />
-            {hasRoleAction(ProjectRole.EAction.Read) && currentUser.uid !== author.uid && currentUser.isValidUser() && (
+            {hasRoleAction(ProjectRole.EAction.Read) && currentUser.uid !== author.uid && currentUser.isValidUser() && canReply && (
                 <>
                     <Separator orientation="vertical" className="h-1/2" />
                     <Button

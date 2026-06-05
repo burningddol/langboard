@@ -8,7 +8,6 @@ Create Date: 2026-04-30 12:00:00.000000
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import CSVType, SnowflakeIDType
 
@@ -31,12 +30,12 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.Column("is_enabled", sa.Boolean(), nullable=False),
-        sa.Column("interval_str", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("target", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("field", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("operator", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("interval_str", sa.String(), nullable=False),
+        sa.Column("target", sa.String(), nullable=False),
+        sa.Column("field", sa.String(), nullable=False),
+        sa.Column("operator", sa.String(), nullable=False),
         sa.Column("value", sa.JSON(), nullable=True),
         sa.Column("recipients", CSVType(str), nullable=False),
         sa.Column("repeat_after_hours", sa.Integer(), nullable=False),

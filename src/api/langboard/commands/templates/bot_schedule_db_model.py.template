@@ -4,7 +4,8 @@ from .bases import BaseBotScheduleModel
 from .{class_name} import {class_name}
 
 
-class {class_name}BotSchedule(BaseBotScheduleModel, table=True):
+class {class_name}BotSchedule(BaseBotScheduleModel):
+    __db_table__ = True
     {column_name}_id: SnowflakeID = SnowflakeIDField(
         foreign_key={class_name}, nullable=False, index=True, api_field=ApiField(name="{column_name}_uid")
     )

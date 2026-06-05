@@ -3,6 +3,11 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useLocation } from "react-router";
 import { DashboardStyledLayout } from "@/components/Layout";
 import Box from "@/components/base/Box";
+import Button from "@/components/base/Button";
+import Flex from "@/components/base/Flex";
+import Floating from "@/components/base/Floating";
+import IconComponent from "@/components/base/IconComponent";
+import ScrollArea from "@/components/base/ScrollArea";
 import Toast from "@/components/base/Toast";
 import { ROUTES } from "@/core/routing/constants";
 import ChatSidebar from "@/pages/BoardPage/components/chat/ChatSidebar";
@@ -27,10 +32,16 @@ import useSwitchSocketHandlers from "@/core/hooks/useSwitchSocketHandlers";
 import { InternalBotModel, Project } from "@/core/models";
 import { EHttpStatus, ESocketTopic } from "@langboard/core/enums";
 import useBoardBotStatusMapHandlers from "@/controllers/socket/board/useBoardBotStatusMapHandlers";
-import BoardBotScope from "@/pages/BoardPage/components/board/BoardBotScope";
+import { BoardBotScopeList } from "@/pages/BoardPage/components/board/BoardBotScope";
 import useGetProject from "@/controllers/api/board/useGetProject";
 import BoardActivityDialog from "@/pages/BoardPage/components/board/BoardActivityDialog";
 import { cn } from "@/core/utils/ComponentUtils";
+import useCardRelationshipsUpdatedHandlers from "@/controllers/socket/card/useCardRelationshipsUpdatedHandlers";
+import useGetProjects from "@/controllers/api/dashboard/useGetProjects";
+import useRoleActionFilter from "@/core/hooks/useRoleActionFilter";
+import { ProjectRole } from "@/core/models/roles";
+import { ScreenMap } from "@/core/utils/VariantUtils";
+import useResizeEvent from "@/core/hooks/useResizeEvent";
 
 const getCurrentPage = (pageRoute?: string): TBoardViewType => {
     switch (pageRoute) {
@@ -43,6 +54,18 @@ const getCurrentPage = (pageRoute?: string): TBoardViewType => {
         default:
             return "board";
     }
+};
+
+type TBoardSidePanel = "botScope" | "switchProject";
+
+const getBoardChatVisibleStorageKey = (projectUID: string) => `board:${projectUID}:chat-visible`;
+
+const getStoredBoardChatHidden = (projectUID: string) => {
+    return localStorage.getItem(getBoardChatVisibleStorageKey(projectUID)) === "false";
+};
+
+const saveBoardChatVisible = (projectUID: string, visible: bool) => {
+    localStorage.setItem(getBoardChatVisibleStorageKey(projectUID), visible ? "true" : "false");
 };
 
 const BoardProxy = memo((): React.JSX.Element => {
@@ -121,15 +144,29 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     const [isReady, setIsReady] = useState(false);
     const [isCardExpanded, setIsCardExpanded] = useState(false);
     const [isActivityDialogOpened, setIsActivityDialogOpened] = useState(false);
-    const [isBotScopeOpened, setIsBotScopeOpened] = useState(false);
+    const [activeSidePanel, setActiveSidePanel] = useState<TBoardSidePanel>();
+    const [isMobile, setIsMobile] = useState(window.innerWidth < ScreenMap.size.md);
+    const isBotScopeOpened = activeSidePanel === "botScope";
+    const isSwitchProjectOpened = activeSidePanel === "switchProject";
     const openActivityDialog = useCallback(() => {
         setIsActivityDialogOpened(true);
     }, [setIsActivityDialogOpened]);
-    const openBotScope = useCallback(() => {
-        setIsBotScopeOpened(true);
-    }, [setIsBotScopeOpened]);
-    const { boardViewType, selectCardViewType, chatResizableSidebar, chatSidebarRef, setBoardViewType, setChatResizableSidebar, setBoardChat } =
-        useBoardController();
+    const toggleBotScope = useCallback(() => {
+        setActiveSidePanel((value) => (value === "botScope" ? undefined : "botScope"));
+    }, [setActiveSidePanel]);
+    const toggleSwitchProject = useCallback(() => {
+        setActiveSidePanel((value) => (value === "switchProject" ? undefined : "switchProject"));
+    }, [setActiveSidePanel]);
+    const {
+        boardViewType,
+        selectCardViewType,
+        chatResizableSidebar,
+        chatSidebarRef,
+        boardChat,
+        setBoardViewType,
+        setChatResizableSidebar,
+        setBoardChat,
+    } = useBoardController();
     const isCardPage = !!pageRoute && !["wiki", "settings"].includes(pageRoute);
     const projectTitle = project.useField("title");
     const isBoardChatAvailableHandlers = useMemo(
@@ -154,6 +191,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                             floatingTitle: t("project.Chat with AI"),
                             floatingFullScreen: true,
                             widthCssVariable: "--board-chat-sidebar-width",
+                            hidden: window.innerWidth < ScreenMap.size.md || getStoredBoardChatHidden(project.uid),
                         }));
                     } else {
                         setBoardChat(undefined);
@@ -232,6 +270,13 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             }),
         [isBoardChatAvailableHandlers]
     );
+    const cardRelationshipsUpdatedHandlers = useMemo(
+        () =>
+            useCardRelationshipsUpdatedHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
     const handlers = useMemo(
         () => [
             isBoardChatAvailableHandlers,
@@ -239,6 +284,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             projectDeletedHandlers,
             boardAssignedInternalBotChangedHandlers,
             internalBotUpdatedHandlers,
+            cardRelationshipsUpdatedHandlers,
         ],
         [
             isBoardChatAvailableHandlers,
@@ -246,10 +292,20 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             projectDeletedHandlers,
             boardAssignedInternalBotChangedHandlers,
             internalBotUpdatedHandlers,
+            cardRelationshipsUpdatedHandlers,
         ]
     );
 
     const { subscribedTopics } = useSwitchSocketHandlers({ socket, handlers });
+
+    useResizeEvent(
+        {
+            doneCallback: () => {
+                setIsMobile(window.innerWidth < ScreenMap.size.md);
+            },
+        },
+        [setIsMobile]
+    );
 
     useEffect(() => {
         if (isFetching || !subscribedTopics.includes(ESocketTopic.Board)) {
@@ -270,6 +326,19 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     useEffect(() => {
         setIsCardExpanded(false);
     }, [pageRoute]);
+
+    useEffect(() => {
+        setChatResizableSidebar((prev) => {
+            if (!prev) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                hidden: isMobile ? true : getStoredBoardChatHidden(project.uid),
+            };
+        });
+    }, [isMobile, project.uid, setChatResizableSidebar]);
 
     const headerNavs: IHeaderNavItem[] = [
         {
@@ -307,9 +376,60 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
         },
         {
             name: t("bot.Scope bot"),
-            onClick: openBotScope,
+            onClick: toggleBotScope,
             active: isBotScopeOpened,
             hidden: !!selectCardViewType && !!currentUser && currentUser.is_admin,
+        },
+    ];
+    const floatingNavs: IBoardFloatingNavItem[] = [
+        ...(boardChat && chatResizableSidebar
+            ? [
+                  {
+                      name: t("project.Chat with AI"),
+                      icon: "message-circle",
+                      active: !chatResizableSidebar.hidden,
+                      hidden: !!selectCardViewType,
+                      onClick: () => {
+                          setChatResizableSidebar((prev) => {
+                              if (!prev) {
+                                  return prev;
+                              }
+
+                              const hidden = !prev.hidden;
+                              if (!isMobile) {
+                                  saveBoardChatVisible(project.uid, !hidden);
+                              }
+
+                              return { ...prev, hidden };
+                          });
+                      },
+                  } satisfies IBoardFloatingNavItem,
+              ]
+            : []),
+        {
+            name: t("board.Board"),
+            icon: "columns-3",
+            active: boardViewType === "board" || boardViewType === "card",
+            hidden: !!selectCardViewType,
+            onClick: () => {
+                setActiveSidePanel(undefined);
+                setBoardViewType("board");
+                navigate(ROUTES.BOARD.MAIN(project.uid), { smooth: true });
+            },
+        },
+        {
+            name: t("settings.Bots"),
+            icon: "bot",
+            onClick: toggleBotScope,
+            active: isBotScopeOpened,
+            hidden: !!selectCardViewType && !!currentUser && currentUser.is_admin,
+        },
+        {
+            name: t("project.Switch Project"),
+            icon: "shuffle",
+            active: isSwitchProjectOpened,
+            hidden: !!selectCardViewType,
+            onClick: toggleSwitchProject,
         },
     ];
 
@@ -339,46 +459,244 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                     chatResizableSidebar
                         ? {
                               ...chatResizableSidebar,
-                              floatingHidden: (isCardPage && !isCardExpanded) || !!chatResizableSidebar.floatingHidden,
-                              hidden: !!selectCardViewType || !!chatResizableSidebar.hidden,
+                              floatingHidden: true,
+                              hidden: isMobile || !!selectCardViewType || !!chatResizableSidebar.hidden,
                           }
                         : undefined
                 }
                 className="!p-0"
             >
                 {isReady && currentUser && project ? (
-                    <Box className="relative size-full min-h-[calc(100dvh_-_theme(spacing.16))]">
-                        <Box
-                            className={cn(
-                                "relative size-full",
-                                isCardPage &&
-                                    isCardExpanded &&
-                                    !selectCardViewType &&
-                                    "pointer-events-none absolute inset-0 -z-[9999] overflow-hidden"
-                            )}
-                        >
-                            <PageComponent project={project} currentUser={currentUser} />
-                        </Box>
-                        {isCardPage && (
-                            <BoardCardPage
-                                projectUID={project.uid}
-                                cardUID={pageRoute}
-                                embedded
-                                isExpanded={isCardExpanded}
-                                setIsExpanded={setIsCardExpanded}
+                    <Flex
+                        position="relative"
+                        w="full"
+                        h="full"
+                        className="h-[calc(100dvh_-_theme(spacing.16))] min-h-[calc(100dvh_-_theme(spacing.16))] overflow-hidden"
+                    >
+                        {!selectCardViewType && (
+                            <BoardSidePanel
+                                activePanel={activeSidePanel}
+                                currentProjectUID={project.uid}
+                                project={project}
+                                onSelectProject={(projectUID) => {
+                                    setActiveSidePanel(undefined);
+                                    setBoardViewType("board");
+                                    navigate(ROUTES.BOARD.MAIN(projectUID), { smooth: true });
+                                }}
                             />
                         )}
-                    </Box>
+                        <Box className="relative min-w-0 flex-1">
+                            <Box
+                                className={cn(
+                                    "relative size-full",
+                                    isCardPage &&
+                                        isCardExpanded &&
+                                        !selectCardViewType &&
+                                        "pointer-events-none absolute inset-0 -z-[9999] overflow-hidden"
+                                )}
+                            >
+                                <PageComponent project={project} currentUser={currentUser} />
+                            </Box>
+                            {isCardPage && (
+                                <BoardCardPage
+                                    projectUID={project.uid}
+                                    cardUID={pageRoute}
+                                    embedded
+                                    isExpanded={isCardExpanded}
+                                    setIsExpanded={setIsCardExpanded}
+                                />
+                            )}
+                            {!isCardPage && !selectCardViewType && (
+                                <Floating.Nav
+                                    fixed
+                                    items={floatingNavs.map((nav, index) => ({
+                                        key: index,
+                                        label: nav.name,
+                                        icon: nav.icon,
+                                        active: nav.active,
+                                        hidden: nav.hidden,
+                                        onClick: nav.onClick,
+                                    }))}
+                                />
+                            )}
+                            <BoardMobileChatOverlay
+                                isOpened={isMobile && !selectCardViewType && !!chatResizableSidebar && !chatResizableSidebar.hidden}
+                                onClose={() => {
+                                    setChatResizableSidebar((prev) => (prev ? { ...prev, hidden: true } : prev));
+                                }}
+                            >
+                                {chatResizableSidebar?.children}
+                            </BoardMobileChatOverlay>
+                        </Box>
+                    </Flex>
                 ) : (
                     <SkeletonComponent />
                 )}
             </DashboardStyledLayout>
-            {isReady && !!currentUser && !!project && (
-                <BoardBotScope project={project} currentUser={currentUser} isOpened={isBotScopeOpened} setIsOpened={setIsBotScopeOpened} />
-            )}
             <BoardActivityDialog isOpened={isActivityDialogOpened} setIsOpened={setIsActivityDialogOpened} />
         </>
     );
+}
+
+function BoardMobileChatOverlay({
+    children,
+    isOpened,
+    onClose,
+}: {
+    children: React.ReactNode;
+    isOpened: bool;
+    onClose: () => void;
+}): React.JSX.Element | null {
+    if (!isOpened) {
+        return null;
+    }
+
+    return (
+        <Box className="fixed inset-x-0 bottom-[4.75rem] top-16 z-50 overflow-hidden border-t bg-background shadow-2xl md:hidden">
+            <Button variant="ghost" size="icon-sm" className="absolute right-2 top-2 z-10" onClick={onClose}>
+                <IconComponent icon="x" size="5" />
+            </Button>
+            {children}
+        </Box>
+    );
+}
+
+function BoardSidePanel({
+    activePanel,
+    currentProjectUID,
+    project,
+    onSelectProject,
+}: {
+    activePanel?: TBoardSidePanel;
+    currentProjectUID: string;
+    project: Project.TModel;
+    onSelectProject: (projectUID: string) => void;
+}): React.JSX.Element {
+    const isOpened = !!activePanel;
+    const isBotScope = activePanel === "botScope";
+    const title = isBotScope ? "Bots" : "Switch Project";
+    const icon = isBotScope ? "bot" : "folder-kanban";
+    const widthClassName = isBotScope ? "w-auto md:w-80" : "w-auto md:w-72";
+
+    return (
+        <Box
+            className={cn(
+                "fixed bottom-[4.75rem] left-2 right-2 z-40 h-[60dvh] max-h-[calc(100dvh-7rem)]",
+                "overflow-hidden rounded-2xl border bg-background shadow-lg",
+                "transition-[opacity,transform,width] duration-200 ease-out",
+                "md:static md:h-full md:max-h-none md:shrink-0 md:rounded-none md:border-y-0 md:border-l-0 md:border-r md:shadow-none",
+                isOpened
+                    ? `translate-y-0 opacity-100 md:translate-y-0 ${widthClassName}`
+                    : "pointer-events-none translate-y-4 opacity-0 md:w-0 md:translate-y-0 md:border-r-0"
+            )}
+            aria-hidden={!isOpened}
+        >
+            <Flex
+                direction="col"
+                h="full"
+                className={cn(widthClassName, "transition-transform duration-200 ease-out", isOpened ? "translate-x-0" : "-translate-x-4")}
+            >
+                <Flex items="center" gap="2" className="shrink-0 border-b px-4 py-3" weight="semibold">
+                    <IconComponent icon={icon} size="4" />
+                    <span>{title}</span>
+                </Flex>
+                <Box className="min-h-0 flex-1">
+                    {!isOpened ? (
+                        <></>
+                    ) : isBotScope ? (
+                        <BoardBotScopeSidebar project={project} />
+                    ) : (
+                        <BoardSwitchProjectSidebar currentProjectUID={currentProjectUID} currentProject={project} onSelectProject={onSelectProject} />
+                    )}
+                </Box>
+            </Flex>
+        </Box>
+    );
+}
+
+function BoardBotScopeSidebar({ project }: { project: Project.TModel }): React.JSX.Element {
+    const currentUserRoleActions = project.useField("current_auth_role_actions");
+    const { hasRoleAction } = useRoleActionFilter(currentUserRoleActions);
+
+    if (!hasRoleAction(ProjectRole.EAction.Update)) {
+        return <></>;
+    }
+
+    return (
+        <Box className="h-full">
+            <BoardBotScopeList project={project} className="h-full pb-3" />
+        </Box>
+    );
+}
+
+function BoardSwitchProjectSidebar({
+    currentProjectUID,
+    currentProject,
+    onSelectProject,
+}: {
+    currentProjectUID: string;
+    currentProject: Project.TModel;
+    onSelectProject: (projectUID: string) => void;
+}): React.JSX.Element {
+    const { data, isFetching, isLoading } = useGetProjects();
+    const projects = useMemo(() => {
+        const projectMap = new Map<string, Project.TModel>();
+        [currentProject, ...(data?.projects ?? [])].forEach((project) => {
+            projectMap.set(project.uid, project);
+        });
+        return [...projectMap.values()];
+    }, [currentProject, data]);
+
+    return (
+        <ScrollArea.Root className="h-full min-h-0">
+            <Flex direction="col" gap="1" p="2">
+                {(isLoading || isFetching) && projects.length === 0 ? (
+                    <Box className="px-2 py-3 text-sm text-muted-foreground">Loading...</Box>
+                ) : (
+                    projects.map((project) => (
+                        <BoardSwitchProjectSidebarItem
+                            key={project.uid}
+                            project={project}
+                            active={project.uid === currentProjectUID}
+                            onClick={() => onSelectProject(project.uid)}
+                        />
+                    ))
+                )}
+            </Flex>
+        </ScrollArea.Root>
+    );
+}
+
+function BoardSwitchProjectSidebarItem({
+    project,
+    active,
+    onClick,
+}: {
+    project: Project.TModel;
+    active: bool;
+    onClick: () => void;
+}): React.JSX.Element {
+    const title = project.useField("title");
+    const projectType = project.useField("project_type");
+
+    return (
+        <Button
+            type="button"
+            variant={active ? "secondary" : "ghost"}
+            className="h-auto justify-start gap-2 rounded-lg px-3 py-2 text-left"
+            onClick={onClick}
+        >
+            <IconComponent icon="folder-kanban" size="4" />
+            <Box className="min-w-0">
+                <Box className="truncate text-sm font-medium">{title}</Box>
+                <Box className="truncate text-xs text-muted-foreground">{projectType}</Box>
+            </Box>
+        </Button>
+    );
+}
+
+interface IBoardFloatingNavItem extends IHeaderNavItem {
+    icon: string;
 }
 
 export default BoardProxy;

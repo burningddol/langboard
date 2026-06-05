@@ -5,21 +5,10 @@ import { ROUTES } from "@/core/routing/constants";
 import { getEditorStore } from "@/core/stores/EditorStore";
 import { cn } from "@/core/utils/ComponentUtils";
 import BoardCard from "@/pages/BoardPage/components/card/BoardCard";
-import { BoardCardUnsavedProvider, useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
+import { BoardCardSectionSaveProvider } from "@/pages/BoardPage/components/card/BoardCardSectionSaveProvider";
 import { EHttpStatus } from "@langboard/core/enums";
-import { memo, useRef, useState, useEffect } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/plate-ui/alert-dialog";
-import { useTranslation } from "react-i18next";
 import { useBoardController } from "@/core/providers/BoardController";
 
 interface IBoardCardPageProps {
@@ -43,15 +32,14 @@ const BoardCardPageComponent = ({
     const projectUID = projectUIDProp ?? params.projectUID;
     const cardUID = cardUIDProp ?? params.cardUID;
     const viewportRef = useRef<HTMLDivElement | null>(null);
-    const [isDirtyAlertOpen, setIsDirtyAlertOpen] = useState(false);
+    const isCardEditingRef = useRef(false);
+    const cancelCardEditRef = useRef<(() => void) | null>(null);
     const [isComposing, setIsComposing] = useState(false);
     const [localIsExpanded, setLocalIsExpanded] = useState(false);
     const isExpanded = controlledIsExpanded ?? localIsExpanded;
     const setIsExpanded = controlledSetIsExpanded ?? setLocalIsExpanded;
     const { selectCardViewType } = useBoardController();
     const shouldHideForCardSelection = !!selectCardViewType;
-    const { resetAll, getHasUnsavedChanges } = useBoardCardUnsavedActions();
-    const [t] = useTranslation();
 
     if (!projectUID || !cardUID) {
         return <Navigate to={ROUTES.ERROR(EHttpStatus.HTTP_404_NOT_FOUND)} replace />;
@@ -64,23 +52,24 @@ const BoardCardPageComponent = ({
         });
     };
 
-    const requestClose = () => {
-        setIsDirtyAlertOpen(true);
-    };
-
     const handleCloseRequest = () => {
         // Ignore close request during IME composition to prevent double ESC handling
         if (isComposing) {
             return;
         }
 
-        if (getHasUnsavedChanges()) {
-            requestClose();
+        if (isCardEditingRef.current) {
+            cancelCardEditRef.current?.();
             return;
         }
 
         close();
     };
+
+    const handleEditModeStateChange = useCallback((isEditing: bool, cancelEdit: (() => void) | null) => {
+        isCardEditingRef.current = isEditing;
+        cancelCardEditRef.current = cancelEdit;
+    }, []);
 
     // Detect IME composition state to handle Korean input properly
     useEffect(() => {
@@ -114,23 +103,23 @@ const BoardCardPageComponent = ({
                                 "border-0 p-0 shadow-none",
                                 isExpanded &&
                                     (embedded
-                                        ? [
+                                        ? cn(
                                               "pointer-events-auto absolute inset-0 z-[1]",
                                               "h-full w-full max-w-none overflow-hidden",
-                                              "rounded-none bg-background",
-                                          ].join(" ")
-                                        : [
+                                              "rounded-none bg-background"
+                                          )
+                                        : cn(
                                               "pointer-events-auto fixed bottom-0 left-0 right-0 top-16",
                                               "w-auto max-w-none overflow-hidden rounded-none bg-background",
-                                              "md:left-[var(--board-chat-sidebar-width,0px)]",
-                                          ].join(" ")),
+                                              "md:left-[var(--board-chat-sidebar-width,0px)]"
+                                          )),
                                 !isExpanded &&
-                                    [
+                                    cn(
                                         "h-[calc(100dvh-theme(spacing.6))] max-h-[calc(100dvh-theme(spacing.6))]",
                                         "max-w-[100vw] overflow-visible bg-transparent",
                                         "sm:h-[calc(100dvh-theme(spacing.8))] sm:max-h-[calc(100dvh-theme(spacing.8))]",
-                                        "sm:max-w-[90vw] lg:max-w-[1120px]",
-                                    ].join(" "),
+                                        "sm:max-w-[90vw] lg:max-w-[1120px]"
+                                    ),
                                 shouldHideForCardSelection && "pointer-events-none -z-[9998] opacity-0"
                             )}
                             overlayClassName={
@@ -157,18 +146,26 @@ const BoardCardPageComponent = ({
                             disablePortal={embedded}
                             viewportRef={viewportRef}
                             onInteractOutside={(event) => {
+                                if (isCardEditingRef.current) {
+                                    event.preventDefault();
+                                    handleCloseRequest();
+                                    return;
+                                }
+
                                 if (isExpanded) {
                                     event.preventDefault();
                                 }
                             }}
                             onOverlayInteract={(event) => {
-                                if (isExpanded) {
+                                if (isCardEditingRef.current) {
                                     event.preventDefault();
+                                    event.stopPropagation();
+                                    handleCloseRequest();
                                     return;
                                 }
 
-                                if (getHasUnsavedChanges()) {
-                                    requestClose();
+                                if (isExpanded) {
+                                    event.preventDefault();
                                     return;
                                 }
 
@@ -188,42 +185,21 @@ const BoardCardPageComponent = ({
                                 isExpanded={isExpanded}
                                 setIsExpanded={setIsExpanded}
                                 onClose={handleCloseRequest}
+                                onEditModeStateChange={handleEditModeStateChange}
                             />
                         </Dialog.Content>
                     </Dialog.Root>
                 </>
             )}
-            <AlertDialog open={isDirtyAlertOpen} onOpenChange={setIsDirtyAlertOpen}>
-                <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t("card.unsavedChanges.Discard card edits?")}</AlertDialogTitle>
-                        <AlertDialogDescription className="whitespace-pre-line">
-                            {t("card.unsavedChanges.You have unsaved card changes.\nLeaving now will discard them.")}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t("card.unsavedChanges.Keep editing")}</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                resetAll();
-                                setIsDirtyAlertOpen(false);
-                                close();
-                            }}
-                        >
-                            {t("card.unsavedChanges.Discard changes")}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 };
 
 const BoardCardPage = memo((props: IBoardCardPageProps) => {
     return (
-        <BoardCardUnsavedProvider>
+        <BoardCardSectionSaveProvider>
             <BoardCardPageComponent {...props} />
-        </BoardCardUnsavedProvider>
+        </BoardCardSectionSaveProvider>
     );
 });
 

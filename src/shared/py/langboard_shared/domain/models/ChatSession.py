@@ -1,10 +1,10 @@
 from typing import Any
-from ...core.db import ApiField, BaseSqlModel, DateTimeField, Field, SnowflakeIDField
+from ...core.db import ApiField, BaseDbModel, DateTimeField, Field, SnowflakeIDField
 from ...core.types import SafeDateTime, SnowflakeID
 from .User import User
 
 
-class ChatSession(BaseSqlModel, table=True):
+class ChatSession(BaseDbModel, table=True):
     user_id: SnowflakeID = SnowflakeIDField(foreign_key=User, index=True, api_field=ApiField(name="user_uid"))
     title: str = Field(default="", nullable=False, api_field=ApiField())
     last_messaged_at: SafeDateTime | None = DateTimeField(default=None, nullable=True, api_field=ApiField())

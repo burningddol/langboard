@@ -14,7 +14,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SelectRelationshipDialog from "@/pages/BoardPage/components/board/SelectRelationshipDialog";
 import BoardColumnCardRelationship from "@/pages/BoardPage/components/board/BoardColumnCardRelationship";
-import { Utils } from "@langboard/core/utils";
 import { LabelModelBadge } from "@/components/LabelBadge";
 import { ModelRegistry } from "@/core/models/ModelRegistry";
 import { IBoardColumnCardContextParams } from "@/pages/BoardPage/components/board/BoardConstants";
@@ -32,8 +31,11 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
     const { model: card } = ModelRegistry.ProjectCard.useContext<IBoardColumnCardContextParams>();
     const title = card.useField("title");
     const projectMembers = project.useForeignFieldArray("all_members");
-    const cardMemberUIDs = card.useField("member_uids");
-    const cardMembers = useMemo(() => projectMembers.filter((member) => cardMemberUIDs.includes(member.uid)), [projectMembers, cardMemberUIDs]);
+    const cardMemberUIDs = card.useField("member_uids") ?? [];
+    const cardMembers = useMemo(
+        () => projectMembers.filter((member) => member.isValidUser() && cardMemberUIDs.includes(member.uid)),
+        [projectMembers, cardMemberUIDs]
+    );
     const commentCount = card.useField("count_comment");
     const { updateCollapsed } = useCardStore();
     const isCollapsed = useCardIsCollapsed(card.uid);
@@ -47,7 +49,7 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
     );
     const openCard = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
-            if (isDragging || (e.target as HTMLElement)?.closest?.(`[${DISABLE_DRAGGING_ATTR}]`)) {
+            if ((e.target as HTMLElement)?.closest?.(`[${DISABLE_DRAGGING_ATTR}]`)) {
                 return;
             }
 
@@ -57,6 +59,10 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
                 }
 
                 setIsSelectRelationshipDialogOpened(true);
+                return;
+            }
+
+            if (isDragging) {
                 return;
             }
 
@@ -99,14 +105,15 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
             const relationshipType = relationship.relationship_type;
             if (relationshipType) {
                 const isParent = relationship.parent_card_uid === card.uid;
-                relationships.push([
-                    cardsMap[isParent ? relationship.child_card_uid : relationship.parent_card_uid].title,
-                    isParent ? relationshipType.child_name : relationshipType.parent_name,
-                ]);
+                const oppositeCard = cardsMap[isParent ? relationship.child_card_uid : relationship.parent_card_uid];
+                if (!oppositeCard) {
+                    continue;
+                }
+                relationships.push([oppositeCard.title, isParent ? relationshipType.child_name : relationshipType.parent_name]);
             }
         }
 
-        if (selectedRelationshipType && currentCardUIDRef.current) {
+        if (selectedRelationshipType && currentCardUIDRef.current && cardsMap[currentCardUIDRef.current]) {
             const isParent = selectCardViewType === "parents";
             relationships.push([
                 cardsMap[currentCardUIDRef.current].title,
@@ -179,8 +186,13 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
                     >
                         {!!presentableRelationships.length && (
                             <Card.Content className="px-6 pb-4">
-                                {presentableRelationships.map(([relatedCardTitle, relationshipName]) => (
-                                    <Flex key={Utils.String.Token.shortUUID()} items="center" gap="2" className="truncate text-accent-foreground/70">
+                                {presentableRelationships.map(([relatedCardTitle, relationshipName], index) => (
+                                    <Flex
+                                        key={`board-card-presentable-relationship-${card.uid}-${relationshipName}-${relatedCardTitle}-${index}`}
+                                        items="center"
+                                        gap="2"
+                                        className="truncate text-accent-foreground/70"
+                                    >
                                         <span>{relationshipName}</span>
                                         <span className="text-muted-foreground">&gt;</span>
                                         <span className="truncate">{relatedCardTitle}</span>

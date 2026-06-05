@@ -106,6 +106,7 @@ export interface IPopoverProps
     addIcon?: React.ComponentPropsWithoutRef<TIconProps>["icon"];
     addIconSize?: React.ComponentPropsWithoutRef<TIconProps>["size"];
     canEdit?: bool;
+    saveOnChange?: bool;
     saveText?: string;
     helperContent?: React.ReactNode;
 }
@@ -140,6 +141,7 @@ const PopoverInner = memo((props: IPopoverProps) => {
         selectedAssignees,
         onOpenChange,
         onSelectedAssigneesChange,
+        saveOnChange = false,
         helperContent,
     } = props;
     const { variant: popoverButtonVariant = "outline" } = popoverButtonProps;
@@ -147,6 +149,8 @@ const PopoverInner = memo((props: IPopoverProps) => {
     const [isOpened, setIsOpened] = useState(false);
     const [selectedValues, setSelectedValues] = useState<(string | TUserLikeModel)[]>(selectedAssignees ?? props.originalAssignees);
     const isSyncingFromPropsRef = useRef(false);
+    const isSavingRef = useRef(false);
+    const pendingSaveValuesRef = useRef<{ values: (string | TUserLikeModel)[]; closeOnSuccess: bool } | null>(null);
 
     useEffect(() => {
         const nextSelectedValues = selectedAssignees ?? props.originalAssignees;
@@ -169,45 +173,105 @@ const PopoverInner = memo((props: IPopoverProps) => {
         [onOpenChange]
     );
 
+    const getAssigneeValues = useCallback(
+        (items: (string | TUserLikeModel)[]) =>
+            items
+                .map((item) => {
+                    if (!item) {
+                        return undefined;
+                    }
+
+                    if (Utils.Type.isString(item)) {
+                        return item;
+                    }
+
+                    if (Utils.Type.isString(item.uid)) {
+                        return item;
+                    }
+
+                    const itemRecord = item as unknown as Record<string, unknown>;
+                    const assigneeUID = Utils.Type.isString(itemRecord.assigneeUID) ? itemRecord.assigneeUID : undefined;
+                    const valueUID = Utils.Type.isString(itemRecord.value) ? itemRecord.value : undefined;
+                    const resolvedSelectable = resolveSelectableByUID(allSelectables, assigneeUID ?? valueUID ?? "");
+                    if (resolvedSelectable) {
+                        return resolvedSelectable;
+                    }
+
+                    if (itemRecord.isNew && Utils.Type.isString(itemRecord.value)) {
+                        return itemRecord.value;
+                    }
+
+                    return undefined;
+                })
+                .filter((item): item is TAssigneeValue => !!item),
+        [allSelectables]
+    );
+
+    const saveSelectedValues = useCallback(
+        async (values: (string | TUserLikeModel)[], closeOnSuccess: bool) => {
+            if (isSavingRef.current) {
+                pendingSaveValuesRef.current = { values, closeOnSuccess };
+                return;
+            }
+
+            isSavingRef.current = true;
+            setIsValidating(true);
+
+            try {
+                let saveValues = values;
+                let shouldClose = closeOnSuccess;
+
+                while (true) {
+                    await save(saveValues as any);
+
+                    const pendingSaveValues = pendingSaveValuesRef.current;
+                    pendingSaveValuesRef.current = null;
+                    if (!pendingSaveValues || hasSameAssigneeUIDs(saveValues, pendingSaveValues.values)) {
+                        if (shouldClose) {
+                            setIsOpened(false);
+                        }
+                        return;
+                    }
+
+                    saveValues = pendingSaveValues.values;
+                    shouldClose = shouldClose || pendingSaveValues.closeOnSuccess;
+                }
+            } catch (error) {
+                pendingSaveValuesRef.current = null;
+                throw error;
+            } finally {
+                isSavingRef.current = false;
+                setIsValidating(false);
+            }
+        },
+        [save]
+    );
+
     const handleSelectedValuesChange = useCallback(
         (items: (string | TUserLikeModel)[]) => {
+            const previousSelectedValues = selectedValues;
+            const nextAssigneeValues = getAssigneeValues(items);
+            const previousAssigneeValues = getAssigneeValues(previousSelectedValues);
+
             setSelectedValues(items);
             if (isSyncingFromPropsRef.current) {
                 return;
             }
-            onSelectedAssigneesChange?.(
-                items
-                    .map((item) => {
-                        if (!item) {
-                            return undefined;
-                        }
 
-                        if (Utils.Type.isString(item)) {
-                            return item;
-                        }
+            if (hasSameAssigneeUIDs(previousAssigneeValues, nextAssigneeValues)) {
+                return;
+            }
 
-                        if (Utils.Type.isString(item.uid)) {
-                            return item;
-                        }
+            onSelectedAssigneesChange?.(nextAssigneeValues);
 
-                        const itemRecord = item as unknown as Record<string, unknown>;
-                        const assigneeUID = Utils.Type.isString(itemRecord.assigneeUID) ? itemRecord.assigneeUID : undefined;
-                        const valueUID = Utils.Type.isString(itemRecord.value) ? itemRecord.value : undefined;
-                        const resolvedSelectable = resolveSelectableByUID(allSelectables, assigneeUID ?? valueUID ?? "");
-                        if (resolvedSelectable) {
-                            return resolvedSelectable;
-                        }
-
-                        if (itemRecord.isNew && Utils.Type.isString(itemRecord.value)) {
-                            return itemRecord.value;
-                        }
-
-                        return undefined;
-                    })
-                    .filter((item): item is TAssigneeValue => !!item)
-            );
+            if (saveOnChange) {
+                void saveSelectedValues(nextAssigneeValues, false).catch(() => {
+                    setSelectedValues(previousSelectedValues);
+                    onSelectedAssigneesChange?.(getAssigneeValues(previousSelectedValues));
+                });
+            }
         },
-        [allSelectables, onSelectedAssigneesChange]
+        [getAssigneeValues, onSelectedAssigneesChange, saveOnChange, saveSelectedValues, selectedValues]
     );
 
     const handleSave = useCallback(async () => {
@@ -215,13 +279,8 @@ const PopoverInner = memo((props: IPopoverProps) => {
             return;
         }
 
-        setIsValidating(true);
-
-        await save(selectedValues as any);
-
-        setIsValidating(false);
-        setIsOpened(false);
-    }, [save, selectedValues]);
+        await saveSelectedValues(getAssigneeValues(selectedValues), true);
+    }, [getAssigneeValues, isValidating, saveSelectedValues, selectedValues]);
 
     return (
         <BasePopover.Root modal open={isOpened} onOpenChange={handleOpenChange}>
@@ -233,7 +292,7 @@ const PopoverInner = memo((props: IPopoverProps) => {
             <BasePopover.Content {...popoverContentProps}>
                 <Form
                     {...props}
-                    originalAssignees={selectedAssignees ?? props.originalAssignees}
+                    originalAssignees={selectedValues}
                     useEditorProps={{
                         useButton: false,
                         isValidating,
@@ -250,14 +309,16 @@ const PopoverInner = memo((props: IPopoverProps) => {
                     }}
                 />
                 {helperContent}
-                <Flex items="center" justify="end" gap="1" mt="2">
-                    <Button type="button" variant="secondary" size="sm" disabled={isValidating} onClick={() => setIsOpened(false)}>
-                        {t("common.Cancel")}
-                    </Button>
-                    <SubmitButton type="button" size="sm" onClick={handleSave} isValidating={isValidating}>
-                        {saveText ?? t("common.Save")}
-                    </SubmitButton>
-                </Flex>
+                {!saveOnChange && (
+                    <Flex items="center" justify="end" gap="1" mt="2">
+                        <Button type="button" variant="secondary" size="sm" disabled={isValidating} onClick={() => setIsOpened(false)}>
+                            {t("common.Cancel")}
+                        </Button>
+                        <SubmitButton type="button" size="sm" onClick={handleSave} isValidating={isValidating}>
+                            {saveText ?? t("common.Save")}
+                        </SubmitButton>
+                    </Flex>
+                )}
             </BasePopover.Content>
         </BasePopover.Root>
     );
@@ -579,11 +640,7 @@ function UserGroupSelectDropdownMenu({
             <DropdownMenu.Content>
                 <DropdownMenu.Group>
                     {Object.values(selectableGroups).map((group) => (
-                        <DropdownMenu.Item
-                            key={`group-${group.name}-${Utils.String.Token.shortUUID()}`}
-                            data-uid={group.uid}
-                            onClick={addGroupMembers}
-                        >
+                        <DropdownMenu.Item key={`group-${group.uid}`} data-uid={group.uid} onClick={addGroupMembers}>
                             {group.name}
                         </DropdownMenu.Item>
                     ))}

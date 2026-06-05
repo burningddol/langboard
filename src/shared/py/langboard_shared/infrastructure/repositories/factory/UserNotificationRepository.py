@@ -21,7 +21,13 @@ class UserNotificationRepository(BaseRepository[UserNotification]):
     def name() -> str:
         return "user_notification"
 
-    def get_list(self, user: TUserParam, time_range: Literal["3d", "7d", "1m", "all"] = "3d"):
+    def get_list(
+        self,
+        user: TUserParam,
+        time_range: Literal["3d", "7d", "1m", "all"] = "3d",
+        page: int = 1,
+        limit: int = 20,
+    ):
         user_id = InfraHelper.convert_id(user)
         query = SqlBuilder.select.table(UserNotification).where((UserNotification.column("receiver_id") == user_id))
 
@@ -38,6 +44,7 @@ class UserNotificationRepository(BaseRepository[UserNotification]):
             UserNotification.column("created_at").desc(),
             UserNotification.column("id").desc(),
         )
+        query = query.limit(limit + 1).offset((page - 1) * limit)
 
         notifications = []
         with DbSession.use(readonly=True) as db:
@@ -59,6 +66,16 @@ class UserNotificationRepository(BaseRepository[UserNotification]):
             )
             notification = result.first()
         return notification
+
+    def count_unread(self, user: TUserParam) -> int:
+        user_id = InfraHelper.convert_id(user)
+        with DbSession.use(readonly=True) as db:
+            result = db.exec(
+                SqlBuilder.select.count(UserNotification, UserNotification.column("id")).where(
+                    (UserNotification.column("receiver_id") == user_id) & (UserNotification.column("read_at") == None)  # noqa
+                )
+            )
+            return result.first() or 0
 
     def read_all_by_user(self, user: TUserParam):
         user_id = InfraHelper.convert_id(user)

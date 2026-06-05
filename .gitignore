@@ -214,12 +214,16 @@ uploads
 
 bundler
 
+test-results
+
 # AI tools
 .agents
 .claude
+.codex
 .specify
 .serena
 .playwright-cli
 .playwright-mcp
+skills-lock.json
 
 graph/

@@ -1,10 +1,10 @@
 from typing import Any
 from sqlalchemy import JSON
-from ...core.db import ApiField, BaseSqlModel, CSVType, DateTimeField, Field
+from ...core.db import ApiField, BaseDbModel, CSVType, DateTimeField, Field
 from ...core.types import SafeDateTime
 
 
-class NotificationScheduleRule(BaseSqlModel, table=True):
+class NotificationScheduleRule(BaseDbModel, table=True):
     name: str = Field(nullable=False, api_field=ApiField())
     is_enabled: bool = Field(default=False, nullable=False, index=True, api_field=ApiField())
     interval_str: str = Field(default="0 9 * * *", nullable=False, api_field=ApiField())

@@ -23,16 +23,12 @@ from .Form import CreateWebhookForm, DeleteSelectedWebhooksForm, UpdateWebhookFo
 @AppRouter.api.get(
     "/settings/webhooks",
     tags=["AppSettings.Webhook"],
-    responses=(
-        OpenApiSchema().suc({"webhooks": [WebhookSetting]}).auth().forbidden().err(404, ApiErrorCode.NF3002).get()
-    ),
+    responses=OpenApiSchema().suc({"webhooks": [WebhookSetting]}).auth().forbidden().get(),
 )
 @RoleFilter.add(SettingRole, [SettingRoleAction.WebhookRead], RoleFinder.setting, allowed_all_admin=False)
 @AuthFilter.add("admin")
 def get_webhooks(service: DomainService = DomainService.scope()) -> JsonResponse:
     settings = service.app_setting.get_api_webhook_setting_list()
-    if not settings:
-        raise ApiException.NotFound_404(ApiErrorCode.NF3002)
     return JsonResponse(content={"webhooks": settings})
 
 

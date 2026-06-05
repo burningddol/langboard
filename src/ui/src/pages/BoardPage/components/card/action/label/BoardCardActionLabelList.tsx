@@ -15,12 +15,13 @@ interface ILabelToggleMeta {
 }
 
 export interface IBoardCardActionLabelListProps {
+    disabled?: bool;
     remoteLabelStates: Record<string, ICollaborativeTextMeta<ILabelToggleMeta>>;
     selectedLabelUIDs: string[];
     setSelectedLabelUIDs: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-const BoardCardActionLabelList = memo(({ remoteLabelStates, selectedLabelUIDs, setSelectedLabelUIDs }: IBoardCardActionLabelListProps) => {
+const BoardCardActionLabelList = memo(({ disabled, remoteLabelStates, selectedLabelUIDs, setSelectedLabelUIDs }: IBoardCardActionLabelListProps) => {
     const { card } = useBoardCard();
     const flatProjectLabels = ProjectLabel.Model.useModels((model) => model.project_uid === card.project_uid);
     const projectLabels = flatProjectLabels.sort((a, b) => a.order - b.order);
@@ -29,6 +30,10 @@ const BoardCardActionLabelList = memo(({ remoteLabelStates, selectedLabelUIDs, s
     });
 
     const changeSelectedState = (labelUID: string) => {
+        if (disabled) {
+            return;
+        }
+
         if (selectedLabelUIDs.includes(labelUID)) {
             setSelectedLabelUIDs((prev) => prev.filter((uid) => uid !== labelUID));
         } else {
@@ -58,6 +63,7 @@ const BoardCardActionLabelList = memo(({ remoteLabelStates, selectedLabelUIDs, s
                         >
                             <Checkbox
                                 checked={selectedLabelUIDs.includes(label.uid)}
+                                disabled={disabled}
                                 onCheckedChange={() => changeSelectedState(label.uid)}
                                 style={remoteColor ? { borderColor: remoteColor, boxShadow: `0 0 0 1px ${remoteColor}` } : undefined}
                             />

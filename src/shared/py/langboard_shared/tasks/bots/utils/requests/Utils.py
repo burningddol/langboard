@@ -1,5 +1,5 @@
 from typing import Any
-from .....core.db import BaseSqlModel
+from .....core.db import BaseDbModel
 from .....domain.models import Bot, Project
 from .....domain.models.BaseBotModel import BotPlatform, BotPlatformRunningType
 from .....Env import Env
@@ -28,7 +28,7 @@ def create_request(
     event: str,
     data: dict[str, Any],
     project: Project | None,
-    scope_model: BaseSqlModel | None,
+    scope_model: BaseDbModel | None,
 ) -> BaseBotRequest | None:
     request = _REQUEST_MAP.get(bot.platform, {}).get(bot.platform_running_type)
     if not request:

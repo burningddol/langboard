@@ -5,6 +5,8 @@ import Box from "@/components/base/Box";
 import Input from "@/components/base/Input";
 import Skeleton from "@/components/base/Skeleton";
 import Tabs from "@/components/base/Tabs";
+import type { IGetProjectsResponse } from "@/controllers/api/dashboard/useGetProjects";
+import { useDebounce } from "@/core/hooks/useDebounce";
 import { ROUTES } from "@/core/routing/constants";
 import { Utils } from "@langboard/core/utils";
 import ProjectList, { SkeletonProjectList } from "@/pages/DashboardPage/components/ProjectList";
@@ -33,93 +35,114 @@ export function SkeletonProjecTabs() {
 
 interface IProjectTabsProps {
     currentTab: TProjectTab;
+    projectsData?: IGetProjectsResponse;
+    isProjectsFetching: bool;
+    isProjectsLoading: bool;
     updateStarredProjects: React.DispatchWithoutAction;
     scrollAreaUpdater: [number, React.DispatchWithoutAction];
 }
 
-const ProjectTabs = memo(({ currentTab, updateStarredProjects: updateHeaderStarredProjects, scrollAreaUpdater }: IProjectTabsProps) => {
-    const navigate = usePageNavigateRef();
-    const [updatedStarredProjects, updateStarredProjects] = useReducer((x) => x + 1, 0);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [t] = useTranslation();
-    const projects = Project.Model.useModels(
-        (model) => {
-            switch (currentTab) {
-                case "starred":
-                    return model.starred;
-                case "unstarred":
-                    return !model.starred;
-                default:
-                    return true;
+const ProjectTabs = memo(
+    ({
+        currentTab,
+        projectsData,
+        isProjectsFetching,
+        isProjectsLoading,
+        updateStarredProjects: updateHeaderStarredProjects,
+        scrollAreaUpdater,
+    }: IProjectTabsProps): React.JSX.Element => {
+        const navigate = usePageNavigateRef();
+        const [updatedStarredProjects, updateStarredProjects] = useReducer((x) => x + 1, 0);
+        const [searchQuery, setSearchQuery] = useState("");
+        const debouncedSearchQuery = useDebounce(searchQuery.trim(), 300);
+        const [t] = useTranslation();
+
+        const projectUIDs = useMemo(() => (projectsData?.projects ?? []).map((project) => project.uid), [projectsData]);
+        const loadedProjects = Project.Model.useModels((model) => projectUIDs.includes(model.uid), [projectUIDs, updatedStarredProjects]);
+        const projects = useMemo(() => {
+            const projectsByUID = new Map(loadedProjects.map((project) => [project.uid, project]));
+            return projectUIDs.map((projectUID) => projectsByUID.get(projectUID)).filter((project): project is Project.TModel => !!project);
+        }, [loadedProjects, projectUIDs]);
+
+        const currentProjects = useMemo(() => {
+            const query = debouncedSearchQuery.toLowerCase();
+            const filteredProjects = projects.filter((project) => {
+                if (query && !project.title.toLowerCase().includes(query)) {
+                    return false;
+                }
+
+                switch (currentTab) {
+                    case "starred":
+                        return project.starred;
+                    case "unstarred":
+                        return !project.starred;
+                    default:
+                        return true;
+                }
+            });
+
+            if (currentTab !== "recent") {
+                return filteredProjects;
             }
-        },
-        [currentTab, updatedStarredProjects]
-    );
 
-    const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase();
-    const currentProjects = useMemo(() => {
-        const sortedProjects = [...projects].sort((a, b) => {
-            switch (currentTab) {
-                case "recent":
-                    return a.last_viewed_at > b.last_viewed_at ? -1 : 1;
-                default:
-                    return a.updated_at > b.updated_at ? -1 : 1;
+            return [...filteredProjects].sort((a, b) => {
+                const lastViewedDiff = b.last_viewed_at.getTime() - a.last_viewed_at.getTime();
+                if (lastViewedDiff !== 0) {
+                    return lastViewedDiff;
+                }
+
+                return b.updated_at.getTime() - a.updated_at.getTime();
+            });
+        }, [currentTab, debouncedSearchQuery, projects, updatedStarredProjects]);
+
+        const navigateToTab = (tab: IProjectTabsProps["currentTab"]) => {
+            if (tab === currentTab) {
+                return;
             }
-        });
 
-        if (!normalizedSearchQuery) {
-            return sortedProjects;
-        }
+            navigate(ROUTES.DASHBOARD.PROJECTS[tab.toUpperCase() as TProjectTabRoute]);
+        };
 
-        return sortedProjects.filter((project) => project.title.toLocaleLowerCase().includes(normalizedSearchQuery));
-    }, [currentTab, normalizedSearchQuery, projects]);
-
-    const navigateToTab = (tab: IProjectTabsProps["currentTab"]) => {
-        if (tab === currentTab) {
-            return;
-        }
-
-        navigate(ROUTES.DASHBOARD.PROJECTS[tab.toUpperCase() as TProjectTabRoute]);
-    };
-
-    return (
-        <Tabs.Provider value={currentTab}>
-            <Box px="2">
-                <Tabs.List className="grid w-full grid-cols-4 gap-1">
-                    {PROJECT_TABS.map((tab) => (
-                        <Tabs.Trigger value={tab} key={Utils.String.Token.reactKey(`dashboard.tabs.${tab}`)} onClick={() => navigateToTab(tab)}>
-                            {t(`dashboard.tabs.${tab}`)}
-                        </Tabs.Trigger>
-                    ))}
-                </Tabs.List>
-            </Box>
-            <Box px="2" mt="3">
-                <Input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.currentTarget.value)}
-                    placeholder={t("dashboard.Search projects...")}
-                    aria-label={t("dashboard.Search projects")}
-                    leftIcon={<Search />}
-                    clearable
-                />
-            </Box>
-            <Tabs.Content value={currentTab}>
-                {currentProjects.length === 0 ? (
-                    <h2 className="py-3 text-center text-lg text-accent-foreground">{t("dashboard.No projects found")}</h2>
-                ) : (
-                    <ProjectList
-                        key={`${currentTab}-${normalizedSearchQuery}`}
-                        projects={currentProjects}
-                        updateStarredProjects={() => {
-                            updateHeaderStarredProjects();
-                            updateStarredProjects();
-                        }}
-                        scrollAreaUpdater={scrollAreaUpdater}
+        return (
+            <Tabs.Provider value={currentTab}>
+                <Box px="2">
+                    <Tabs.List className="grid w-full grid-cols-4 gap-1">
+                        {PROJECT_TABS.map((tab) => (
+                            <Tabs.Trigger value={tab} key={Utils.String.Token.reactKey(`dashboard.tabs.${tab}`)} onClick={() => navigateToTab(tab)}>
+                                {t(`dashboard.tabs.${tab}`)}
+                            </Tabs.Trigger>
+                        ))}
+                    </Tabs.List>
+                </Box>
+                <Box px="2" mt="3">
+                    <Input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.currentTarget.value)}
+                        placeholder={t("dashboard.Search projects...")}
+                        aria-label={t("dashboard.Search projects")}
+                        leftIcon={<Search />}
+                        clearable
                     />
-                )}
-            </Tabs.Content>
-        </Tabs.Provider>
-    );
-});
+                </Box>
+                <Tabs.Content value={currentTab}>
+                    {(isProjectsLoading || isProjectsFetching) && currentProjects.length === 0 ? (
+                        <SkeletonProjectList />
+                    ) : currentProjects.length === 0 ? (
+                        <h2 className="py-3 text-center text-lg text-accent-foreground">{t("dashboard.No projects found")}</h2>
+                    ) : (
+                        <ProjectList
+                            projects={currentProjects}
+                            updateStarredProjects={() => {
+                                updateHeaderStarredProjects();
+                                updateStarredProjects();
+                            }}
+                            scrollAreaUpdater={scrollAreaUpdater}
+                        />
+                    )}
+                </Tabs.Content>
+            </Tabs.Provider>
+        );
+    }
+);
 
 export default ProjectTabs;

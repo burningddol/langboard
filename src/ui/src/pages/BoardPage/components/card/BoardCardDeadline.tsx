@@ -7,7 +7,7 @@ import Skeleton from "@/components/base/Skeleton";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoardCard } from "@/core/providers/BoardCardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
-import { useBoardCardUnsavedActions } from "@/pages/BoardPage/components/card/BoardCardUnsavedProvider";
+import { useBoardCardSectionSaveActions } from "@/pages/BoardPage/components/card/BoardCardSectionSaveProvider";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { Utils } from "@langboard/core/utils";
 import { memo, type PointerEvent, useCallback, useEffect, useState } from "react";
@@ -44,7 +44,7 @@ const parseDeadline = (value: string) => {
 const BoardCardDeadline = memo(() => {
     const { card, hasRoleAction, isCardEditing } = useBoardCard();
     const [t] = useTranslation();
-    const { markSectionDirty, resetSection, registerSectionSaveHandler, registerSectionCancelHandler } = useBoardCardUnsavedActions();
+    const { registerSectionCancelHandler, registerSectionSaveHandler } = useBoardCardSectionSaveActions();
     const deadline = card.useField("deadline_at");
     const [isEditing, setIsEditing] = useState(false);
     const [draftDeadline, setDraftDeadline] = useState<Date | undefined>(deadline);
@@ -61,26 +61,25 @@ const BoardCardDeadline = memo(() => {
         return nextValue.getTime();
     }, []);
 
-    const updateDirtyState = useCallback(
-        (nextDeadline: Date | undefined) => {
-            markSectionDirty("deadline", getNormalizedTime(nextDeadline) !== getNormalizedTime(deadline));
-        },
-        [deadline, getNormalizedTime, markSectionDirty]
-    );
-
-    const { resetValue: resetCollaborativeDeadline, updateValue: updateCollaborativeDeadline } = useCollaborativeText({
+    const {
+        isSynced,
+        resetValue: resetCollaborativeDeadline,
+        updateMeta: updateCollaborativeDeadlineMeta,
+        updateValue: updateCollaborativeDeadline,
+    } = useCollaborativeText({
         defaultValue: serializeDeadline(deadline),
         disabled: !editable,
         collaborationType: EEditorCollaborationType.Card,
         uid: card.uid,
         section: "deadline",
         field: "value",
+        resetSyncedValueToDefault: true,
         onValueChange: (nextValue) => {
             const nextDeadline = parseDeadline(nextValue);
             setDraftDeadline(nextDeadline);
-            updateDirtyState(nextDeadline);
         },
     });
+    const isWaitingForSync = editable && !isSynced;
 
     const handleChange = useCallback(
         (date: Date | undefined) => {
@@ -118,7 +117,6 @@ const BoardCardDeadline = memo(() => {
 
         if (getNormalizedTime(nextDeadline) === getNormalizedTime(deadline)) {
             resetCollaborativeDeadline(serializeDeadline(deadline));
-            resetSection("deadline");
             setIsEditing(false);
             return null;
         }
@@ -126,24 +124,35 @@ const BoardCardDeadline = memo(() => {
         const deadlineAt: Date | "" = nextDeadline || "";
 
         return { deadline_at: deadlineAt };
-    }, [deadline, draftDeadline, getNormalizedTime, resetSection, updateCollaborativeDeadline]);
+    }, [deadline, draftDeadline, getNormalizedTime, resetCollaborativeDeadline]);
 
-    const cancelDeadlineEdit = useCallback(() => {
-        setDraftDeadline(deadline);
+    const cancelDeadline = useCallback(() => {
         resetCollaborativeDeadline(serializeDeadline(deadline));
-        resetSection("deadline");
-    }, [deadline, resetCollaborativeDeadline, resetSection]);
+        setDraftDeadline(deadline);
+        setIsEditing(false);
+    }, [deadline, resetCollaborativeDeadline]);
 
     useEffect(() => {
         if (!isCardEditing) {
             setIsEditing(false);
             setDraftDeadline(deadline);
-            resetSection("deadline");
         }
-    }, [deadline, isCardEditing, resetSection]);
+    }, [deadline, isCardEditing]);
+
+    useEffect(() => {
+        if (!editable || !isSynced) {
+            return;
+        }
+
+        updateCollaborativeDeadlineMeta({ editing: true });
+
+        return () => {
+            updateCollaborativeDeadlineMeta(null);
+        };
+    }, [editable, isSynced, updateCollaborativeDeadlineMeta]);
 
     useEffect(() => registerSectionSaveHandler("deadline", saveDeadline), [registerSectionSaveHandler, saveDeadline]);
-    useEffect(() => registerSectionCancelHandler("deadline", cancelDeadlineEdit), [cancelDeadlineEdit, registerSectionCancelHandler]);
+    useEffect(() => registerSectionCancelHandler("deadline", cancelDeadline), [cancelDeadline, registerSectionCancelHandler]);
 
     return (
         <>
@@ -163,6 +172,7 @@ const BoardCardDeadline = memo(() => {
                 <Flex items="center">
                     <DateTimePicker
                         value={draftDeadline}
+                        disabled={isWaitingForSync}
                         min={new Date(new Date().setMinutes(new Date().getMinutes() + 30))}
                         onChange={handleChange}
                         timePicker={{
@@ -176,9 +186,14 @@ const BoardCardDeadline = memo(() => {
                                 variant={draftDeadline ? "default" : "outline"}
                                 className={cn("h-8 gap-2 px-3 lg:h-10", draftDeadline && "rounded-r-none")}
                                 title={t("card.Set deadline")}
+                                disabled={isWaitingForSync}
                             >
                                 <IconComponent icon="calendar" size="4" />
-                                {draftDeadline ? Utils.String.formatDateLocale(draftDeadline) : t("card.Set deadline")}
+                                {isWaitingForSync
+                                    ? t("common.Syncing draft...")
+                                    : draftDeadline
+                                      ? Utils.String.formatDateLocale(draftDeadline)
+                                      : t("card.Set deadline")}
                             </Button>
                         )}
                     />
@@ -187,6 +202,7 @@ const BoardCardDeadline = memo(() => {
                             variant="default"
                             className="h-8 gap-2 rounded-l-none border-l border-l-secondary/70 px-2 lg:h-10"
                             onClick={handleClearDeadline}
+                            disabled={isWaitingForSync}
                         >
                             <IconComponent icon="trash-2" size="4" />
                         </Button>

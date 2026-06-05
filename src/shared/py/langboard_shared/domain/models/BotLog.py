@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel
-from ...core.db import ApiField, BaseSqlModel, EnumLikeType, Field, ModelColumnListType, SnowflakeIDField
+from ...core.db import ApiField, BaseDbModel, EnumLikeType, Field, ModelColumnListType, SnowflakeIDField
 from ...core.types import SafeDateTime, SnowflakeID
 from .Bot import Bot
 
@@ -22,7 +22,7 @@ class BotLogMessage(BaseModel):
         return {"message": "string", "log_type": "string", "log_date": "string"}
 
 
-class BotLog(BaseSqlModel, table=True):
+class BotLog(BaseDbModel, table=True):
     bot_id: SnowflakeID = SnowflakeIDField(foreign_key=Bot, index=True, api_field=ApiField(name="bot_uid"))
     log_type: BotLogType = Field(
         default=BotLogType.Info, nullable=False, sa_type=EnumLikeType(BotLogType), api_field=ApiField()

@@ -2,11 +2,11 @@ from logging.config import fileConfig
 from typing import Any
 from alembic import context
 from alembic.autogenerate.api import AutogenContext
-from langboard_shared.core.db import BaseSqlModel
+from langboard_shared.core.db import BaseDbModel
 from langboard_shared.core.db.DbConfigHelper import DbConfigHelper  # type: ignore
 from langboard_shared.Env import Env  # type: ignore
 from langboard_shared.helpers import ensure_models_imported
-from sqlalchemy import pool
+from sqlalchemy import DateTime, pool
 from sqlalchemy.engine import Connection, engine_from_config
 
 
@@ -27,7 +27,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = BaseSqlModel.metadata
+target_metadata = BaseDbModel.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -69,6 +69,18 @@ def render_item(type_: str, obj: Any, autogen_context: AutogenContext):
     return False
 
 
+def compare_type(
+    context: Any,
+    inspected_column: Any,
+    metadata_column: Any,
+    inspected_type: Any,
+    metadata_type: Any,
+) -> bool | None:
+    if isinstance(inspected_type, DateTime) and isinstance(metadata_type, DateTime):
+        return False
+    return None
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -91,6 +103,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_item=render_item,
+        compare_type=compare_type,
         render_as_batch=render_as_batch,
     )
 
@@ -106,6 +119,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         render_item=render_item,
+        compare_type=compare_type,
         render_as_batch=render_as_batch,
     )
 

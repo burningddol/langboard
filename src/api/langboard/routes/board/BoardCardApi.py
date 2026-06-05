@@ -424,10 +424,10 @@ def update_card_relationships(
     service: DomainService = DomainService.scope(),
 ) -> JsonResponse:
     result = service.card_relationship.update(user_or_bot, project_uid, card_uid, form.is_parent, form.relationships)
-    if not result:
+    if result is None:
         raise ApiException.NotFound_404(ApiErrorCode.NF2003)
 
-    return JsonResponse()
+    return JsonResponse(content={"relationships": result})
 
 
 @collaborative_edit(

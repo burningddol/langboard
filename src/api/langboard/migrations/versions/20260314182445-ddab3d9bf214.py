@@ -8,8 +8,6 @@ Create Date: 2026-03-14 18:24:45.265433
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-import sqlmodel
-import sqlmodel.sql.sqltypes
 from alembic import op
 from langboard_shared.core.db.ColumnTypes import CSVType, SnowflakeIDType
 from langboard_shared.domain.models.bases.BotTriggerCondition import BotTriggerCondition
@@ -34,7 +32,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=False
         ),
         sa.Column("bot_id", SnowflakeIDType, nullable=True),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("name", sa.String(), nullable=False),
         sa.ForeignKeyConstraint(["bot_id"], ["bot.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

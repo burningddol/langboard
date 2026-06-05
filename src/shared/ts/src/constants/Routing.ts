@@ -250,6 +250,7 @@ const API = {
             API_COMFORT_TOOL: "/schema/api/comfort/{comfort_tool_name}",
         },
         OLLAMA: {
+            HEALTH: "/settings/ollama/health",
             GET_LIST: "/settings/ollama/models",
             GET_DETAILS: "/settings/ollama/model/details",
             GET_RUNNING_LIST: "/settings/ollama/models/running",

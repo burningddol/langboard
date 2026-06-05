@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Any
-from ...core.db import ApiField, DateTimeField, Field, SnowflakeIDField
+from ...core.db import ApiField, DateTimeField, EnumLikeType, Field, SnowflakeIDField
 from ...core.types import SafeDateTime, SnowflakeID
 from .BaseNotificationScheduleModel import BaseNotificationScheduleModel
 from .Card import Card
@@ -21,7 +21,12 @@ class Checkitem(BaseNotificationScheduleModel, table=True):
     cardified_id: SnowflakeID | None = SnowflakeIDField(foreign_key=Card, nullable=True)
     user_id: SnowflakeID | None = SnowflakeIDField(foreign_key=User, nullable=True, index=True)
     title: str = Field(nullable=False, api_field=ApiField())
-    status: CheckitemStatus = Field(default=CheckitemStatus.Stopped, nullable=False, api_field=ApiField())
+    status: CheckitemStatus = Field(
+        default=CheckitemStatus.Stopped,
+        nullable=False,
+        sa_type=EnumLikeType(CheckitemStatus),
+        api_field=ApiField(),
+    )
     order: int = Field(default=0, nullable=False, api_field=ApiField())
     accumulated_seconds: int = Field(default=0, nullable=False, api_field=ApiField())
     is_checked: bool = Field(default=False, nullable=False, api_field=ApiField())

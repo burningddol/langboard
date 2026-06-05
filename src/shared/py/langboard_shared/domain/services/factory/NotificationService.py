@@ -1,6 +1,6 @@
 from typing import Any, Literal, TypeVar, cast, overload
 from urllib.parse import urlparse
-from ....core.db import BaseSqlModel, EditorContentModel
+from ....core.db import BaseDbModel, EditorContentModel
 from ....core.domain import BaseDomainService
 from ....core.publisher import NotificationPublisher, NotificationPublishModel
 from ....core.resources.locales.EmailTemplateNames import TEmailTemplateName
@@ -40,8 +40,13 @@ class NotificationService(BaseDomainService):
         """DO NOT EDIT THIS METHOD"""
         return "notification"
 
-    def get_api_list(self, user: User, time_range: Literal["3d", "7d", "1m", "all"] = "3d") -> list[dict[str, Any]]:
-        raw_notifications = self.repo.user_notification.get_list(user, time_range)
+    def get_api_list(
+        self, user: User, time_range: Literal["3d", "7d", "1m", "all"] = "3d", page: int = 1, limit: int = 20
+    ) -> tuple[list[dict[str, Any]], bool, int]:
+        raw_notifications = self.repo.user_notification.get_list(user, time_range, page, limit)
+        has_more = len(raw_notifications) > limit
+        raw_notifications = raw_notifications[:limit]
+        unread_count = self.repo.user_notification.count_unread(user)
 
         references: list[tuple[str, int]] = []
         for notification in raw_notifications:
@@ -82,7 +87,7 @@ class NotificationService(BaseDomainService):
         if notification_ids_should_delete:
             self.repo.user_notification.delete_all_by_ids(notification_ids_should_delete)
 
-        return notifications
+        return notifications, has_more, unread_count
 
     def convert_to_api_response(
         self,
@@ -295,7 +300,7 @@ class NotificationService(BaseDomainService):
         now: SafeDateTime,
     ) -> bool:
         references: list = [project]
-        scope_models: list[BaseSqlModel] = [project]
+        scope_models: list[BaseDbModel] = [project]
         if isinstance(target_model, Card):
             column = self.__get_column_by_card(target_model)
             references.append(target_model)
@@ -338,7 +343,7 @@ class NotificationService(BaseDomainService):
         notifier: TUserOrBot,
         editor: EditorContentModel | None,
         notification_type: NotificationType,
-        scope_models: list[BaseSqlModel],
+        scope_models: list[BaseDbModel],
         references: list[_TModel],
         email_template_name: TEmailTemplateName,
         email_formats: dict[str, str],
@@ -347,7 +352,7 @@ class NotificationService(BaseDomainService):
             return
         user_or_bot_uids, mentioned_lines = find_mentioned(editor)
         mentioned_in = ""
-        other_models: list[BaseSqlModel] = []
+        other_models: list[BaseDbModel] = []
         if email_template_name == "mentioned_in_card":
             mentioned_in = "card"
         elif email_template_name == "mentioned_in_comment":
@@ -386,7 +391,7 @@ class NotificationService(BaseDomainService):
         notifier: TUserOrBot,
         target_user: TUserParam | None,
         notification_type: NotificationType,
-        scope_models: list[BaseSqlModel] | None,
+        scope_models: list[BaseDbModel] | None,
         references: list[_TModel],
         message_vars: dict[str, Any] | None = None,
         email_template_name: TEmailTemplateName | None = None,

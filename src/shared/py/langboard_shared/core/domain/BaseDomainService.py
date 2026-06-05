@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Literal, TypeVar
 from ...infrastructure.repositories import Repository
-from ..db import BaseSqlModel
+from ..db import BaseDbModel
 from ..types import IFactoryProduct
 from ..utils.Converter import convert_python_data
 
@@ -28,7 +28,7 @@ class BaseDomainService(ABC, IFactoryProduct):
         return self._raw_get_service_by_name(name)
 
     def apply_mutates(
-        self, model: BaseSqlModel, form: dict[str, Any], validators: TMutableValidatorMap
+        self, model: BaseDbModel, form: dict[str, Any], validators: TMutableValidatorMap
     ) -> dict[str, Any]:
         old_record = {}
         for key, validator in validators.items():

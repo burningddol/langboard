@@ -1,6 +1,6 @@
 from typing import Any, overload
 from ....ai import BotDefaultTrigger
-from ....core.db import BaseSqlModel, DbSession, SqlBuilder
+from ....core.db import BaseDbModel, DbSession, SqlBuilder
 from ....core.logger import Logger
 from ....core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
 from ....core.utils.decorators import staticclass
@@ -19,9 +19,9 @@ logger = Logger.use("bot-task")
 @staticclass
 class BotTaskHelper:
     @staticmethod
-    def get_scoped_bots(condition: BotTriggerCondition, **where_clauses: Any) -> list[tuple[Bot, BaseSqlModel]]:
+    def get_scoped_bots(condition: BotTriggerCondition, **where_clauses: Any) -> list[tuple[Bot, BaseDbModel]]:
         model_classes = BotHelper.get_scope_model_classes_by_condition(condition)
-        records: list[tuple[Bot, BaseSqlModel]] = []
+        records: list[tuple[Bot, BaseDbModel]] = []
         with DbSession.use(readonly=True) as db:
             for model_class in model_classes:
                 column_name = model_class.get_scope_column_name()
@@ -98,23 +98,23 @@ class BotTaskHelper:
         event: BotTriggerCondition | BotDefaultTrigger,
         data: dict[str, Any],
         project: Project | None = None,
-        scope_model: BaseSqlModel | None = None,
+        scope_model: BaseDbModel | None = None,
     ): ...
     @overload
     @staticmethod
     async def run(
-        bots: list[tuple[Bot, BaseSqlModel]],
+        bots: list[tuple[Bot, BaseDbModel]],
         event: BotTriggerCondition | BotDefaultTrigger,
         data: dict[str, Any],
         project: Project | None = None,
     ): ...
     @staticmethod
     async def run(
-        bots: Bot | list[Bot] | list[tuple[Bot, BaseSqlModel]],
+        bots: Bot | list[Bot] | list[tuple[Bot, BaseDbModel]],
         event: BotTriggerCondition | BotDefaultTrigger,
         data: dict[str, Any],
         project: Project | None = None,
-        scope_model: BaseSqlModel | None = None,
+        scope_model: BaseDbModel | None = None,
     ):
         if not isinstance(bots, list):
             bots = [bots]

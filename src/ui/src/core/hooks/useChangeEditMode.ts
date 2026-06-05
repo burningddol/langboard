@@ -65,7 +65,10 @@ const useEditorState = (editorName: string): [bool, React.Dispatch<React.SetStat
             }
 
             if (!state) {
-                getEditorStore().setCurrentEditor(null);
+                const editorStore = getEditorStore();
+                if (editorStore.currentEditor === editorName) {
+                    editorStore.setCurrentEditor(null);
+                }
                 return;
             }
 

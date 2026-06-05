@@ -30,11 +30,6 @@ class CardAttachmentRepository(BaseOrderRepository[CardAttachment, Card]):
                     CardAttachment.column("order").asc(),
                     CardAttachment.column("id").desc(),
                 )
-                .group_by(
-                    CardAttachment.column("id"),
-                    CardAttachment.column("order"),
-                    User.column("id"),
-                )
             )
             card_attachments = result.all()
 

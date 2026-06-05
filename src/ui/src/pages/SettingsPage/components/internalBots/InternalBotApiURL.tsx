@@ -26,7 +26,7 @@ const InternalBotApiURL = memo(() => {
     const settingRoleActions = currentUser.useField("setting_role_actions");
     const { hasRoleAction } = useRoleActionFilter(settingRoleActions);
     const canUpdateInternalBot = hasRoleAction(SettingRole.EAction.InternalBotUpdate);
-    const apiURL = internalBot.useField("url");
+    const apiURL = internalBot.useField("api_url");
     const inputID = useId();
     const { mutateAsync } = useUpdateInternalBot(internalBot, { interceptToast: true });
     const inputRef = useRef<HTMLInputElement>(null);

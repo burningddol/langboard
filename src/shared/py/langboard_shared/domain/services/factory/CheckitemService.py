@@ -52,6 +52,8 @@ class CheckitemService(BaseDomainService):
         self, user: User, pagination: TimeBasedPagination
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         records = self.repo.checkitem.get_all_tracking_scroller(user, pagination)
+        checkitems = [checkitem for checkitem, _, _ in records]
+        timer_arcs = self.repo.checkitem_timer_record.get_arc_map_by_checkitems(checkitems)
 
         api_checkitems = []
         api_cards: dict[int, dict[str, Any]] = {}
@@ -59,10 +61,11 @@ class CheckitemService(BaseDomainService):
         for checkitem, card, project in records:
             api_checkitem = checkitem.api_response()
             api_checkitem["card_uid"] = card.get_uid()
-            first_timer = self.repo.checkitem_timer_record.get_by_checkitem_and_arc_type(checkitem, "first")
+            timer_arc = timer_arcs.get(checkitem.id, {})
+            first_timer = timer_arc.get("first")
             if first_timer:
                 api_checkitem["initial_timer_started_at"] = first_timer.created_at
-            last_timer = self.repo.checkitem_timer_record.get_by_checkitem_and_arc_type(checkitem, "last")
+            last_timer = timer_arc.get("last")
             if last_timer and last_timer.status == CheckitemStatus.Started:
                 api_checkitem["timer_started_at"] = last_timer.created_at
 

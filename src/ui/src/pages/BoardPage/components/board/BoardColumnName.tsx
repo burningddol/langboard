@@ -1,3 +1,5 @@
+import Button from "@/components/base/Button";
+import IconComponent from "@/components/base/IconComponent";
 import Input from "@/components/base/Input";
 import Collaborative from "@/components/Collaborative";
 import Toast from "@/components/base/Toast";
@@ -10,7 +12,7 @@ import { useBoardController } from "@/core/providers/BoardController";
 import { useBoard } from "@/core/providers/BoardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
 import { EEditorCollaborationType } from "@langboard/core/constants";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface IBoardColumnNameProps {
@@ -33,7 +35,8 @@ const BoardColumnName = memo(
         const isArchiveColumn = column.useField("is_archive");
         const { mutateAsync: changeProjectColumnNameMutateAsync } = useChangeProjectColumnName({ interceptToast: true });
         const canEdit = hasRoleAction(ProjectRole.EAction.Update) && !isArchiveColumn;
-        const { valueRef, isEditing, changeMode } = useChangeEditMode({
+        const resetCollaborativeNameRef = useRef<((value: string) => void) | null>(null);
+        const { valueRef, isEditing, setIsEditing, changeMode } = useChangeEditMode({
             canEdit: () => canEdit && !isDragging && !selectCardViewType,
             valueType: "input",
             disableNewLine: true,
@@ -71,6 +74,13 @@ const BoardColumnName = memo(
             },
             originalValue: columnName,
         });
+        const saveEdit = useCallback(() => {
+            changeMode("view");
+        }, [changeMode]);
+        const cancelEdit = useCallback(() => {
+            resetCollaborativeNameRef.current?.(columnName);
+            setIsEditing(false);
+        }, [columnName, setIsEditing]);
 
         useImperativeHandle(
             ref,
@@ -104,6 +114,11 @@ const BoardColumnName = memo(
                 isArchive={isArchiveColumn}
                 inputRef={valueRef}
                 changeMode={changeMode}
+                onSave={saveEdit}
+                onCancel={cancelEdit}
+                onCollaborativeValueResetReady={(resetValue) => {
+                    resetCollaborativeNameRef.current = resetValue;
+                }}
             />
         );
     })
@@ -120,67 +135,145 @@ export interface IBoardColumnNameInput {
     disabled?: bool;
     inputRef: React.Ref<HTMLInputElement>;
     changeMode: (mode: "edit" | "view") => void;
+    onSave?: () => void;
+    onCancel?: () => void;
+    onCollaborativeValueResetReady?: (resetValue: ((value: string) => void) | null) => void;
 }
 
 export const BoardColumnNameInput = memo(
-    ({ isEditing, viewClassName, projectUID, columnUID, changeMode, columnName, isArchive, disabled, inputRef }: IBoardColumnNameInput) => {
+    ({
+        isEditing,
+        viewClassName,
+        projectUID,
+        columnUID,
+        changeMode,
+        columnName,
+        isArchive,
+        disabled,
+        inputRef,
+        onSave,
+        onCancel,
+        onCollaborativeValueResetReady,
+    }: IBoardColumnNameInput) => {
         const [t] = useTranslation();
         const handleInputClick = useCallback((e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
         }, []);
         const handleInputBlur = useCallback(() => {
+            if (onSave || onCancel) {
+                return;
+            }
             changeMode("view");
-        }, [changeMode]);
+        }, [changeMode, onCancel, onSave]);
+        const handleSave = useCallback(() => {
+            (onSave ?? (() => changeMode("view")))();
+        }, [changeMode, onSave]);
+        const handleCancel = useCallback(() => {
+            if (onCancel) {
+                onCancel();
+                return;
+            }
+
+            changeMode("view");
+        }, [changeMode, onCancel]);
+        const handleActionMouseDown = useCallback((e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, []);
         const handleInputKeyDown = useCallback(
             (e: React.KeyboardEvent) => {
+                if (e.key === "Escape" && onCancel) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCancel();
+                    return;
+                }
+
                 if (e.key !== "Enter") {
                     return;
                 }
 
                 e.preventDefault();
                 e.stopPropagation();
-                changeMode("view");
+                handleSave();
             },
-            [changeMode]
+            [handleSave, onCancel]
         );
+
+        const inputClassName = cn(
+            "h-7 rounded-none border-x-0 border-t-0 p-0 pb-1 text-base font-semibold",
+            "focus-visible:border-b-primary focus-visible:ring-0"
+        );
+
+        const input =
+            projectUID && columnUID ? (
+                <Collaborative.Input
+                    ref={inputRef}
+                    collaborationType={EEditorCollaborationType.BoardColumnName}
+                    uid={projectUID}
+                    section={columnUID}
+                    field="name"
+                    className={inputClassName}
+                    placeholder={t("board.Enter a name")}
+                    disabled={disabled}
+                    defaultValue={columnName}
+                    onClick={handleInputClick}
+                    onBlur={handleInputBlur}
+                    onKeyDown={handleInputKeyDown}
+                    onCollaborativeValueResetReady={onCollaborativeValueResetReady}
+                />
+            ) : (
+                <Input
+                    ref={inputRef}
+                    className={inputClassName}
+                    placeholder={t("board.Enter a name")}
+                    disabled={disabled}
+                    defaultValue={columnName}
+                    onClick={handleInputClick}
+                    onBlur={handleInputBlur}
+                    onKeyDown={handleInputKeyDown}
+                />
+            );
 
         return (
             <>
                 {!isEditing || isArchive ? (
                     <span className={cn("h-7 truncate", isArchive && "text-secondary-foreground/70", viewClassName)}>{columnName}</span>
-                ) : projectUID && columnUID ? (
-                    <Collaborative.Input
-                        ref={inputRef}
-                        collaborationType={EEditorCollaborationType.BoardColumnName}
-                        uid={projectUID}
-                        section={columnUID}
-                        field="name"
-                        className={cn(
-                            "h-7 rounded-none border-x-0 border-t-0 p-0 pb-1 text-base font-semibold",
-                            "focus-visible:border-b-primary focus-visible:ring-0"
-                        )}
-                        placeholder={t("board.Enter a name")}
-                        disabled={disabled}
-                        defaultValue={columnName}
-                        onClick={handleInputClick}
-                        onBlur={handleInputBlur}
-                        onKeyDown={handleInputKeyDown}
-                    />
                 ) : (
-                    <Input
-                        ref={inputRef}
-                        className={cn(
-                            "h-7 rounded-none border-x-0 border-t-0 p-0 pb-1 text-base font-semibold",
-                            "focus-visible:border-b-primary focus-visible:ring-0"
+                    <div className="flex min-w-0 flex-1 items-center gap-1">
+                        {input}
+                        {(onSave || onCancel) && (
+                            <div className="flex shrink-0 items-center gap-0.5">
+                                <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    disabled={disabled}
+                                    title={t("common.Save")}
+                                    aria-label={t("common.Save")}
+                                    onMouseDown={handleActionMouseDown}
+                                    onClick={handleSave}
+                                >
+                                    <span className="sr-only">{t("common.Save")}</span>
+                                    <IconComponent icon="check" size="4" />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    disabled={disabled}
+                                    title={t("common.Cancel")}
+                                    aria-label={t("common.Cancel")}
+                                    onMouseDown={handleActionMouseDown}
+                                    onClick={handleCancel}
+                                >
+                                    <span className="sr-only">{t("common.Cancel")}</span>
+                                    <IconComponent icon="x" size="4" />
+                                </Button>
+                            </div>
                         )}
-                        placeholder={t("board.Enter a name")}
-                        disabled={disabled}
-                        defaultValue={columnName}
-                        onClick={handleInputClick}
-                        onBlur={handleInputBlur}
-                        onKeyDown={handleInputKeyDown}
-                    />
+                    </div>
                 )}
             </>
         );

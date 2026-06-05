@@ -7,9 +7,10 @@ export interface ICreateYjsKit {
     socket: ISocketContext;
     userName: string;
     documentID: string;
+    onSyncChange?: (isSynced: bool) => void;
 }
 
-export const createYjsKit = ({ socket, userName, documentID }: ICreateYjsKit) => {
+export const createYjsKit = ({ socket, userName, documentID, onSyncChange }: ICreateYjsKit) => {
     const url = socket.getAuthorizedWebSocketUrl("editor-sync");
     if (!url) {
         return null;
@@ -21,6 +22,7 @@ export const createYjsKit = ({ socket, userName, documentID }: ICreateYjsKit) =>
         },
         options: {
             cursors: {
+                autoSend: false,
                 data: {
                     name: userName,
                     color: new Utils.Color.Generator(userName).generateRandomColor(),
@@ -35,6 +37,9 @@ export const createYjsKit = ({ socket, userName, documentID }: ICreateYjsKit) =>
                     },
                 },
             ],
+            onDisconnect: () => onSyncChange?.(false),
+            onError: () => onSyncChange?.(false),
+            onSyncChange: ({ isSynced }) => onSyncChange?.(isSynced),
         },
     });
 };

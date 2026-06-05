@@ -246,6 +246,7 @@ class ProjectInvitationService(BaseDomainService):
         self.repo.project_assigned_user.insert(assign_user)
 
         self.repo.role.project.grant_default(user_id=user.id, project_id=project.id)
+        ProjectPublisher.assigned_to_users(project, [user])
 
         project_service = self._get_service(ProjectService)
 

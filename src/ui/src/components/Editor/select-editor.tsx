@@ -103,12 +103,17 @@ export function SelectEditor({
 export function SelectEditorContent({ children }: { children: React.ReactNode }) {
     const { value, createTagContent, onValueChange } = useSelectEditorContext();
     const { setSearch } = useCommandActions();
-    const itemRemovedCallback = React.useCallback(
-        (item: TTagElement) => {
-            onValueChange?.(value?.filter((v) => v.value !== item.value) ?? []);
-        },
-        [value, onValueChange]
-    );
+    const valueRef = React.useRef(value);
+    const onValueChangeRef = React.useRef(onValueChange);
+
+    React.useEffect(() => {
+        valueRef.current = value;
+        onValueChangeRef.current = onValueChange;
+    }, [onValueChange, value]);
+
+    const itemRemovedCallback = React.useCallback((item: TTagElement) => {
+        onValueChangeRef.current?.(valueRef.current?.filter((v) => v.value !== item.value) ?? []);
+    }, []);
 
     const editor = usePlateEditor(
         {
