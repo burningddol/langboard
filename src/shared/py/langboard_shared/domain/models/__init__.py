@@ -52,6 +52,8 @@ from .ProjectWikiActivity import ProjectWikiActivity
 from .ProjectWikiAssignedUser import ProjectWikiAssignedUser
 from .ProjectWikiAttachment import ProjectWikiAttachment
 from .ProjectWikiMetadata import ProjectWikiMetadata
+from .ScimGroup import ScimGroup
+from .ScimGroupMember import ScimGroupMember
 from .SettingRole import SettingRole
 from .User import User
 from .UserActivity import UserActivity
@@ -123,6 +125,8 @@ __all__ = [
     "ProjectWikiAttachment",
     "ProjectWikiMetadata",
     "SettingRole",
+    "ScimGroup",
+    "ScimGroupMember",
     "User",
     "UserActivity",
     "UserEmail",

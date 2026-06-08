@@ -136,6 +136,14 @@ class Repository(Factory):
         return self._create_or_get_product(factory.UserGroupAssignedEmailRepository)
 
     @property
+    def scim_group(self):
+        return self._create_or_get_product(factory.ScimGroupRepository)
+
+    @property
+    def scim_group_member(self):
+        return self._create_or_get_product(factory.ScimGroupMemberRepository)
+
+    @property
     def user_identity_link(self):
         return self._create_or_get_product(factory.UserIdentityLinkRepository)
 

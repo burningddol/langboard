@@ -359,13 +359,13 @@ class ProjectService(BaseDomainService):
 
         role_strs = [role.value for role in roles]
         if roles == list(ProjectRoleAction._member_map_.values()):
-            self.repo.role.project.grant_all(user_id=target_user.id, project_id=project.id)
+            role = self.repo.role.project.grant_all(user_id=target_user.id, project_id=project.id)
         elif not roles:
-            self.repo.role.project.grant_default(user_id=target_user.id, project_id=project.id)
+            role = self.repo.role.project.grant_default(user_id=target_user.id, project_id=project.id)
         else:
-            self.repo.role.project.grant(actions=role_strs, user_id=target_user.id, project_id=project.id)
+            role = self.repo.role.project.grant(actions=role_strs, user_id=target_user.id, project_id=project.id)
 
-        ProjectPublisher.user_roles_updated(project, target_user, role_strs)
+        ProjectPublisher.user_roles_updated(project, target_user, role.actions)
 
         return True
 

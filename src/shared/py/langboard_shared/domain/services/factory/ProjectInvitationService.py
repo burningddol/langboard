@@ -236,15 +236,12 @@ class ProjectInvitationService(BaseDomainService):
         return invitation
 
     def __assign_project_user(self, project: Project, user: User, invitation: ProjectInvitation | None = None):
-        assign_user = ProjectAssignedUser(project_id=project.id, user_id=user.id)
-
         if invitation:
             self.__delete_notification(user, project, invitation)
 
             self.repo.project_invitation.delete(invitation)
 
-        self.repo.project_assigned_user.insert(assign_user)
-
+        self.repo.project_assigned_user.ensure_assigned(project, user)
         self.repo.role.project.grant_default(user_id=user.id, project_id=project.id)
         ProjectPublisher.assigned_to_users(project, [user])
 

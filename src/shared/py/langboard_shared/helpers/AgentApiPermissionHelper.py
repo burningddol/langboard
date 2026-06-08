@@ -1,7 +1,7 @@
 from fastapi import status
 from starlette.datastructures import Headers
-from langboard_shared.core.routing import ApiPermission
-from langboard_shared.core.security import AuthSecurity
+from ..core.routing import ApiPermission
+from ..core.security import AuthSecurity
 
 
 AGENT_PERMISSION_LEVEL_PERMISSIONS: dict[str, set[str]] = {

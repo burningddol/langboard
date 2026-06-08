@@ -40,6 +40,8 @@ from .ProjectWikiAttachmentRepository import ProjectWikiAttachmentRepository
 from .ProjectWikiRepository import ProjectWikiRepository
 from .ReactionRepository import ReactionRepository
 from .RoleRepository import RoleRepository
+from .ScimGroupMemberRepository import ScimGroupMemberRepository
+from .ScimGroupRepository import ScimGroupRepository
 from .UserEmailRepository import UserEmailRepository
 from .UserGroupAssignedEmailRepository import UserGroupAssignedEmailRepository
 from .UserGroupRepository import UserGroupRepository
@@ -95,6 +97,8 @@ __all__ = [
     "ProjectWikiRepository",
     "ReactionRepository",
     "RoleRepository",
+    "ScimGroupMemberRepository",
+    "ScimGroupRepository",
     "UserEmailRepository",
     "UserGroupAssignedEmailRepository",
     "UserGroupRepository",

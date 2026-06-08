@@ -93,6 +93,17 @@ class ProjectAssignedUserRepository(BaseRepository[ProjectAssignedUser]):
             assignee = result.first()
         return assignee
 
+    def ensure_assigned(self, project: TProjectParam, user: TUserParam) -> tuple[ProjectAssignedUser, bool]:
+        project_id = InfraHelper.convert_id(project)
+        user_id = InfraHelper.convert_id(user)
+        assigned_user = self.find_by_user_and_project(user_id, project_id)
+        if assigned_user:
+            return assigned_user, False
+
+        assigned_user = ProjectAssignedUser(project_id=project_id, user_id=user_id)
+        self.insert(assigned_user)
+        return assigned_user, True
+
     def update_starred(self, user: TUserParam, project: TProjectParam, starred: bool) -> None:
         user_id = InfraHelper.convert_id(user)
         project_id = InfraHelper.convert_id(project)
