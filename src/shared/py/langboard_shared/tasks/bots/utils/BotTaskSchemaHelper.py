@@ -49,10 +49,26 @@ class BotTaskSchemaHelper:
                 "project_uid": "string",
                 "project_column_uid": "string",
                 "card_uid": "string",
+                "related_cards": {
+                    "parents": [BotTaskSchemaHelper.create_related_card_schema()],
+                    "children": [BotTaskSchemaHelper.create_related_card_schema()],
+                },
                 "executor": BotTaskSchemaHelper.create_user_or_bot_schema(),
                 **(schema or {}),
             },
         )
+
+    @staticmethod
+    def create_related_card_schema():
+        return {
+            "card_uid": "string",
+            "title": "string",
+            "project_column_uid": "string",
+            "archived_at": "datetime?",
+            "relationship_type_uid": "string",
+            "relationship_name": "string",
+            "relationship_description": "string",
+        }
 
     @staticmethod
     def changes_schema(*fields: tuple[str, str | dict]):
