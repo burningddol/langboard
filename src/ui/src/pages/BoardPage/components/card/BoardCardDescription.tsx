@@ -22,6 +22,48 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfmToMarkdown } from "mdast-util-gfm";
 import { Utils } from "@langboard/core/utils";
 
+const FULL_COPY_TEXT_SAMPLE_LENGTH = 80;
+
+function normalizeCopyText(value: string): string {
+    return value
+        .replace(/\uFEFF/g, "")
+        .replace(/\s+/g, "")
+        .trim();
+}
+
+function getRenderedDescriptionText(descriptionElement: HTMLElement): string {
+    return Array.from(descriptionElement.querySelectorAll("[data-slate-editor]"))
+        .map((editorElement) => editorElement.textContent ?? "")
+        .join("\n");
+}
+
+function hasHiddenDescriptionChunks(descriptionElement: HTMLElement, showMoreText: string, showAllText: string): bool {
+    return Array.from(descriptionElement.querySelectorAll("*")).some((element) => {
+        const text = element.textContent?.trim();
+        return text === showMoreText || text === showAllText;
+    });
+}
+
+function isFullRenderedDescriptionSelection(descriptionElement: HTMLElement, selectedText: string, showMoreText: string, showAllText: string): bool {
+    if (hasHiddenDescriptionChunks(descriptionElement, showMoreText, showAllText)) {
+        return false;
+    }
+
+    const renderedText = normalizeCopyText(getRenderedDescriptionText(descriptionElement));
+    const selected = normalizeCopyText(selectedText);
+    if (!renderedText || !selected) {
+        return false;
+    }
+
+    if (renderedText.length <= FULL_COPY_TEXT_SAMPLE_LENGTH * 2) {
+        return selected === renderedText;
+    }
+
+    const head = renderedText.slice(0, FULL_COPY_TEXT_SAMPLE_LENGTH);
+    const tail = renderedText.slice(-FULL_COPY_TEXT_SAMPLE_LENGTH);
+    return selected.startsWith(head) && selected.endsWith(tail);
+}
+
 export function SkeletonBoardCardDescription() {
     return (
         <Box>
@@ -36,6 +78,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
     const { projectUID, card, currentUser, hasRoleAction, isCardEditing } = useBoardCard();
     const [t] = useTranslation();
     const editorRef = useRef<TEditor>(null);
+    const descriptionRef = useRef<HTMLDivElement>(null);
     const updateCollaborativeDescriptionRef = useRef<((value: string) => void) | null>(null);
     const resetCollaborativeDescriptionRef = useRef<((value: string) => void) | null>(null);
     const projectMembers = card.useForeignFieldArray("project_members");
@@ -102,6 +145,38 @@ const BoardCardDescription = memo((): React.JSX.Element => {
         }
     }, [isCardEditing, isEditing, stopEditing]);
 
+    useEffect(() => {
+        if (isEditing) {
+            return;
+        }
+
+        const handleCopy = (event: ClipboardEvent) => {
+            const descriptionElement = descriptionRef.current;
+            const selection = window.getSelection();
+            const selectedText = selection?.toString();
+
+            if (!descriptionElement || !selection || !selectedText || !event.clipboardData) {
+                return;
+            }
+
+            const containsSelectionNode = (node: Node | null) => node !== null && descriptionElement.contains(node);
+            if (!containsSelectionNode(selection.anchorNode) && !containsSelectionNode(selection.focusNode)) {
+                return;
+            }
+
+            const markdownContent = description?.content;
+            const shouldCopyMarkdown =
+                Utils.Type.isString(markdownContent) &&
+                isFullRenderedDescriptionSelection(descriptionElement, selectedText, t("editor.Show more"), t("editor.Show all"));
+
+            event.clipboardData.setData("text/plain", shouldCopyMarkdown ? markdownContent : selectedText);
+            event.preventDefault();
+        };
+
+        document.addEventListener("copy", handleCopy, true);
+        return () => document.removeEventListener("copy", handleCopy, true);
+    }, [description, isEditing, t]);
+
     const handlePointerDown = useCallback(
         (e: PointerEvent<HTMLDivElement>) => {
             if (!canStartEditing || isEditing) {
@@ -141,6 +216,7 @@ const BoardCardDescription = memo((): React.JSX.Element => {
 
     return (
         <Box
+            ref={descriptionRef}
             data-card-description
             className={cn(canStartEditing && !isEditing && "cursor-text rounded-md transition-colors hover:bg-accent/20")}
             onPointerDown={handlePointerDown}
