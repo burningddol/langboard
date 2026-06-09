@@ -178,6 +178,7 @@ const API = {
             CREATE: "/bot/{bot_uid}/scope",
             APPLY_DEFAULT: "/bot/{bot_uid}/scope/default",
             TOGGLE_TRIGGER_CONDITION: "/bot/{bot_uid}/scope/{scope_uid}/trigger-condition",
+            TOGGLE_FREEZE: "/bot/{bot_uid}/scope/{scope_uid}/freeze",
             DELETE: "/bot/{bot_uid}/scope/{scope_uid}",
         },
         SCHEDULE: {

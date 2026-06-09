@@ -55,9 +55,9 @@ const BoardCardDescription = memo((): React.JSX.Element => {
 
         const aiTransforms = editorRef.current.getTransforms(AIPlugin);
         const aiChatApi = editorRef.current.getApi(AIChatPlugin);
-        aiChatApi.aiChat.stop();
-        aiTransforms.ai.undo();
-        aiChatApi.aiChat.hide();
+        aiChatApi.aiChat?.stop?.();
+        aiTransforms.ai?.undo?.();
+        aiChatApi.aiChat?.hide?.();
     }, []);
 
     const contentLines = description?.content?.split("\n").length ?? 0;

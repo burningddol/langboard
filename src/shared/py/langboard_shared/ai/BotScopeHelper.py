@@ -141,6 +141,20 @@ class BotScopeHelper:
         return True
 
     @staticmethod
+    def set_freeze(
+        model_cls: type[_TBotScopeModel], model: _TBotScopeModel | TBaseParam | None, is_frozen: bool
+    ) -> _TBotScopeModel | None:
+        model = InfraHelper.get_by_id_like(model_cls, model)
+        if not model:
+            return None
+
+        model.is_frozen = is_frozen
+        with DbSession.use(readonly=False) as db:
+            db.update(model)
+
+        return model
+
+    @staticmethod
     def delete(model_cls: type[_TBotScopeModel], model: _TBotScopeModel | TBaseParam | None) -> _TBotScopeModel | None:
         model = InfraHelper.get_by_id_like(model_cls, model)
         if not model:

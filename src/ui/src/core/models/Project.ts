@@ -13,6 +13,7 @@ import useBoardBotCronScheduledHandlers from "@/controllers/socket/board/botSche
 import useBoardBotCronUnscheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronUnscheduledHandlers";
 import useBoardBotScopeCreatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeCreatedHandlers";
 import useBoardBotScopeDeletedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeDeletedHandlers";
+import useBoardBotScopeFreezeUpdatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeFreezeUpdatedHandlers";
 import useBoardBotScopeTriggerConditionsUpdatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeTriggerConditionsUpdatedHandlers";
 import useBoardChatTemplateCreatedHandlers from "@/controllers/socket/board/chat/useBoardChatTemplateCreatedHandlers";
 import useBoardColumnCreatedHandlers from "@/controllers/socket/board/column/useBoardColumnCreatedHandlers";
@@ -101,6 +102,7 @@ class Project extends BaseModel<IStore> {
                 useBoardChatTemplateCreatedHandlers,
                 useBoardBotScopeCreatedHandlers,
                 useBoardBotScopeTriggerConditionsUpdatedHandlers,
+                useBoardBotScopeFreezeUpdatedHandlers,
                 useBoardBotScopeDeletedHandlers,
                 useBoardBotCronScheduledHandlers,
                 useBoardBotCronRescheduledHandlers,

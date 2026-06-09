@@ -12,6 +12,12 @@
   "No logs found": "No logs found",
   "Scoped": "Scoped",
   "Scheduled": "Scheduled",
+  "Onboarding": "Onboarding",
+  "Frozen": "Frozen",
+  "Freeze": "Freeze",
+  "Unfreeze": "Unfreeze",
+  "Search bots": "Search bots",
+  "Search bots...": "Search bots...",
   "Select running type": "Select running type",
   "platforms": {
     "default": "Default",

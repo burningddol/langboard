@@ -48,7 +48,11 @@ export const BoardCardSectionSaveProvider = ({ children }: { children: React.Rea
         const sections = Object.keys(cancelHandlersRef.current) as TBoardCardUnsavedSection[];
 
         sections.forEach((section) => {
-            cancelHandlersRef.current[section]?.();
+            try {
+                cancelHandlersRef.current[section]?.();
+            } catch {
+                // Keep card edit cancellation usable even if a section cleanup fails.
+            }
         });
     }, []);
 

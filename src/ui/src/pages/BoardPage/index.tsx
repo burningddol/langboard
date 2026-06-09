@@ -42,6 +42,13 @@ import useRoleActionFilter from "@/core/hooks/useRoleActionFilter";
 import { ProjectRole } from "@/core/models/roles";
 import { ScreenMap } from "@/core/utils/VariantUtils";
 import useResizeEvent from "@/core/hooks/useResizeEvent";
+import useBoardBotScopeCreatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeCreatedHandlers";
+import useBoardBotScopeDeletedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeDeletedHandlers";
+import useBoardBotScopeFreezeUpdatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeFreezeUpdatedHandlers";
+import useBoardBotScopeTriggerConditionsUpdatedHandlers from "@/controllers/socket/board/botScopes/useBoardBotScopeTriggerConditionsUpdatedHandlers";
+import useBoardBotCronRescheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronRescheduledHandlers";
+import useBoardBotCronScheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronScheduledHandlers";
+import useBoardBotCronUnscheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronUnscheduledHandlers";
 
 const getCurrentPage = (pageRoute?: string): TBoardViewType => {
     switch (pageRoute) {
@@ -277,6 +284,55 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             }),
         [project]
     );
+    const boardBotScopeCreatedHandlers = useMemo(
+        () =>
+            useBoardBotScopeCreatedHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotScopeTriggerConditionsUpdatedHandlers = useMemo(
+        () =>
+            useBoardBotScopeTriggerConditionsUpdatedHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotScopeFreezeUpdatedHandlers = useMemo(
+        () =>
+            useBoardBotScopeFreezeUpdatedHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotScopeDeletedHandlers = useMemo(
+        () =>
+            useBoardBotScopeDeletedHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotCronScheduledHandlers = useMemo(
+        () =>
+            useBoardBotCronScheduledHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotCronRescheduledHandlers = useMemo(
+        () =>
+            useBoardBotCronRescheduledHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
+    const boardBotCronUnscheduledHandlers = useMemo(
+        () =>
+            useBoardBotCronUnscheduledHandlers({
+                projectUID: project.uid,
+            }),
+        [project]
+    );
     const handlers = useMemo(
         () => [
             isBoardChatAvailableHandlers,
@@ -285,6 +341,13 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             boardAssignedInternalBotChangedHandlers,
             internalBotUpdatedHandlers,
             cardRelationshipsUpdatedHandlers,
+            boardBotScopeCreatedHandlers,
+            boardBotScopeTriggerConditionsUpdatedHandlers,
+            boardBotScopeFreezeUpdatedHandlers,
+            boardBotScopeDeletedHandlers,
+            boardBotCronScheduledHandlers,
+            boardBotCronRescheduledHandlers,
+            boardBotCronUnscheduledHandlers,
         ],
         [
             isBoardChatAvailableHandlers,
@@ -293,6 +356,13 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             boardAssignedInternalBotChangedHandlers,
             internalBotUpdatedHandlers,
             cardRelationshipsUpdatedHandlers,
+            boardBotScopeCreatedHandlers,
+            boardBotScopeTriggerConditionsUpdatedHandlers,
+            boardBotScopeFreezeUpdatedHandlers,
+            boardBotScopeDeletedHandlers,
+            boardBotCronScheduledHandlers,
+            boardBotCronRescheduledHandlers,
+            boardBotCronUnscheduledHandlers,
         ]
     );
 
@@ -624,7 +694,7 @@ function BoardBotScopeSidebar({ project }: { project: Project.TModel }): React.J
 
     return (
         <Box className="h-full">
-            <BoardBotScopeList project={project} className="h-full pb-3" />
+            <BoardBotScopeList target={{ target_table: "project", target: project }} className="h-full pb-3" />
         </Box>
     );
 }

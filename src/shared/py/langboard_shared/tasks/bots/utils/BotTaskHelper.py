@@ -48,6 +48,7 @@ class BotTaskHelper:
                     .where(
                         (model_class.column("default_scope_branch_id").is_(None))
                         & (model_class.column("conditions").contains([condition.value]))
+                        & (model_class.column("is_frozen") == False)  # noqa: E712
                         & (model_class.column(column_name) == where_clauses[column_name])
                     )
                 )
@@ -73,6 +74,7 @@ class BotTaskHelper:
                     .where(
                         (model_class.column("default_scope_branch_id").is_not(None))
                         & (default_scope_model_cls.column("conditions").contains([condition.value]))
+                        & (model_class.column("is_frozen") == False)  # noqa: E712
                         & (model_class.column(column_name) == where_clauses[column_name])
                     )
                 )

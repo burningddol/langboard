@@ -18,6 +18,7 @@ class BaseBotScopeModel(BaseDbModel):
     conditions: list[BotTriggerCondition] = Field(
         nullable=False, sa_type=CSVType(BotTriggerCondition), api_field=ApiField()
     )
+    is_frozen: bool = Field(default=False, nullable=False, api_field=ApiField())
 
     @staticmethod
     @abstractmethod

@@ -59,7 +59,13 @@ const BoardCardPageComponent = ({
         }
 
         if (isCardEditingRef.current) {
-            cancelCardEditRef.current?.();
+            const cancelCardEdit = cancelCardEditRef.current;
+            if (cancelCardEdit) {
+                cancelCardEdit();
+                return;
+            }
+
+            isCardEditingRef.current = false;
             return;
         }
 

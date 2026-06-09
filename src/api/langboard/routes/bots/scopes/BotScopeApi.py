@@ -11,7 +11,13 @@ from langboard_shared.filter import RoleFilter
 from langboard_shared.helpers import BotHelper, InfraHelper
 from langboard_shared.publishers import ProjectBotPublisher
 from langboard_shared.security import RoleFinder
-from ..forms import ApplyDefaultBotScopeForm, CreateBotScopeForm, DeleteBotScopeForm, ToggleBotTriggerConditionForm
+from ..forms import (
+    ApplyDefaultBotScopeForm,
+    CreateBotScopeForm,
+    DeleteBotScopeForm,
+    ToggleBotScopeFreezeForm,
+    ToggleBotTriggerConditionForm,
+)
 
 
 @AppRouter.schema(form=CreateBotScopeForm, permission=ApiPermission.Create)
@@ -90,6 +96,47 @@ def toggle_bot_trigger_condition(
 
     scope_table = BotHelper.get_target_table_by_bot_model("scope", bot_scope.__class__)
     return JsonResponse(content={"scope_table": scope_table, "bot_scope": bot_scope.api_response()})
+
+
+@AppRouter.schema(form=ToggleBotScopeFreezeForm, permission=ApiPermission.Edit)
+@AppRouter.api.put(
+    "/bot/{bot_uid}/scope/{bot_scope_uid}/freeze",
+    tags=["Bot.Scope"],
+    responses=OpenApiSchema().auth().forbidden().err(400, ApiErrorCode.VA3003).err(404, ApiErrorCode.NF2020).get(),
+)
+@RoleFilter.add(ProjectRole, [ProjectRoleAction.Update], RoleFinder.project)
+@AuthFilter.add()
+def toggle_bot_scope_freeze(
+    bot_uid: str,
+    bot_scope_uid: str,
+    form: ToggleBotScopeFreezeForm,
+    service: DomainService = DomainService.scope(),
+) -> JsonResponse:
+    scope_model_class = BotHelper.get_bot_model_class("scope", form.target_table)
+    if not scope_model_class:
+        raise ApiException.BadRequest_400(ApiErrorCode.VA3003)
+
+    params = InfraHelper.get_records_with_foreign_by_params((Bot, bot_uid), (scope_model_class, bot_scope_uid))
+    if not params:
+        raise ApiException.NotFound_404(ApiErrorCode.NF2020)
+    _, bot_scope = params
+
+    target_scope = _get_target_scope(bot_scope, form.target_table)
+    updated_bot_scope = BotScopeHelper.set_freeze(scope_model_class, bot_scope, form.is_frozen)
+    if not updated_bot_scope:
+        raise ApiException.NotFound_404(ApiErrorCode.NF2020)
+
+    if isinstance(target_scope, tuple(AVAILABLE_BOT_TARGET_TABLES.values())):
+        if isinstance(target_scope, Project):
+            project = target_scope
+        else:
+            project = service.project.get_by_id_like(target_scope.project_id)
+
+        if project:
+            ProjectBotPublisher.scope_freeze_updated(project, updated_bot_scope)
+
+    scope_table = BotHelper.get_target_table_by_bot_model("scope", updated_bot_scope.__class__)
+    return JsonResponse(content={"scope_table": scope_table, "bot_scope": updated_bot_scope.api_response()})
 
 
 @AppRouter.schema(form=DeleteBotScopeForm, permission=ApiPermission.Delete)

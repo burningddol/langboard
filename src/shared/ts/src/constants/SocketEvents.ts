@@ -110,6 +110,7 @@ const SERVER = {
             SCOPE: {
                 CREATED: "board:bot:scope:created",
                 TRIGGER_CONDITION_TOGGLED: "board:bot:scope:conditions:updated",
+                FREEZE_UPDATED: "board:bot:scope:freeze:updated",
                 DELETED: "board:bot:scope:deleted",
             },
             SCHEDULE: {

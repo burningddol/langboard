@@ -226,16 +226,21 @@ function BoardCardResult({ isExpanded, setIsExpanded, onClose, onEditModeStateCh
 
     useEffect(() => {
         const cancelCardEdit = () => {
-            cancelSections();
-            leaveCardEditMode();
+            try {
+                cancelSections();
+            } finally {
+                leaveCardEditMode();
+            }
         };
 
         onEditModeStateChange?.(isCardEditing, isCardEditing ? cancelCardEdit : null);
+    }, [cancelSections, isCardEditing, leaveCardEditMode, onEditModeStateChange]);
 
+    useEffect(() => {
         return () => {
             onEditModeStateChange?.(false, null);
         };
-    }, [cancelSections, isCardEditing, leaveCardEditMode, onEditModeStateChange]);
+    }, [onEditModeStateChange]);
 
     return (
         <>
@@ -507,8 +512,11 @@ function BoardCardFloatingNav({ isExpanded }: { isExpanded: bool }): React.JSX.E
     }, [card, changeCardDetailsMutateAsync, isSaving, leaveCardEditMode, projectUID, saveSections]);
 
     const handleCancelEditing = useCallback(() => {
-        cancelSections();
-        leaveCardEditMode();
+        try {
+            cancelSections();
+        } finally {
+            leaveCardEditMode();
+        }
     }, [cancelSections, leaveCardEditMode]);
 
     return (

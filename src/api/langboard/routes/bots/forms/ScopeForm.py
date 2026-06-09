@@ -18,6 +18,12 @@ class ToggleBotTriggerConditionForm(BaseFormModel):
 
 
 @form_model
+class ToggleBotScopeFreezeForm(BaseFormModel):
+    target_table: str = Field(..., title=f"Target table name ({', '.join(AVAILABLE_BOT_TARGET_TABLES.keys())})")
+    is_frozen: bool
+
+
+@form_model
 class DeleteBotScopeForm(BaseFormModel):
     target_table: str = Field(..., title=f"Target table name ({', '.join(AVAILABLE_BOT_TARGET_TABLES.keys())})")
 
