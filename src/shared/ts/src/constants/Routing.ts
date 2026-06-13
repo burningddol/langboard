@@ -94,6 +94,12 @@ const API = {
                 DELETE: "/board/{uid}/chat/template/{template_uid}",
             },
         },
+        GRAPH_APPROVAL: {
+            GET_LIST: "/board/{uid}/graph-approvals",
+            COUNT: "/board/{uid}/graph-approvals/count",
+            APPROVE: "/board/{uid}/graph-approval/{approval_uid}/approve",
+            REJECT: "/board/{uid}/graph-approval/{approval_uid}/reject",
+        },
         COLUMN: {
             CREATE: "/board/{uid}/column",
             CHANGE_NAME: "/board/{uid}/column/{project_column_uid}/name",

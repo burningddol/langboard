@@ -47,7 +47,8 @@ async def run_scheduled_bots_cron(interval_str: str):
                 )
                 .join(Bot, BotSchedule.column("bot_id") == Bot.column("id"))
                 .where(
-                    (BotSchedule.column("interval_str") == interval_str)
+                    (Bot.column("deleted_at").is_(None))
+                    & (BotSchedule.column("interval_str") == interval_str)
                     & (BotSchedule.column("status") == BotScheduleStatus.Started)
                     & (BotSchedule.column("running_type") != BotScheduleRunningType.Onetime)
                 )
@@ -72,7 +73,8 @@ async def _check_bot_schedule_runnable(interval_str: str):
                 )
                 .join(Bot, BotSchedule.column("bot_id") == Bot.column("id"))
                 .where(
-                    (BotSchedule.column("status") == BotScheduleStatus.Pending)
+                    (Bot.column("deleted_at").is_(None))
+                    & (BotSchedule.column("status") == BotScheduleStatus.Pending)
                     & (BotSchedule.column("start_at") <= current_time)
                     & (BotSchedule.column("interval_str") == interval_str)
                 )

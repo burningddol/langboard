@@ -12,10 +12,18 @@ import BotLogList from "@/components/bots/BotLogList";
 import BotScheduleList from "@/components/bots/BotScheduleList";
 import BotTriggerConditionList from "@/components/bots/BotTriggerConditionList";
 import UserAvatar from "@/components/UserAvatar";
+import useApproveGraphApproval from "@/controllers/api/board/graphApprovals/useApproveGraphApproval";
+import useGetGraphApprovals from "@/controllers/api/board/graphApprovals/useGetGraphApprovals";
+import useRejectGraphApproval from "@/controllers/api/board/graphApprovals/useRejectGraphApproval";
 import useToggleBotScopeFreeze from "@/controllers/api/shared/botScopes/useToggleBotScopeFreeze";
+import useBoardGraphApprovalDeletedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalDeletedHandlers";
+import useBoardGraphApprovalRequestedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalRequestedHandlers";
+import useBoardGraphApprovalUpdatedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalUpdatedHandlers";
 import { DISABLE_DRAGGING_ATTR } from "@/constants";
 import useHandleInteractOutside from "@/core/hooks/useHandleInteractOutside";
 import useRoleActionFilter from "@/core/hooks/useRoleActionFilter";
+import useSwitchSocketHandlers from "@/core/hooks/useSwitchSocketHandlers";
+import { useSocket } from "@/core/providers/SocketProvider";
 import {
     BaseBotScheduleModel,
     BotDefaultScopeBranchModel,
@@ -29,7 +37,9 @@ import {
     ProjectColumn,
     ProjectColumnBotSchedule,
     ProjectColumnBotScope,
+    GraphApprovalRequestModel,
 } from "@/core/models";
+import { EGraphApprovalOriginType, EGraphApprovalStatus } from "@/core/models/GraphApprovalRequestModel";
 import * as BaseBotScopeModel from "@/core/models/botScopes/BaseBotScopeModel";
 import { EBotTriggerCondition } from "@/core/models/botScopes/EBotTriggerCondition";
 import { TBotScopeModel, TBotScopeModelName } from "@/core/models/ModelRegistry";
@@ -40,6 +50,17 @@ import { cn } from "@/core/utils/ComponentUtils";
 import { IBoardRelatedPageProps } from "@/pages/BoardPage/types";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useGraphApprovalSummary, useGraphApprovalTitle } from "./GraphApprovalUtils";
+
+const BOARD_BOT_SCOPE_APPROVAL_ORIGIN_TYPES = new Set<EGraphApprovalOriginType>([
+    EGraphApprovalOriginType.Trigger,
+    EGraphApprovalOriginType.Schedule,
+    EGraphApprovalOriginType.ManualScopeRun,
+]);
+
+export function isBoardBotScopeGraphApprovalOriginType(originType: EGraphApprovalOriginType): bool {
+    return BOARD_BOT_SCOPE_APPROVAL_ORIGIN_TYPES.has(originType);
+}
 
 export type TBoardBotScopeTarget =
     | { target_table: "project"; target: Project.TModel }
@@ -57,6 +78,7 @@ interface IBoardBotScopeListProps {
 }
 
 interface IBoardBotScopeRow {
+    botUID: string;
     bot: BotModel.TModel;
     botScope?: BaseBotScopeModel.TModel;
     hasScheduled: bool;
@@ -98,6 +120,7 @@ BoardBotScopeDisplay.displayName = "Board.BotScopeDisplay";
 
 export function BoardBotScopeList({ target, className }: IBoardBotScopeListProps) {
     const [t] = useTranslation();
+    const socket = useSocket();
     const bots = BotModel.Model.useModels(() => true);
     const projectScopes = ProjectBotScope.Model.useModels(() => true);
     const columnScopes = ProjectColumnBotScope.Model.useModels(() => true);
@@ -109,6 +132,34 @@ export function BoardBotScopeList({ target, className }: IBoardBotScopeListProps
     const [searchOpened, setSearchOpened] = useState(false);
     const [search, setSearch] = useState("");
     const targetLabel = getBoardBotScopeTargetLabel(target);
+    const projectUID = getBoardBotScopeTargetProjectUID(target);
+    useGetGraphApprovals(
+        {
+            project_uid: projectUID,
+            status: EGraphApprovalStatus.Pending,
+            limit: 100,
+        },
+        {
+            interceptToast: false,
+        }
+    );
+    const graphApprovalRequestedHandlers = useBoardGraphApprovalRequestedHandlers({ projectUID });
+    const graphApprovalUpdatedHandlers = useBoardGraphApprovalUpdatedHandlers({ projectUID });
+    const graphApprovalDeletedHandlers = useBoardGraphApprovalDeletedHandlers({ projectUID });
+    const graphApprovalHandlers = useMemo(
+        () => [graphApprovalRequestedHandlers, graphApprovalUpdatedHandlers, graphApprovalDeletedHandlers],
+        [graphApprovalRequestedHandlers, graphApprovalUpdatedHandlers, graphApprovalDeletedHandlers]
+    );
+    useSwitchSocketHandlers({ socket, handlers: graphApprovalHandlers, dependencies: [graphApprovalHandlers] });
+    const pendingApprovals = GraphApprovalRequestModel.Model.useModels((approval) => {
+        return (
+            approval.project_uid === projectUID &&
+            approval.status === EGraphApprovalStatus.Pending &&
+            isBoardBotScopeGraphApprovalOriginType(approval.origin_type) &&
+            approval.scope_table === target.target_table &&
+            approval.scope_uid === target.target.uid
+        );
+    });
     const computedOnboardingByBotUID = useMemo(() => {
         const targetScopes = getTargetScopes(target.target_table, projectScopes, columnScopes, cardScopes);
         const nextOnboardingByBotUID: Record<string, bool> = {};
@@ -165,6 +216,7 @@ export function BoardBotScopeList({ target, className }: IBoardBotScopeListProps
             .map((bot): IBoardBotScopeRow => {
                 const botScope = scopeMap.get(bot.uid);
                 return {
+                    botUID: bot.uid,
                     bot,
                     botScope,
                     hasScheduled: scheduledBotUIDs.has(bot.uid),
@@ -178,7 +230,7 @@ export function BoardBotScopeList({ target, className }: IBoardBotScopeListProps
                 return bot.name.toLowerCase().includes(normalizedSearch) || bot.bot_uname.toLowerCase().includes(normalizedSearch);
             });
 
-        return [...filteredRows.filter((row) => onboardingByBotUID[row.bot.uid]), ...filteredRows.filter((row) => !onboardingByBotUID[row.bot.uid])];
+        return [...filteredRows.filter((row) => onboardingByBotUID[row.botUID]), ...filteredRows.filter((row) => !onboardingByBotUID[row.botUID])];
     }, [bots, projectScopes, columnScopes, cardScopes, projectSchedules, columnSchedules, cardSchedules, onboardingByBotUID, target, search]);
 
     return (
@@ -221,13 +273,143 @@ export function BoardBotScopeList({ target, className }: IBoardBotScopeListProps
                 </Flex>
                 <ScrollArea.Root className="min-h-0 flex-1 py-1">
                     <Flex direction="col" gap="2" px="2.5" className={className}>
+                        <BoardGraphApprovalList approvals={pendingApprovals} projectUID={projectUID} />
                         {rows.map((row) => (
-                            <BoardBotScopeItem key={row.bot.uid} row={row} target={target} onOnboardingChange={updateOnboardingState} />
+                            <BoardBotScopeItem key={row.botUID} row={row} target={target} onOnboardingChange={updateOnboardingState} />
                         ))}
                     </Flex>
                 </ScrollArea.Root>
             </Flex>
         </Box>
+    );
+}
+
+interface IBoardGraphApprovalListProps {
+    approvals: GraphApprovalRequestModel.TModel[];
+    projectUID: string;
+}
+
+function BoardGraphApprovalList({ approvals, projectUID }: IBoardGraphApprovalListProps): React.JSX.Element | null {
+    const [t] = useTranslation();
+    const runningApprovalUIDRef = useRef<string | null>(null);
+    const [hiddenApprovalUIDs, setHiddenApprovalUIDs] = useState<Set<string>>(() => new Set());
+    const approveMutation = useApproveGraphApproval({ interceptToast: true });
+    const rejectMutation = useRejectGraphApproval({ interceptToast: true });
+    const visibleApprovals = useMemo(() => {
+        return approvals.filter((approval) => !hiddenApprovalUIDs.has(approval.uid));
+    }, [approvals, hiddenApprovalUIDs]);
+
+    if (!visibleApprovals.length) {
+        return null;
+    }
+
+    const hideApproval = (approvalUID: string) => {
+        setHiddenApprovalUIDs((prev) => new Set(prev).add(approvalUID));
+    };
+
+    const approve = (approval: GraphApprovalRequestModel.TModel) => {
+        if (runningApprovalUIDRef.current) {
+            return;
+        }
+
+        runningApprovalUIDRef.current = approval.uid;
+        approveMutation
+            .mutateAsync({ project_uid: projectUID, approval_uid: approval.uid })
+            .then(() => hideApproval(approval.uid))
+            .finally(() => {
+                runningApprovalUIDRef.current = null;
+            });
+    };
+
+    const reject = (approval: GraphApprovalRequestModel.TModel) => {
+        if (runningApprovalUIDRef.current) {
+            return;
+        }
+
+        runningApprovalUIDRef.current = approval.uid;
+        rejectMutation
+            .mutateAsync({ project_uid: projectUID, approval_uid: approval.uid })
+            .then(() => hideApproval(approval.uid))
+            .finally(() => {
+                runningApprovalUIDRef.current = null;
+            });
+    };
+
+    return (
+        <Flex direction="col" gap="2" className="rounded-xl border border-primary/20 bg-primary/5 p-2">
+            <Flex items="center" gap="1.5" className="text-primary">
+                <IconComponent icon="hand" size="3.5" />
+                <Box textSize="xs" weight="semibold">
+                    {t("bot.Human input required")}
+                </Box>
+                <Badge variant="secondary" className="ml-auto px-2 py-0 text-[11px]">
+                    {visibleApprovals.length}
+                </Badge>
+            </Flex>
+            {visibleApprovals.map((approval) => (
+                <BoardGraphApprovalItem key={approval.uid} approval={approval} onApprove={approve} onReject={reject} onResolved={hideApproval} />
+            ))}
+        </Flex>
+    );
+}
+
+interface IBoardGraphApprovalItemProps {
+    approval: GraphApprovalRequestModel.TModel;
+    onApprove: (approval: GraphApprovalRequestModel.TModel) => void;
+    onReject: (approval: GraphApprovalRequestModel.TModel) => void;
+    onResolved: (approvalUID: string) => void;
+}
+
+function BoardGraphApprovalItem({ approval, onApprove, onReject, onResolved }: IBoardGraphApprovalItemProps): React.JSX.Element | null {
+    const [t] = useTranslation();
+    const approvalUIDRef = useRef(approval.uid);
+    const status = approval.useField("status");
+    const originType = approval.useField("origin_type");
+    const scopeTable = approval.useField("scope_table");
+    const title = useGraphApprovalTitle(approval, t("bot.Approval request"));
+    const summary = useGraphApprovalSummary(approval);
+
+    useEffect(() => {
+        if (status === EGraphApprovalStatus.Pending) {
+            return;
+        }
+
+        onResolved(approvalUIDRef.current);
+    }, [onResolved, status]);
+
+    if (status !== EGraphApprovalStatus.Pending) {
+        return null;
+    }
+
+    return (
+        <Flex direction="col" gap="2" className="rounded-lg border bg-background/80 p-2">
+            <Box className="min-w-0">
+                <Flex items="center" gap="1.5" wrap={true} className="mb-1">
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        {t(`bot.approvalOriginTypes.${originType}`, { defaultValue: originType })}
+                    </Badge>
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        {t(`bot.target_tables.${scopeTable}`, { defaultValue: scopeTable })}
+                    </Badge>
+                </Flex>
+                <Box textSize="sm" weight="semibold" className="break-words leading-snug">
+                    {title}
+                </Box>
+                {summary && (
+                    <Box textSize="xs" className="mt-1 line-clamp-3 break-words text-muted-foreground">
+                        {summary}
+                    </Box>
+                )}
+            </Box>
+            <Flex items="center" gap="1.5">
+                <Button type="button" size="sm" className="h-7 flex-1 px-2" onClick={() => onApprove(approval)}>
+                    {t("bot.Approve")}
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7 flex-1 px-2" onClick={() => onReject(approval)}>
+                    {t("bot.Reject")}
+                </Button>
+            </Flex>
+        </Flex>
     );
 }
 
@@ -238,13 +420,15 @@ interface IBoardBotScopeItemProps {
 }
 
 const BoardBotScopeItem = memo(({ row, target, onOnboardingChange }: IBoardBotScopeItemProps) => {
+    const hasBotScope = !!row.botScope;
+
     useEffect(() => {
-        if (row.botScope) {
+        if (hasBotScope) {
             return;
         }
 
-        onOnboardingChange(row.bot.uid, false);
-    }, [onOnboardingChange, row.bot.uid, row.botScope]);
+        onOnboardingChange(row.botUID, false);
+    }, [hasBotScope, onOnboardingChange, row.botUID]);
 
     if (row.botScope) {
         return (
@@ -280,8 +464,8 @@ function BoardBotScopeScopedItem({
             return;
         }
 
-        onOnboardingChange(row.bot.uid, isOnboarding);
-    }, [defaultScopeBranch, isOnboarding, onOnboardingChange, row.bot.uid]);
+        onOnboardingChange(row.botUID, isOnboarding);
+    }, [defaultScopeBranch, isOnboarding, onOnboardingChange, row.botUID]);
 
     if (defaultScopeBranch) {
         return (
@@ -315,8 +499,8 @@ function BoardBotScopeDefaultBranchItem({
     const isOnboarding = (branchConditionsMap?.[target.target_table] || []).length > 0;
 
     useEffect(() => {
-        onOnboardingChange(row.bot.uid, isOnboarding);
-    }, [isOnboarding, onOnboardingChange, row.bot.uid]);
+        onOnboardingChange(row.botUID, isOnboarding);
+    }, [isOnboarding, onOnboardingChange, row.botUID]);
 
     return <BoardBotScopeItemContent row={row} target={target} isFrozen={isFrozen} isOnboarding={isOnboarding} hasScheduled={row.hasScheduled} />;
 }
@@ -589,6 +773,16 @@ function getBoardBotScopeTargetLabel(target: TBoardBotScopeTarget): string {
             return target.target.name;
         case "card":
             return target.target.title;
+    }
+}
+
+function getBoardBotScopeTargetProjectUID(target: TBoardBotScopeTarget): string {
+    switch (target.target_table) {
+        case "project":
+            return target.target.uid;
+        case "project_column":
+        case "card":
+            return target.target.project_uid;
     }
 }
 

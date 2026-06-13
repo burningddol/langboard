@@ -65,6 +65,14 @@ class Env:
         return int(self.__get_from_cache("API_PORT", "5381"))
 
     @property
+    def API_HOST(self) -> str:
+        return self.__get_from_cache("API_HOST", "localhost")
+
+    @property
+    def API_INTERNAL_URL(self) -> str:
+        return self.__get_from_cache("API_INTERNAL_URL", f"http://{self.API_HOST}:{self.API_PORT}").rstrip("/")
+
+    @property
     def UI_PORT(self) -> int:
         return int(self.__get_from_cache("UI_PORT", "5173"))
 
@@ -93,12 +101,12 @@ class Env:
         )
 
     @property
-    def FLOWS_PORT(self) -> int:
-        return int(self.__get_from_cache("FLOWS_PORT", "5019"))
+    def GRAPH_PORT(self) -> int:
+        return int(self.__get_from_cache("GRAPH_PORT", "5020"))
 
     @property
-    def DEFAULT_FLOWS_URL(self) -> str:
-        return self.__get_from_cache("DEFAULT_FLOWS_URL", "http://127.0.0.1:5019")
+    def DEFAULT_GRAPH_URL(self) -> str:
+        return self.__get_from_cache("DEFAULT_GRAPH_URL", f"http://127.0.0.1:{self.GRAPH_PORT}")
 
     @property
     def DOMAIN(self) -> str | None:

@@ -225,5 +225,3 @@ test-results
 .playwright-cli
 .playwright-mcp
 skills-lock.json
-
-graph/

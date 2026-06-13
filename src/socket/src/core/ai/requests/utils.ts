@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AI_REQUEST_TIMEOUT, DEFAULT_FLOWS_URL } from "@/Constants";
+import { AI_REQUEST_TIMEOUT, DEFAULT_GRAPH_URL } from "@/Constants";
 import BaseRequest from "@/core/ai/requests/BaseRequest";
 import DefaultRequest from "@/core/ai/requests/DefaultRequest";
 import LangflowRequest from "@/core/ai/requests/LangflowRequest";
@@ -16,7 +16,7 @@ const EMPTY_BOT_STATUS_MAP = {
     card: {},
 };
 
-const isFlowsConnectionRefusedError = (error: unknown): bool => {
+const isGraphConnectionRefusedError = (error: unknown): bool => {
     if (!Utils.Type.isObject(error)) {
         return false;
     }
@@ -43,13 +43,11 @@ export const createRequest = (internalBot: InternalBot, internalBotSettings?: IP
 
     switch (internalBot.platform) {
         case EBotPlatform.Default:
-            return new DefaultRequest(internalBot, DEFAULT_FLOWS_URL, internalBotSettings);
+            return new DefaultRequest(internalBot, DEFAULT_GRAPH_URL, internalBotSettings);
         case EBotPlatform.Langflow:
             switch (internalBot.platform_running_type) {
                 case EBotPlatformRunningType.Endpoint:
                     return new LangflowRequest(internalBot, internalBot.api_url, internalBotSettings);
-                case EBotPlatformRunningType.FlowJson:
-                    return new LangflowRequest(internalBot, DEFAULT_FLOWS_URL, internalBotSettings);
                 default:
                     return null;
             }
@@ -60,7 +58,7 @@ export const createRequest = (internalBot: InternalBot, internalBotSettings?: IP
 
 export const getBotStatusMap = async (projectUID: string): Promise<Record<string, any> | null> => {
     try {
-        const response = await api.get(`${DEFAULT_FLOWS_URL}/bot/status/map`, {
+        const response = await api.get(`${DEFAULT_GRAPH_URL}/bot/status/map`, {
             params: {
                 project_uid: projectUID,
             },
@@ -68,12 +66,12 @@ export const getBotStatusMap = async (projectUID: string): Promise<Record<string
         });
 
         if (response.status !== EHttpStatus.HTTP_200_OK) {
-            throw new Error("Langflow get bot status map failed");
+            throw new Error("Graph get bot status map failed");
         }
 
         return response.data;
     } catch (error) {
-        if (isFlowsConnectionRefusedError(error)) {
+        if (isGraphConnectionRefusedError(error)) {
             return EMPTY_BOT_STATUS_MAP;
         }
 

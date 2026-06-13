@@ -12,6 +12,7 @@ from ....publishers import BotPublisher
 from ....tasks.bots import BotDefaultTask
 from ...models import Bot, BotDefaultScopeBranch, Card, Project, ProjectColumn
 from ...models.BaseBotModel import BotPlatform, BotPlatformRunningType
+from .GraphApprovalRequestService import GraphApprovalRequestService
 
 
 class BotService(BaseDomainService):
@@ -209,6 +210,7 @@ class BotService(BaseDomainService):
         if not bot:
             return False
 
+        self._get_service(GraphApprovalRequestService).cancel_pending_by_bot(bot, reason="bot deleted")
         self.repo.bot.delete(bot)
 
         BotPublisher.bot_deleted(bot.get_uid())

@@ -1,6 +1,6 @@
 from ....core.db import DbSession, SqlBuilder
 from ....core.domain import BaseOrderRepository
-from ....core.types.ParamTypes import TProjectParam
+from ....core.types.ParamTypes import TProjectParam, TWikiParam
 from ....domain.models import Project, ProjectWiki
 from ....helpers import InfraHelper
 
@@ -17,6 +17,9 @@ class ProjectWikiRepository(BaseOrderRepository[ProjectWiki, Project]):
     @staticmethod
     def name() -> str:
         return "project_wiki"
+
+    def get_by_id_like(self, wiki: TWikiParam | None) -> ProjectWiki | None:
+        return InfraHelper.get_by_id_like(ProjectWiki, wiki)
 
     def get_all_by_project(self, project: TProjectParam):
         project_id = InfraHelper.convert_id(project)

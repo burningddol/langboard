@@ -15,6 +15,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MAX_FILE_SIZE_MB } from "@/constants";
 import useBoardChatSentHandlers from "@/controllers/socket/board/chat/useBoardChatSentHandlers";
+import useUpdateProjectChatSession from "@/controllers/api/board/chat/useUpdateProjectChatSession";
+import { ChatSessionModel } from "@/core/models";
 import ChatInputPreviewList from "@/pages/BoardPage/components/chat/ChatInputPreviewList";
 import { ChatInputProvider, useChatInput } from "@/pages/BoardPage/components/chat/ChatInputProvider";
 import ChatInputFileUpload from "@/pages/BoardPage/components/chat/ChatInputFileUpload";
@@ -329,13 +331,45 @@ function ChatInputActions({ chatInputRef, updateHeight }: IChatInputActionsProps
 }
 
 function ChatInputPermissionLevel({ showLabel }: { showLabel: bool }) {
-    const { agentPermissionLevel, isSending, setAgentPermissionLevel } = useBoardChat();
+    const { agentPermissionLevel, currentSessionUID, isSending, projectUID, setAgentPermissionLevel } = useBoardChat();
     const [t] = useTranslation();
+    const { mutate } = useUpdateProjectChatSession({ interceptToast: false });
     const isFullAccess = agentPermissionLevel === EAgentPermissionLevel.FullAccess;
     const permissionLevelLabel = t(`project.permissions.${agentPermissionLevel}`);
 
+    const handlePermissionLevelChange = (value: string) => {
+        const apiPermissionLevel = value as EAgentPermissionLevel;
+        const previousPermissionLevel = agentPermissionLevel;
+        const currentSession = currentSessionUID ? ChatSessionModel.Model.getModel(currentSessionUID) : undefined;
+
+        setAgentPermissionLevel(apiPermissionLevel);
+        if (currentSession) {
+            currentSession.api_permission_level = apiPermissionLevel;
+        }
+
+        if (!currentSessionUID) {
+            return;
+        }
+
+        mutate(
+            {
+                uid: projectUID,
+                session_uid: currentSessionUID,
+                api_permission_level: apiPermissionLevel,
+            },
+            {
+                onError: () => {
+                    setAgentPermissionLevel(previousPermissionLevel);
+                    if (currentSession) {
+                        currentSession.api_permission_level = previousPermissionLevel;
+                    }
+                },
+            }
+        );
+    };
+
     return (
-        <Select.Root value={agentPermissionLevel} onValueChange={(value) => setAgentPermissionLevel(value as EAgentPermissionLevel)}>
+        <Select.Root value={agentPermissionLevel} onValueChange={handlePermissionLevelChange}>
             <Select.Trigger
                 disabled={isSending}
                 className={cn(

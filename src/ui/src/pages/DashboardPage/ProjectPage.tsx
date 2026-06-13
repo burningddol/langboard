@@ -71,7 +71,7 @@ const ProjectPage = memo(({ currentTab, updateStarredProjects, scrollAreaUpdater
             }
             socket.unsubscribe(ESocketTopic.UserPrivate, [currentUser.uid]);
         };
-    }, [currentUser?.uid, socket]);
+    }, [currentUser, socket]);
 
     const projectAssignedHandlers = useMemo(
         () =>

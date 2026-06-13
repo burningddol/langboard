@@ -25,6 +25,7 @@ from ...models import (
 from ...models.Checkitem import CheckitemStatus
 from .CardRelationshipService import CardRelationshipService
 from .CheckitemService import CheckitemService
+from .GraphApprovalRequestService import GraphApprovalRequestService
 from .NotificationService import NotificationService
 from .ProjectLabelService import ProjectLabelService
 from .ProjectService import ProjectService
@@ -445,6 +446,12 @@ class CardService(BaseDomainService):
 
         BotScopeHelper.delete_by_scope(CardBotScope, card)
         BotScheduleHelper.unschedule_by_scope(CardBotSchedule, card)
+        self._get_service(GraphApprovalRequestService).cancel_pending_by_scope(
+            project,
+            Card.__tablename__,
+            card.get_uid(),
+            reason="card deleted",
+        )
 
         self.repo.card.delete(card)
         self.repo.card.reoder_after_delete(card.project_column_id, card.order)

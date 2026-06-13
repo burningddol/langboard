@@ -19,9 +19,9 @@ import useToggleEditingByClickOutside from "@/core/hooks/useToggleEditingByClick
 import { isModel, TUserLikeModel } from "@/core/models/ModelRegistry";
 import { BotModel, ProjectCard } from "@/core/models";
 import { getEditorStore, useIsCurrentEditor } from "@/core/stores/EditorStore";
+import { getCardCommentDraftStore } from "@/core/stores/CardCommentDraftStore";
 import { TEditor } from "@/components/Editor/editor-kit";
 import { EEditorType } from "@langboard/core/constants";
-import { Utils } from "@langboard/core/utils";
 
 export function SkeletonBoardCommentForm() {
     return (
@@ -73,35 +73,18 @@ const BoardCommentForm = memo(({ variant = "mobile" }: IBoardCommentFormProps): 
         }
     });
 
-    const commentStorageKey = useMemo(() => `comment-${projectUID}-${card.uid}`, [projectUID, card]);
     const saveDraftToStorage = useCallback(
         (content: string) => {
-            if (Utils.Type.isNullOrUndefined(window)) {
-                return;
-            }
-
-            const sanitizedContent = sanitizeEditorContent(content);
-            if (sanitizedContent.length > 0) {
-                window.sessionStorage.setItem(commentStorageKey, sanitizedContent);
-                return;
-            }
-
-            window.sessionStorage.removeItem(commentStorageKey);
+            getCardCommentDraftStore().saveDraft(projectUID, card.uid, sanitizeEditorContent(content));
         },
-        [commentStorageKey]
+        [projectUID, card]
     );
     const readDraftFromStorage = useCallback((): string => {
-        if (Utils.Type.isNullOrUndefined(window)) {
-            return "";
-        }
-        return window.sessionStorage.getItem(commentStorageKey) ?? "";
-    }, [commentStorageKey]);
+        return getCardCommentDraftStore().getDraft(projectUID, card.uid);
+    }, [projectUID, card]);
     const clearDraftFromStorage = useCallback(() => {
-        if (Utils.Type.isNullOrUndefined(window)) {
-            return;
-        }
-        window.sessionStorage.removeItem(commentStorageKey);
-    }, [commentStorageKey]);
+        getCardCommentDraftStore().clearDraft(projectUID, card.uid);
+    }, [projectUID, card]);
     const openEditor = useCallback(
         (initialContent?: string) => {
             setValue({ content: initialContent ?? readDraftFromStorage() });

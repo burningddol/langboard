@@ -8,6 +8,7 @@ from ....publishers import ProjectColumnPublisher
 from ....tasks.activities import ProjectColumnActivityTask
 from ....tasks.bots import ProjectColumnBotTask
 from ...models import Project, ProjectColumn, ProjectColumnBotSchedule, ProjectColumnBotScope
+from .GraphApprovalRequestService import GraphApprovalRequestService
 
 
 class ProjectColumnService(BaseDomainService):
@@ -139,6 +140,12 @@ class ProjectColumnService(BaseDomainService):
 
         BotScopeHelper.delete_by_scope(ProjectColumnBotScope, column)
         BotScheduleHelper.unschedule_by_scope(ProjectColumnBotSchedule, column)
+        self._get_service(GraphApprovalRequestService).cancel_pending_by_scope(
+            project,
+            ProjectColumn.__tablename__,
+            column.get_uid(),
+            reason="project column deleted",
+        )
 
         self.repo.project_column.delete(column)
 

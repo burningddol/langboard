@@ -13,6 +13,7 @@ import useBoardChatSessionCreatedHandlers from "@/controllers/socket/board/chat/
 import { TChatScope } from "@langboard/core/types";
 import { Utils } from "@langboard/core/utils";
 import { EAgentPermissionLevel } from "@langboard/core/ai";
+import { getBoardChatStore } from "@/core/stores/BoardChatStore";
 
 export interface IBoardChatContext {
     projectUID: string;
@@ -104,7 +105,28 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
     );
     const { mutateAsync } = useGetProjectChatSessions(projectUID);
     const isInitialMountedRef = useRef(false);
-    const [currentSessionUID, setCurrentSessionUID] = useState<string | undefined>(chatSessions[0]?.uid);
+    const [currentSessionUID, setCurrentSessionUIDState] = useState<string | undefined>(() => getBoardChatStore().getCurrentSessionUID(projectUID));
+    const currentSessionUIDRef = useRef(currentSessionUID);
+    const setCurrentSessionUID = useCallback(
+        (value: React.SetStateAction<string | undefined>) => {
+            const next = Utils.Type.isFunction(value) ? value(currentSessionUIDRef.current) : value;
+            currentSessionUIDRef.current = next;
+            setCurrentSessionUIDState(next);
+            getBoardChatStore().setCurrentSessionUID(projectUID, next);
+        },
+        [projectUID]
+    );
+    const currentSession = ChatSessionModel.Model.useModel((model) => model.uid === currentSessionUID, [currentSessionUID]);
+    const currentAgentPermissionLevel = currentSession?.api_permission_level ?? agentPermissionLevel;
+    const scrollToBottomAfterRender = useCallback(() => {
+        if (!isAtBottomRef.current) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => scrollToBottomRef.current());
+        });
+    }, []);
 
     const startCallback = useCallback((data: { ai_message: ChatMessageModel.Interface }) => {
         const chatMessage = ChatMessageModel.Model.fromOne({ ...data.ai_message, isPending: true }, true);
@@ -114,38 +136,48 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
         }
         scrollToBottomRef.current();
     }, []);
-    const bufferCallback = useCallback((data: { uid: string; message?: IChatContent; chunk?: string }) => {
-        const chatMessage = ChatMessageModel.Model.getModel(data.uid);
-        if (!chatMessage) {
-            return;
-        }
-
-        if (data.message) {
-            if (data.message.content && chatMessage.isPending) {
-                chatMessage.isPending = undefined;
+    const bufferCallback = useCallback(
+        (data: { uid: string; message?: IChatContent; chunk?: string; interrupt?: IChatContent["graph_interrupt"] }) => {
+            const chatMessage = ChatMessageModel.Model.getModel(data.uid);
+            if (!chatMessage) {
+                return;
             }
 
-            chatMessage.message = data.message;
-        } else if (data.chunk) {
-            if (!chatMessage.message || !chatMessage.message.content) {
-                chatMessage.message = { content: "" };
+            if (data.message) {
+                if (data.message.content && chatMessage.isPending) {
+                    chatMessage.isPending = undefined;
+                }
+
+                chatMessage.message = data.message;
+            } else if (data.interrupt) {
+                chatMessage.message = {
+                    ...(chatMessage.message ?? { content: "" }),
+                    graph_interrupt: data.interrupt,
+                    graph_resume_error: null,
+                };
+                scrollToBottomAfterRender();
+            } else if (data.chunk) {
+                if (!chatMessage.message || !chatMessage.message.content) {
+                    chatMessage.message = { content: "" };
+                }
+
+                if (data.chunk && chatMessage.isPending) {
+                    chatMessage.isPending = undefined;
+                }
+
+                const message = {
+                    content: `${chatMessage.message.content}${data.chunk}`,
+                };
+
+                chatMessage.message = message;
+
+                if (isAtBottomRef.current) {
+                    scrollToBottomRef.current();
+                }
             }
-
-            if (data.chunk && chatMessage.isPending) {
-                chatMessage.isPending = undefined;
-            }
-
-            const message = {
-                content: `${chatMessage.message.content}${data.chunk}`,
-            };
-
-            chatMessage.message = message;
-
-            if (isAtBottomRef.current) {
-                scrollToBottomRef.current();
-            }
-        }
-    }, []);
+        },
+        [scrollToBottomAfterRender]
+    );
     const endCallback = useCallback((data: { uid: string; status: "success" | "failed" | "aborted" }) => {
         const chatMessage = ChatMessageModel.Model.getModel(data.uid);
         const chatSession = chatMessage ? ChatSessionModel.Model.getModel((model) => model.uid === chatMessage.chat_session_uid) : undefined;
@@ -238,16 +270,28 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
     }, [projectUID]);
 
     useEffect(() => {
+        const storedSessionUID = getBoardChatStore().getCurrentSessionUID(projectUID);
+        currentSessionUIDRef.current = storedSessionUID;
+        setCurrentSessionUIDState(storedSessionUID);
+        isInitialMountedRef.current = false;
+    }, [projectUID]);
+
+    useEffect(() => {
         if (isInitialMountedRef.current || !chatSessions.length) {
             return;
         }
 
-        if (!currentSessionUID) {
+        if (currentSessionUID && chatSessions.some((session) => session.uid === currentSessionUID)) {
+            isInitialMountedRef.current = true;
+            return;
+        }
+
+        if (!currentSessionUID || !chatSessions.some((session) => session.uid === currentSessionUID)) {
             setCurrentSessionUID(chatSessions[0].uid);
         }
 
         isInitialMountedRef.current = true;
-    }, [chatSessions, currentSessionUID]);
+    }, [chatSessions, currentSessionUID, setCurrentSessionUID]);
 
     return (
         <BoardChatContext.Provider
@@ -261,7 +305,7 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
                 setIsUploading,
                 isSessionListOpened,
                 setIsSessionListOpened,
-                agentPermissionLevel,
+                agentPermissionLevel: currentAgentPermissionLevel,
                 setAgentPermissionLevel,
                 selectedScope,
                 setSelectedScope,
@@ -275,10 +319,27 @@ export const BoardChatProvider = ({ projectUID, bot, children }: IBoardChatProvi
                 isAtBottomRef,
             }}
         >
+            {currentSession && <BoardChatSessionPermissionSync session={currentSession} setAgentPermissionLevel={setAgentPermissionLevel} />}
             {children}
         </BoardChatContext.Provider>
     );
 };
+
+function BoardChatSessionPermissionSync({
+    session,
+    setAgentPermissionLevel,
+}: {
+    session: ChatSessionModel.TModel;
+    setAgentPermissionLevel: React.Dispatch<React.SetStateAction<EAgentPermissionLevel>>;
+}) {
+    const apiPermissionLevel = session.useField("api_permission_level") ?? EAgentPermissionLevel.Read;
+
+    useEffect(() => {
+        setAgentPermissionLevel(apiPermissionLevel);
+    }, [apiPermissionLevel, setAgentPermissionLevel]);
+
+    return null;
+}
 
 export const useBoardChat = () => {
     const context = useContext(BoardChatContext);

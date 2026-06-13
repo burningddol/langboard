@@ -3,7 +3,7 @@ from ....core.db import DbSession, SqlBuilder
 from ....core.domain import BaseOrderRepository
 from ....core.schema import TimeBasedPagination
 from ....core.types import SafeDateTime
-from ....core.types.ParamTypes import TColumnParam, TProjectParam, TUserParam
+from ....core.types.ParamTypes import TCardParam, TColumnParam, TProjectParam, TUserParam
 from ....domain.models import Card, CardAssignedUser, CardComment, Project, ProjectColumn, ProjectRole
 from ....helpers import InfraHelper
 
@@ -20,6 +20,9 @@ class CardRepository(BaseOrderRepository[Card, ProjectColumn]):
     @staticmethod
     def name() -> str:
         return "card"
+
+    def get_by_id_like(self, card: TCardParam | None) -> Card | None:
+        return InfraHelper.get_by_id_like(Card, card)
 
     def get_board_list(self, project: TProjectParam) -> list[tuple[Card, int]]:
         project_id = InfraHelper.convert_id(project)

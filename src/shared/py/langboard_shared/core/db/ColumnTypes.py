@@ -55,6 +55,10 @@ def SnowflakeIDField(
 ) -> Any:
     effective_nullable = nullable if nullable is not None else not bool(primary_key)
     default_value = None if nullable and not primary_key else SnowflakeID(0)
+    column_kwargs: dict[str, Any] = {"nullable": effective_nullable}
+    if primary_key:
+        column_kwargs["autoincrement"] = False
+
     ondelete: str | UndefinedType = Undefined
     field_foreign_key: str | UndefinedType = Undefined
     foreign_model: type[ForeignKeyModel] | None = None
@@ -71,7 +75,7 @@ def SnowflakeIDField(
         primary_key=primary_key if primary_key is not None else False,
         foreign_key=cast(Any, field_foreign_key),
         sa_type=SnowflakeIDType,
-        sa_column_kwargs={"nullable": effective_nullable},
+        sa_column_kwargs=column_kwargs,
         nullable=effective_nullable,
         unique=unique if unique is not None else False,
         unique_groups=unique_groups if unique_groups is not None else Undefined,

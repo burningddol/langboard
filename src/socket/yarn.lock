@@ -157,7 +157,7 @@
   integrity sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==
 
 "@langboard/core@file:../shared/ts":
-  version "0.1.0"
+  version "0.2.0"
   dependencies:
     axios "^1.13.6"
 

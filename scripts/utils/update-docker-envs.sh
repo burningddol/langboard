@@ -39,7 +39,7 @@ declare -A service_envs=(
   [api]="server-common server"
   [ui]="server-common"
   [socket]="server-common server"
-  [flows]="server-common server"
+  [graph]="server-common server"
   [db_backup]="db-backup"
 )
 

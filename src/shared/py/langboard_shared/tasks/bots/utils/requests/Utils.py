@@ -11,11 +11,10 @@ from .N8NRequest import N8NRequest
 
 _REQUEST_MAP: dict[BotPlatform, dict[BotPlatformRunningType, tuple[type[BaseBotRequest], str | None]]] = {
     BotPlatform.Default: {
-        BotPlatformRunningType.Default: (DefaultRequest, Env.DEFAULT_FLOWS_URL),
+        BotPlatformRunningType.Default: (DefaultRequest, Env.DEFAULT_GRAPH_URL),
     },
     BotPlatform.Langflow: {
         BotPlatformRunningType.Endpoint: (LangflowRequest, None),
-        BotPlatformRunningType.FlowJson: (LangflowRequest, Env.DEFAULT_FLOWS_URL),
     },
     BotPlatform.N8N: {
         BotPlatformRunningType.Default: (N8NRequest, None),

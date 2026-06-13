@@ -1,8 +1,10 @@
+from typing import Literal
 from langboard_shared.core.routing import BaseFormModel, form_model
 from langboard_shared.core.schema import TimeBasedPagination
+from langboard_shared.domain.models.GraphApprovalRequest import GraphApprovalOriginType, GraphApprovalStatus
 from langboard_shared.domain.models.InternalBot import InternalBotType
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 @form_model
@@ -17,6 +19,19 @@ class ProjectInvitationForm(BaseFormModel):
 
 class ChatHistoryPagination(TimeBasedPagination):
     pass
+
+
+class GraphApprovalListForm(BaseModel):
+    status: GraphApprovalStatus | None = GraphApprovalStatus.Pending
+    origin_type: GraphApprovalOriginType | None = None
+    scope_table: str | None = None
+    scope_uid: str | None = None
+    limit: int = Field(100, ge=1, le=500)
+
+
+@form_model
+class RejectGraphApprovalForm(BaseFormModel):
+    reason: str | None = None
 
 
 @form_model
@@ -46,4 +61,5 @@ class ChangeInternalBotSettingsForm(BaseFormModel):
 
 @form_model
 class UpdateProjectChatSessionForm(BaseFormModel):
-    title: str
+    title: str | None = None
+    api_permission_level: Literal["read", "edit", "full_access"] | None = None

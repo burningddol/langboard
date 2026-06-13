@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import BotRunner from "@/core/ai/BotRunner";
+import { api } from "@/core/helpers/Api";
 import SnowflakeID from "@/core/db/SnowflakeID";
 import EventManager from "@/core/server/EventManager";
 import { Utils } from "@langboard/core/utils";
@@ -11,9 +12,20 @@ import { SocketEvents } from "@langboard/core/constants";
 import ChatSession from "@/models/ChatSession";
 import { TChatScope } from "@langboard/core/types";
 import ProjectChatSession from "@/models/ProjectChatSession";
-import { EAgentPermissionLevel } from "@langboard/core/ai";
+import { AGENT_PERMISSION_LEVEL_APPROVAL_POLICY, EAgentApprovalPolicy, EAgentPermissionLevel, EApiPermission } from "@langboard/core/ai";
+import { createOneTimeToken } from "@/core/ai/BotOneTimeToken";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { getActiveEditorSyncDocumentNames } from "@/core/server/Hocus";
+import { AI_REQUEST_TIMEOUT, DEFAULT_GRAPH_URL } from "@/Constants";
+import GraphApprovalRequest from "@/models/GraphApprovalRequest";
+import {
+    EGraphApprovalOriginType,
+    EGraphApprovalScopeTable,
+    EGraphApprovalStatus,
+    getGraphApprovalScopeID,
+} from "@/models/GraphApprovalRequestTypes";
+import ChatGraphApprovalRequest from "@/models/ChatGraphApprovalRequest";
+import Subscription from "@/core/server/Subscription";
 
 const parseEditorSyncDocumentName = (documentName: string) => {
     const [type, entityUID, section, ...extraParts] = documentName.split(":");
@@ -98,6 +110,59 @@ const getCollaborativeDocumentSchema = (type: string, section?: string) => {
 
     return {};
 };
+
+const getApprovalRequestValue = (interrupt: Record<string, any>): Record<string, any> | null => {
+    if (interrupt.type === "approval_request") {
+        return interrupt;
+    }
+
+    const value = interrupt.value;
+    if (value && typeof value === "object" && value.type === "approval_request") {
+        return value;
+    }
+
+    return null;
+};
+
+const toApprovalOriginType = (value: unknown): EGraphApprovalOriginType => {
+    return Object.values(EGraphApprovalOriginType).includes(value as EGraphApprovalOriginType)
+        ? (value as EGraphApprovalOriginType)
+        : EGraphApprovalOriginType.Chat;
+};
+
+const toApprovalScopeTable = (value: unknown): EGraphApprovalScopeTable => {
+    return Object.values(EGraphApprovalScopeTable).includes(value as EGraphApprovalScopeTable)
+        ? (value as EGraphApprovalScopeTable)
+        : EGraphApprovalScopeTable.Project;
+};
+
+const toRecord = (value: unknown): Record<string, unknown> => {
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+};
+
+interface IGraphResumeInputPayload {
+    approved?: bool;
+    rejected?: bool;
+    instruction?: string;
+    reason?: string;
+}
+
+type TApprovedGraphResumeApprovalPolicy = {
+    [EApiPermission.Read]: EAgentApprovalPolicy.Allow;
+    [EApiPermission.Create]: EAgentApprovalPolicy.Allow;
+    [EApiPermission.Edit]: EAgentApprovalPolicy.Allow;
+    [EApiPermission.Delete]: EAgentApprovalPolicy.Allow;
+};
+
+interface IApprovedGraphResumePayload extends IGraphResumeInputPayload {
+    approved: true;
+    rejected: false;
+    app_api_token: string;
+    api_permission_level: EAgentPermissionLevel.FullAccess;
+    api_approval_policy: TApprovedGraphResumeApprovalPolicy;
+}
+
+type TGraphResumePayload = IGraphResumeInputPayload | IApprovedGraphResumePayload;
 
 const getActiveCollaborativeDocuments = async (projectUID: string, scopeTable: TChatScope | undefined, scopeUID: string | undefined) => {
     if (!scopeUID) {
@@ -203,6 +268,7 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
     const apiPermissionLevel = isAgentPermissionLevel(data?.api_permission_level) ? data.api_permission_level : EAgentPermissionLevel.Read;
     const restData: Record<string, any> = {
         api_permission_level: apiPermissionLevel,
+        api_approval_policy: AGENT_PERMISSION_LEVEL_APPROVAL_POLICY[apiPermissionLevel],
     };
 
     const scopeTable = data.scope_table as TChatScope | undefined;
@@ -243,6 +309,8 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
         data: {
             message,
             file_path,
+            task_id,
+            session_uid,
             project_uid: topicId,
             user_id: client.user.id,
             rest_data: restData,
@@ -269,6 +337,7 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
         chatSession = await ChatSession.create({
             user_id: client.user.id,
             title: "Untitled",
+            api_permission_level: apiPermissionLevel,
             last_messaged_at: new Date(),
         }).save();
 
@@ -332,6 +401,11 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
             client.sendError(ESocketStatus.WS_4001_INVALID_DATA, "Invalid chat session", false);
             return;
         }
+
+        if (chatSession.api_permission_level !== apiPermissionLevel) {
+            chatSession.api_permission_level = apiPermissionLevel;
+            await ChatSession.update(chatSession.id, { api_permission_level: apiPermissionLevel });
+        }
     }
 
     const userMessage = await ChatHistory.create({
@@ -376,7 +450,7 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
         return;
     }
 
-    const newContent = { content: "" };
+    const newContent: { content: string; graph_interrupt?: Record<string, any> | null } = { content: "" };
     let isReceived = false;
     let lastContent: string | undefined = undefined;
 
@@ -390,22 +464,61 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
     await response
         .onMessage(async (chunk) => {
             isReceived = true;
-            const oldContent = newContent.content;
-            let updatedContent = "";
-            if (chunk) {
-                if (oldContent) {
-                    newContent.content = chunk.startsWith(oldContent) ? chunk : `${oldContent}${chunk}`;
-                    updatedContent = chunk.split(oldContent, 2).pop() || chunk;
-                } else {
-                    newContent.content = chunk;
-                    updatedContent = chunk;
-                }
-            }
+            newContent.content = chunk || "";
 
             if (lastContent !== newContent.content) {
-                stream.buffer({ uid: aiMessageUID, chunk: updatedContent });
+                stream.buffer({ uid: aiMessageUID, message: newContent });
                 lastContent = newContent.content;
             }
+        })
+        .onInterrupt(async (interrupt) => {
+            isReceived = true;
+            let nextInterrupt = interrupt;
+            const approvalRequest = getApprovalRequestValue(interrupt);
+            if (approvalRequest) {
+                const projectID = SnowflakeID.fromShortCode(topicId).toString();
+                const scopeTable = toApprovalScopeTable(approvalRequest.scope_table);
+                const approval = await GraphApprovalRequest.create({
+                    requested_by_user_id: client.user.id,
+                    resolved_by_user_id: null,
+                    thread_id: String(approvalRequest.thread_id || ""),
+                    run_id: String(approvalRequest.run_id || task_id),
+                    request_type: toApprovalOriginType(approvalRequest.origin_type),
+                    action_type: Utils.Type.isString(approvalRequest.action_type) ? approvalRequest.action_type : "api_call",
+                    permission: Utils.Type.isString(approvalRequest.permission) ? approvalRequest.permission : "",
+                    tool_name: Utils.Type.isString(approvalRequest.tool_name) ? approvalRequest.tool_name : null,
+                    api_name: Utils.Type.isString(approvalRequest.api_name) ? approvalRequest.api_name : null,
+                    request_payload: toRecord(approvalRequest.request_payload),
+                    preview_payload: toRecord(approvalRequest.preview),
+                    status: EGraphApprovalStatus.Pending,
+                    resolved_at: null,
+                    expires_at: null,
+                    rejection_reason: null,
+                }).save();
+                const detail = await ChatGraphApprovalRequest.create({
+                    approval_request_id: approval.id,
+                    scope_table: scopeTable,
+                    scope_id: getGraphApprovalScopeID({
+                        projectID,
+                        scopeTable,
+                        scopeUID: approvalRequest.scope_uid,
+                    }),
+                    chat_session_id: chatSession.id,
+                    chat_history_id: aiMessage.id,
+                }).save();
+                approval.approvalResponse = detail.toGraphApprovalResponse(projectID);
+                const value = {
+                    ...approvalRequest,
+                    approval_uid: approval.uid,
+                    status: approval.status,
+                };
+                nextInterrupt = interrupt.value ? { ...interrupt, value } : value;
+                await Subscription.publish(ESocketTopic.BoardSettings, topicId, SocketEvents.SERVER.BOARD.GRAPH_APPROVAL.REQUESTED, {
+                    approval: approval.apiResponse,
+                });
+            }
+            newContent.graph_interrupt = nextInterrupt;
+            stream.buffer({ uid: aiMessageUID, interrupt: nextInterrupt });
         })
         .onError(async (error) => {
             stream.end({ uid: aiMessageUID, status: "failed", error: error.message });
@@ -426,6 +539,274 @@ EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.SEND, async (
         })
         .stream();
 });
+
+EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.RESUME, async ({ client, topicId, data }) => {
+    const { message_uid, thread_id, session_id, approval_uid } = data ?? {};
+    if (!Utils.Type.isString(message_uid) || !Utils.Type.isString(thread_id) || !data || !("resume" in data)) {
+        client.sendError(ESocketStatus.WS_4001_INVALID_DATA, "Invalid graph resume data", false);
+        return;
+    }
+
+    let messageId: string;
+    let projectId: string;
+    try {
+        messageId = SnowflakeID.fromShortCode(message_uid).toString();
+        projectId = SnowflakeID.fromShortCode(topicId).toString();
+    } catch (error) {
+        client.sendError(ESocketStatus.WS_4001_INVALID_DATA, "Invalid graph resume target", false);
+        return;
+    }
+    const aiMessage = await ChatHistory.findOne({ where: { id: messageId, is_received: true } });
+    if (!aiMessage) {
+        client.sendError(ESocketStatus.WS_4001_INVALID_DATA, "Invalid graph resume message", false);
+        return;
+    }
+
+    const projectChatSession = await ProjectChatSession.findOne({
+        where: {
+            chat_session_id: aiMessage.chat_session_id,
+            project_id: projectId,
+        },
+    });
+    if (!projectChatSession) {
+        client.sendError(ESocketStatus.WS_4001_INVALID_DATA, "Invalid graph resume session", false);
+        return;
+    }
+
+    const stream = client.stream(ESocketTopic.Board, topicId, SocketEvents.SERVER.BOARD.CHAT.STREAM);
+    const currentMessage = aiMessage.message ?? { content: "" };
+
+    try {
+        const resumePayload = createGraphResumePayload(data.resume, client.user.id);
+        const response = await api.post(
+            `${DEFAULT_GRAPH_URL}/api/v1/graph/resume/${encodeURIComponent(thread_id)}`,
+            {
+                resume: resumePayload,
+                session_id,
+            },
+            {
+                timeout: AI_REQUEST_TIMEOUT * 1000,
+            }
+        );
+        const currentContent = currentMessage.content ?? "";
+        const responseData = response.data ?? {};
+        const isApprovedResume = !!resumePayload.approved && !resumePayload.rejected;
+        const isInstructionResume = !resumePayload.approved && !resumePayload.rejected && Utils.Type.isString(resumePayload.instruction);
+        const resumeInstruction = Utils.Type.isString(resumePayload.instruction) ? resumePayload.instruction : null;
+        const responseMessage = Utils.Type.isString(responseData.message) ? sanitizeGraphResumeMessage(responseData.message) : "";
+        const nextInterrupt = Array.isArray(responseData.interrupts) && responseData.interrupts.length > 0 ? responseData.interrupts[0] : null;
+
+        const resolvedApproval = await resolveGraphApprovalFromChatResume({
+            approvalUID: Utils.Type.isString(approval_uid) ? approval_uid : null,
+            aiMessage,
+            projectID: projectId,
+            threadID: thread_id,
+            userID: client.user.id,
+            status: isApprovedResume
+                ? EGraphApprovalStatus.Approved
+                : isInstructionResume
+                  ? EGraphApprovalStatus.Resolved
+                  : EGraphApprovalStatus.Rejected,
+        });
+        aiMessage.message = {
+            ...currentMessage,
+            content: currentContent,
+            graph_interrupt: nextInterrupt || createResolvedGraphInterrupt(currentMessage.graph_interrupt, resolvedApproval, resumeInstruction),
+            graph_resume_error: null,
+        };
+        await aiMessage.save();
+        await ChatSession.update(aiMessage.chat_session_id, { last_messaged_at: new Date() });
+
+        stream.buffer({ uid: message_uid, message: aiMessage.message });
+        stream.end({ uid: message_uid, status: "success" });
+
+        if ((isApprovedResume || isInstructionResume) && responseMessage && responseMessage !== currentContent.trim()) {
+            const resumedMessage = await ChatHistory.create({
+                chat_session_id: aiMessage.chat_session_id,
+                message: { content: responseMessage },
+                is_received: true,
+            }).save();
+            const resumedMessageUID = new SnowflakeID(resumedMessage.id).toShortCode();
+            await ChatSession.update(aiMessage.chat_session_id, { last_messaged_at: resumedMessage.created_at });
+
+            stream.start({ ai_message: { ...resumedMessage.apiResponse, chat_session_uid: projectChatSession.uid } });
+            stream.buffer({ uid: resumedMessageUID, message: resumedMessage.message });
+            stream.end({ uid: resumedMessageUID, status: "success" });
+        }
+    } catch (error) {
+        aiMessage.message = {
+            ...currentMessage,
+            graph_resume_error: Utils.Type.isError(error) ? error.message : "Failed to resume graph.",
+        };
+        await aiMessage.save();
+        await ChatSession.update(aiMessage.chat_session_id, { last_messaged_at: new Date() });
+
+        stream.buffer({ uid: message_uid, message: aiMessage.message });
+        stream.end({ uid: message_uid, status: "success" });
+    }
+});
+
+function createGraphResumePayload(resume: unknown, userID: string): TGraphResumePayload {
+    const payload = createGraphResumeInputPayload(resume);
+    if (!payload.approved || payload.rejected) {
+        return payload;
+    }
+
+    return {
+        ...payload,
+        approved: true,
+        rejected: false,
+        app_api_token: createOneTimeToken(new SnowflakeID(userID), EAgentPermissionLevel.FullAccess),
+        api_permission_level: EAgentPermissionLevel.FullAccess,
+        api_approval_policy: {
+            [EApiPermission.Read]: EAgentApprovalPolicy.Allow,
+            [EApiPermission.Create]: EAgentApprovalPolicy.Allow,
+            [EApiPermission.Edit]: EAgentApprovalPolicy.Allow,
+            [EApiPermission.Delete]: EAgentApprovalPolicy.Allow,
+        },
+    };
+}
+
+function createGraphResumeInputPayload(resume: unknown): IGraphResumeInputPayload {
+    if (!Utils.Type.isObject<Record<string, unknown>>(resume)) {
+        return {};
+    }
+
+    const payload: IGraphResumeInputPayload = {};
+    if (Utils.Type.isBool(resume.approved)) {
+        payload.approved = resume.approved;
+    }
+    if (Utils.Type.isBool(resume.rejected)) {
+        payload.rejected = resume.rejected;
+    }
+    if (Utils.Type.isString(resume.instruction)) {
+        payload.instruction = resume.instruction;
+    }
+    if (Utils.Type.isString(resume.reason)) {
+        payload.reason = resume.reason;
+    }
+
+    return payload;
+}
+
+function sanitizeGraphResumeMessage(message: string): string {
+    return message.replace(/^Graph approval rejected(?::[^\n]*)?\.?\s*/i, "").trim();
+}
+
+function createResolvedGraphInterrupt(
+    interrupt: Record<string, unknown> | null | undefined,
+    approval: GraphApprovalRequest | null,
+    instruction: string | null = null
+) {
+    if (!approval) {
+        return interrupt ?? null;
+    }
+
+    const approvalRequest = interrupt ? getApprovalRequestValue(interrupt) : createApprovalRequestValueFromModel(approval);
+    if (!approvalRequest) {
+        return interrupt;
+    }
+
+    const value = {
+        ...approvalRequest,
+        approval_uid: approval.uid,
+        status: approval.status,
+        resolved_by_user_uid: approval.resolved_by_user_id ? new SnowflakeID(approval.resolved_by_user_id).toShortCode() : null,
+        resolved_at: approval.resolved_at,
+        rejection_reason: approval.rejection_reason,
+        instruction,
+    };
+
+    return interrupt?.value ? { ...interrupt, value } : value;
+}
+
+function createApprovalRequestValueFromModel(approval: GraphApprovalRequest): Record<string, unknown> {
+    const preview = toRecord(approval.preview_payload);
+    const title = Utils.Type.isString(preview.title) ? preview.title : undefined;
+    const summary = Utils.Type.isString(preview.summary) ? preview.summary : undefined;
+
+    return {
+        type: "approval_request",
+        thread_id: approval.thread_id,
+        run_id: approval.run_id,
+        origin_type: approval.origin_type,
+        scope_table: approval.approvalResponse?.scope_table,
+        scope_uid: approval.approvalResponse?.scope_uid,
+        document_name: approval.approvalResponse?.document_name,
+        action_type: approval.action_type,
+        permission: approval.permission,
+        tool_name: approval.tool_name,
+        api_name: approval.api_name,
+        preview,
+        message: summary || title || "Graph approval request resolved.",
+    };
+}
+
+async function resolveGraphApprovalFromChatResume({
+    approvalUID,
+    aiMessage,
+    projectID,
+    threadID,
+    userID,
+    status,
+}: {
+    approvalUID: string | null;
+    aiMessage: ChatHistory;
+    projectID: string;
+    threadID: string;
+    userID: string;
+    status: EGraphApprovalStatus;
+}): Promise<GraphApprovalRequest | null> {
+    let approvalID: string | null = null;
+    if (approvalUID) {
+        try {
+            approvalID = SnowflakeID.fromShortCode(approvalUID).toString();
+        } catch {
+            approvalID = null;
+        }
+    }
+
+    const detail = approvalID
+        ? await ChatGraphApprovalRequest.findOne({
+              where: {
+                  approval_request_id: approvalID,
+                  chat_history_id: aiMessage.id,
+              },
+          })
+        : await ChatGraphApprovalRequest.findOne({
+              where: {
+                  chat_history_id: aiMessage.id,
+              },
+          });
+    const approval = detail
+        ? await GraphApprovalRequest.findOne({
+              where: {
+                  id: detail.approval_request_id,
+                  thread_id: threadID,
+                  status: EGraphApprovalStatus.Pending,
+              },
+          })
+        : null;
+
+    if (!approval || !detail) {
+        return null;
+    }
+
+    approval.approvalResponse = detail.toGraphApprovalResponse(projectID);
+    approval.status = status;
+    approval.resolved_by_user_id = userID;
+    approval.resolved_at = new Date();
+    await approval.save();
+    await Subscription.publish(
+        ESocketTopic.BoardSettings,
+        new SnowflakeID(projectID).toShortCode(),
+        SocketEvents.SERVER.BOARD.GRAPH_APPROVAL.UPDATED,
+        {
+            approval: approval.apiResponse,
+        }
+    );
+    return approval;
+}
 
 EventManager.on(ESocketTopic.Board, SocketEvents.CLIENT.BOARD.CHAT.CANCEL, async ({ client, data }) => {
     const { task_id } = data ?? {};

@@ -40,6 +40,11 @@ const SERVER = {
                 DELETED: "board:chat:template:deleted:{uid}",
             },
         },
+        GRAPH_APPROVAL: {
+            REQUESTED: "board:graph:approval:requested",
+            UPDATED: "board:graph:approval:updated",
+            DELETED: "board:graph:approval:deleted",
+        },
         LABEL: {
             CREATED: "board:label:created:{uid}",
             DETAILS_CHANGED: "board:label:details:changed:{uid}",
@@ -224,6 +229,7 @@ const CLIENT = {
         CHAT: {
             IS_AVAILABLE: "board:chat:available",
             SEND: "board:chat:send",
+            RESUME: "board:chat:resume",
             CANCEL: "board:chat:cancel",
         },
         WIKI: {

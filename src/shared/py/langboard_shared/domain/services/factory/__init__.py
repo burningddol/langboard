@@ -12,6 +12,7 @@ from .ChatService import ChatService
 from .CheckitemService import CheckitemService
 from .ChecklistService import ChecklistService
 from .EmailService import EmailService
+from .GraphApprovalRequestService import GraphApprovalRequestService
 from .IdentityLinkService import IdentityLinkService
 from .InternalBotService import InternalBotService
 from .McpToolGroupService import McpToolGroupService
@@ -44,6 +45,7 @@ __all__ = [
     "CheckitemService",
     "ChecklistService",
     "EmailService",
+    "GraphApprovalRequestService",
     "IdentityLinkService",
     "InternalBotService",
     "McpToolGroupService",

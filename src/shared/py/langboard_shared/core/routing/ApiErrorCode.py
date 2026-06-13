@@ -52,6 +52,7 @@ class ApiErrorCode(Enum):
     NF2019 = "Project or internal bot not found."
     NF2020 = "Bot or scope not found."
     NF2021 = "Project or chat session not found."
+    NF2022 = "Graph approval request not found."
     NF3001 = "Bot not found."
     NF3002 = "Settings not found."
     NF3003 = "Global relationships not found."
@@ -79,6 +80,7 @@ class ApiErrorCode(Enum):
     OP1001 = "Failed to send email."
     OP1002 = "Failed to upload."
     OP1003 = "Can't delete the user itself."
+    OP3001 = "Failed to resume graph approval request."
 
     def to_dict(self):
         return {"code": self.name, "message": self.value}

@@ -15,12 +15,7 @@ export const getValueType = (platform: EBotPlatform, runningType: EBotPlatformRu
         }
     }
 
-    switch (runningType) {
-        case EBotPlatformRunningType.FlowJson:
-            return "json";
-        default:
-            return "text";
-    }
+    return "text";
 };
 
 export const requirements: Partial<Record<EBotPlatform, Partial<Record<EBotPlatformRunningType, ("url" | "apiKey" | "value")[]>>>> = {
@@ -29,7 +24,6 @@ export const requirements: Partial<Record<EBotPlatform, Partial<Record<EBotPlatf
     },
     [EBotPlatform.Langflow]: {
         [EBotPlatformRunningType.Endpoint]: ["url", "apiKey", "value"],
-        [EBotPlatformRunningType.FlowJson]: ["value"],
     },
     [EBotPlatform.N8N]: {
         [EBotPlatformRunningType.Default]: ["url", "apiKey", "value"],

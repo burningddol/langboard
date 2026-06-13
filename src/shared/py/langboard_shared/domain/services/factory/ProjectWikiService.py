@@ -10,6 +10,7 @@ from ....publishers import ProjectWikiPublisher
 from ....tasks.activities import ProjectWikiActivityTask
 from ....tasks.bots import ProjectWikiBotTask
 from ...models import Bot, Project, ProjectWiki, ProjectWikiAssignedUser, ProjectWikiAttachment, User
+from .GraphApprovalRequestService import GraphApprovalRequestService
 from .NotificationService import NotificationService
 
 
@@ -111,11 +112,7 @@ class ProjectWikiService(BaseDomainService):
         return wiki, api_wiki
 
     def update(
-        self,
-        user_or_bot: TUserOrBot,
-        project: TProjectParam | None,
-        wiki: TWikiParam | None,
-        form: dict,
+        self, user_or_bot: TUserOrBot, project: TProjectParam | None, wiki: TWikiParam | None, form: dict
     ) -> dict[str, Any] | Literal[True] | None:
         params = InfraHelper.get_records_with_foreign_by_params((Project, project), (ProjectWiki, wiki))
         if not params:
@@ -148,11 +145,7 @@ class ProjectWikiService(BaseDomainService):
         return model
 
     def change_public(
-        self,
-        user_or_bot: TUserOrBot,
-        project: TProjectParam | None,
-        wiki: TWikiParam | None,
-        is_public: bool,
+        self, user_or_bot: TUserOrBot, project: TProjectParam | None, wiki: TWikiParam | None, is_public: bool
     ) -> tuple[ProjectWiki, Project] | None:
         params = InfraHelper.get_records_with_foreign_by_params((Project, project), (ProjectWiki, wiki))
         if not params:
@@ -189,11 +182,7 @@ class ProjectWikiService(BaseDomainService):
         return wiki, project
 
     def update_assignees(
-        self,
-        user: User,
-        project: TProjectParam | None,
-        wiki: TWikiParam | None,
-        assign_user_uids: list[str],
+        self, user: User, project: TProjectParam | None, wiki: TWikiParam | None, assign_user_uids: list[str]
     ) -> tuple[ProjectWiki, Project] | None:
         params = InfraHelper.get_records_with_foreign_by_params((Project, project), (ProjectWiki, wiki))
         if not params:
@@ -214,9 +203,7 @@ class ProjectWikiService(BaseDomainService):
 
             for target_user, project_assigned_user in project_members:
                 assigned_user = ProjectWikiAssignedUser(
-                    project_assigned_id=project_assigned_user.id,
-                    project_wiki_id=wiki.id,
-                    user_id=target_user.id,
+                    project_assigned_id=project_assigned_user.id, project_wiki_id=wiki.id, user_id=target_user.id
                 )
                 self.repo.project_wiki_assigned_user.insert(assigned_user)
                 target_users.append(target_user)
@@ -249,11 +236,7 @@ class ProjectWikiService(BaseDomainService):
         return project, wiki
 
     def upload_attachment(
-        self,
-        user: User,
-        project: TProjectParam | None,
-        wiki: TWikiParam | None,
-        attachment: FileModel,
+        self, user: User, project: TProjectParam | None, wiki: TWikiParam | None, attachment: FileModel
     ) -> ProjectWikiAttachment | None:
         params = InfraHelper.get_records_with_foreign_by_params((Project, project), (ProjectWiki, wiki))
         if not params:
@@ -278,6 +261,9 @@ class ProjectWikiService(BaseDomainService):
             return False
         project, wiki = params
 
+        self._get_service(GraphApprovalRequestService).cancel_pending_by_scope(
+            project, ProjectWiki.__tablename__, wiki.get_uid(), reason="project wiki deleted"
+        )
         self.repo.project_wiki.delete(wiki)
 
         ProjectWikiPublisher.deleted(project, wiki)

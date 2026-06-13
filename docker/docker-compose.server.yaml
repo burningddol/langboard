@@ -109,27 +109,27 @@ services:
       - kafka0
       - kafka1
       - kafka2
+      - graph
     networks:
       - net
     restart: always
 
-  flows:
+  graph:
     init: true
-    container_name: ${PROJECT_NAME}_flows
+    container_name: ${PROJECT_NAME}_graph
     build:
       context: ../src
-      dockerfile: flows/Dockerfile
+      dockerfile: graph/Dockerfile
     env_file:
-      - ./envs/.flows.env
-    working_dir: /app/src/flows
-    command: uv run --no-sync flows run --workers ${FLOWS_WORKERS_COUNT:-1}
+      - ./envs/.graph.env
+    working_dir: /app/src/graph
+    command: uv run --no-sync graph run --workers ${GRAPH_WORKERS_COUNT:-1}
     volumes:
-      - ../src/flows/${PROJECT_NAME}_flows:/app/src/flows/${PROJECT_NAME}_flows
+      - ../src/graph/${PROJECT_NAME}_graph:/app/src/graph/${PROJECT_NAME}_graph
       - ../src/shared/py:/app/src/shared/py
       - shared-py-venv:/app/shared/py/.venv
-      - ../src/resources:/app/src/resources
-      - ../src/flows/pyproject.toml:/app/src/flows/pyproject.toml
-      - ../src/flows/uv.lock:/app/src/flows/uv.lock
+      - ../src/graph/pyproject.toml:/app/src/graph/pyproject.toml
+      - ../src/graph/uv.lock:/app/src/graph/uv.lock
       - ../local:/app/local
       - ./volumes/.vault-credentials:/app/.vault-credentials:ro
     depends_on:

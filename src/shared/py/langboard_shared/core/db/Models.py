@@ -447,7 +447,9 @@ class EditorContentModel(BaseModel):
 
 class ChatContentModel(BaseModel):
     content: str = Field(default="")
+    graph_interrupt: dict[str, Any] | None = Field(default=None)
+    graph_resume_error: str | None = Field(default=None)
 
     @staticmethod
     def api_schema() -> dict[str, Any]:
-        return {"content": "string"}
+        return {"content": "string", "graph_interrupt": "object", "graph_resume_error": "string"}

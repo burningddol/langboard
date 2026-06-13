@@ -48,12 +48,18 @@ class ChatService(BaseDomainService):
 
         return chat_sessions
 
-    def update_session(self, chat_session: TChatSessionParam | None, title: str):
+    def update_session(
+        self, chat_session: TChatSessionParam | None, title: str | None = None, api_permission_level: str | None = None
+    ):
         chat_session = InfraHelper.get_by_id_like(ChatSession, chat_session)
         if not chat_session:
             return None
 
-        chat_session.title = title
+        if title is not None:
+            chat_session.title = title
+
+        if api_permission_level is not None:
+            chat_session.api_permission_level = api_permission_level
 
         self.repo.chat_session.update(chat_session)
 

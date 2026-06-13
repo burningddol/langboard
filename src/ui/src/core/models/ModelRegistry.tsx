@@ -10,6 +10,7 @@ import type { Model as ChatMessageModel } from "@/core/models/ChatMessageModel";
 import type { Model as ChatSessionModel } from "@/core/models/ChatSessionModel";
 import type { Model as ChatTemplateModel } from "@/core/models/ChatTemplateModel";
 import type { Model as GlobalRelationshipTypeModel } from "@/core/models/GlobalRelationshipType";
+import type { Model as GraphApprovalRequestModel } from "@/core/models/GraphApprovalRequestModel";
 import type { Model as InternalBotModel } from "@/core/models/InternalBotModel";
 import type { Model as McpToolGroupModel } from "@/core/models/McpToolGroup";
 import type { Model as MetadataModel } from "@/core/models/MetadataModel";
@@ -50,6 +51,7 @@ export interface IModelMap {
     ChatSessionModel: IModelRegistry<typeof ChatSessionModel>;
     ChatTemplateModel: IModelRegistry<typeof ChatTemplateModel>;
     GlobalRelationshipType: IModelRegistry<typeof GlobalRelationshipTypeModel>;
+    GraphApprovalRequestModel: IModelRegistry<typeof GraphApprovalRequestModel>;
     InternalBotModel: IModelRegistry<typeof InternalBotModel>;
     McpToolGroup: IModelRegistry<typeof McpToolGroupModel>;
     MetadataModel: IModelRegistry<typeof MetadataModel>;

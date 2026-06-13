@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useTranslation } from "react-i18next";
-import Alert from "@/components/base/Alert";
 import Box from "@/components/base/Box";
 import Button from "@/components/base/Button";
 import Checkbox from "@/components/base/Checkbox";
@@ -260,11 +259,6 @@ function BotCreateFormDialog({ opened, setOpened }: ISharedSettingsModalProps): 
                         )}
                         {formRequirements.includes("value") && (
                             <Box mt="4">
-                                {selectedPlatformRunningType === EBotPlatformRunningType.FlowJson && (
-                                    <Alert variant="warning" icon="alert-triangle" title={t("common.Warning")} className="mb-2">
-                                        {t("settings.The internal flows server should be running to use.")}
-                                    </Alert>
-                                )}
                                 <BotValueInput
                                     platform={selectedPlatform}
                                     platformRunningType={selectedPlatformRunningType}

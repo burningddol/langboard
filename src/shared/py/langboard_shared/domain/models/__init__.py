@@ -6,6 +6,8 @@ from .Bot import Bot
 from .BotDefaultScopeBranch import BotDefaultScopeBranch
 from .BotLog import BotLog
 from .BotSchedule import BotSchedule
+from .BotScheduleGraphApprovalRequest import BotScheduleGraphApprovalRequest
+from .BotTriggerGraphApprovalRequest import BotTriggerGraphApprovalRequest
 from .Card import Card
 from .CardAssignedProjectLabel import CardAssignedProjectLabel
 from .CardAssignedUser import CardAssignedUser
@@ -18,14 +20,18 @@ from .CardComment import CardComment
 from .CardCommentReaction import CardCommentReaction
 from .CardMetadata import CardMetadata
 from .CardRelationship import CardRelationship
+from .ChatGraphApprovalRequest import ChatGraphApprovalRequest
 from .ChatHistory import ChatHistory
 from .ChatSession import ChatSession
 from .ChatTemplate import ChatTemplate
 from .Checkitem import Checkitem
 from .CheckitemTimerRecord import CheckitemTimerRecord
 from .Checklist import Checklist
+from .EditorGraphApprovalRequest import EditorGraphApprovalRequest
 from .GlobalCardRelationshipType import GlobalCardRelationshipType
+from .GraphApprovalRequest import GraphApprovalRequest
 from .InternalBot import InternalBot
+from .ManualScopeRunGraphApprovalRequest import ManualScopeRunGraphApprovalRequest
 from .McpRole import McpRole
 from .McpToolGroup import McpToolGroup
 from .McpToolGroupUsage import McpToolGroupUsage
@@ -99,6 +105,12 @@ __all__ = [
     "CheckitemTimerRecord",
     "Checklist",
     "GlobalCardRelationshipType",
+    "BotScheduleGraphApprovalRequest",
+    "BotTriggerGraphApprovalRequest",
+    "ChatGraphApprovalRequest",
+    "EditorGraphApprovalRequest",
+    "ManualScopeRunGraphApprovalRequest",
+    "GraphApprovalRequest",
     "IdentityProvider",
     "InternalBot",
     "McpToolGroup",

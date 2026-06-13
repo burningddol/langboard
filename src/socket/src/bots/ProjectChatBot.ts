@@ -9,6 +9,7 @@ class ProjectChatBot extends BaseBot {
     }
 
     public async run({ data, ...options }: IBotRunOptions) {
+        const sessionId = this.createSessionId(data);
         return await this.request({
             ...options,
             requestModel: {
@@ -19,7 +20,8 @@ class ProjectChatBot extends BaseBot {
                 outputType: "chat",
                 tweaks: {},
                 restData: data.rest_data,
-                sessionId: `${new SnowflakeID(data.user_id).toShortCode()}-${data.project_uid}`,
+                sessionId,
+                runId: data.task_id,
                 filePath: data.file_path,
             },
             useStream: true,
@@ -27,6 +29,7 @@ class ProjectChatBot extends BaseBot {
     }
 
     public async runAbortable({ data, ...options }: IBotRunAbortableOptions) {
+        const sessionId = this.createSessionId(data);
         return await this.requestAbortable({
             ...options,
             requestModel: {
@@ -37,7 +40,8 @@ class ProjectChatBot extends BaseBot {
                 outputType: "chat",
                 tweaks: {},
                 restData: data.rest_data,
-                sessionId: `${new SnowflakeID(data.user_id).toShortCode()}-${data.project_uid}`,
+                sessionId,
+                runId: data.task_id,
                 filePath: data.file_path,
             },
             useStream: true,
@@ -68,6 +72,10 @@ class ProjectChatBot extends BaseBot {
 
     public async upload(options: IBotUploadOptions): Promise<string | null> {
         return await this.uploadFile(options);
+    }
+
+    private createSessionId(data: Record<string, any>): string {
+        return data.session_uid || `${new SnowflakeID(data.user_id).toShortCode()}-${data.project_uid}`;
     }
 }
 

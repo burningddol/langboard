@@ -16,6 +16,9 @@ logger = Logger.use("bot-task")
 
 class LangflowRequest(BaseBotRequest):
     def create_request_data(self, bot_log: tuple[BotLog, BaseBotLogModel | None]):
+        if self._bot.platform_running_type != BotPlatformRunningType.Endpoint:
+            return None
+
         project_uid = self._project.get_uid() if self._project else None
         session_id = f"{self._bot.get_uid()}-{project_uid}"
         if session_id.endswith("-"):
@@ -52,11 +55,7 @@ class LangflowRequest(BaseBotRequest):
             request_data["tweaks"].update(component.to_data())
             request_data["tweaks"].update(component.to_tweaks())
 
-        url = self._base_url
-        if self._bot.platform_running_type == BotPlatformRunningType.Endpoint:
-            url = f"{self._base_url}/{self._bot.value.lstrip('/')}"
-        elif self._bot.platform_running_type == BotPlatformRunningType.FlowJson:
-            url = f"{self._base_url}/api/v1/webhook/{self._bot.id}"
+        url = f"{self._base_url}/{self._bot.value.lstrip('/')}"
 
         return RequestData(
             {

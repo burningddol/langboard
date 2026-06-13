@@ -155,7 +155,6 @@
   "Set as default": "Set as default",
   "Internal bot API URL": "Internal bot API URL",
   "Internal bot API key": "Internal bot API key",
-  "The internal flows server should be running to use.": "The internal flows server should be running to use.",
   "Ollama": "Ollama",
   "Pull": "Pull",
   "Pull a model": "Pull a model",

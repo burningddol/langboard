@@ -19,6 +19,8 @@ import { ModelRegistry } from "@/core/models/ModelRegistry";
 import { IBoardColumnCardContextParams } from "@/pages/BoardPage/components/board/BoardConstants";
 import useCardStore, { useCardIsCollapsed } from "@/core/stores/CardStore";
 import { useHasRunningBot } from "@/core/stores/BotStatusStore";
+import BoardGraphApprovalTargetBadge from "@/pages/BoardPage/components/board/BoardGraphApprovalTargetBadge";
+import { EGraphApprovalScopeTable } from "@/core/models/GraphApprovalRequestModel";
 
 export interface IBoardColumnCardCollapsibleProps {
     isDragging: bool;
@@ -166,6 +168,12 @@ function BoardColumnCardCollapsible({ isDragging }: IBoardColumnCardCollapsibleP
                             </Flex>
                         )}
                         <Card.Title className="max-w-[calc(100%_-_theme(spacing.8))] break-all leading-tight">{title}</Card.Title>
+                        <BoardGraphApprovalTargetBadge
+                            projectUID={project.uid}
+                            scopeTable={EGraphApprovalScopeTable.Card}
+                            scopeUID={card.uid}
+                            className="absolute right-11 top-3"
+                        />
                         <Button
                             variant="ghost"
                             className={cn("absolute right-2.5 top-2.5 mt-0")}

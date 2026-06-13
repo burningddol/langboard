@@ -17,6 +17,9 @@ class ProjectRepository(BaseRepository[Project]):
     def name() -> str:
         return "project"
 
+    def get_by_id_like(self, project: TProjectParam | None) -> Project | None:
+        return InfraHelper.get_by_id_like(Project, project)
+
     def get_all_by_user(self, user: TUserParam) -> list[tuple[Project, ProjectAssignedUser]]:
         user_id = InfraHelper.convert_id(user)
         query = (

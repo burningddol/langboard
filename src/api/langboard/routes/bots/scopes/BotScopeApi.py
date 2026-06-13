@@ -5,6 +5,7 @@ from langboard_shared.core.schema import OpenApiSchema
 from langboard_shared.core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
 from langboard_shared.domain.models import Bot, Project, ProjectRole
 from langboard_shared.domain.models.bases import BaseBotScopeModel
+from langboard_shared.domain.models.GraphApprovalRequest import GraphApprovalOriginType
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
 from langboard_shared.domain.services import DomainService
 from langboard_shared.filter import RoleFilter
@@ -160,7 +161,7 @@ def delete_bot_scope(
     params = InfraHelper.get_records_with_foreign_by_params((Bot, bot_uid), (scope_model_class, bot_scope_uid))
     if not params:
         raise ApiException.NotFound_404(ApiErrorCode.NF2020)
-    _, bot_scope = params
+    bot, bot_scope = params
 
     target_scope = _get_target_scope(bot_scope, form.target_table)
     BotScopeHelper.delete(scope_model_class, bot_scope)
@@ -172,6 +173,22 @@ def delete_bot_scope(
             project = service.project.get_by_id_like(target_scope.project_id)
 
         if project:
+            service.graph_approval_request.cancel_pending_by_scope(
+                project,
+                form.target_table,
+                target_scope.get_uid(),
+                origin_type=GraphApprovalOriginType.Trigger,
+                bot=bot,
+                reason="bot scope deleted",
+            )
+            service.graph_approval_request.cancel_pending_by_scope(
+                project,
+                form.target_table,
+                target_scope.get_uid(),
+                origin_type=GraphApprovalOriginType.ManualScopeRun,
+                bot=bot,
+                reason="bot scope deleted",
+            )
             ProjectBotPublisher.scope_deleted(project, bot_scope)
 
     scope_table = BotHelper.get_target_table_by_bot_model("scope", bot_scope.__class__)

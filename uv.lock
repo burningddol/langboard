@@ -724,7 +724,7 @@ wheels = [
 
 [[package]]
 name = "langboard"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -807,7 +807,7 @@ dev = [{ name = "ruff", specifier = ">=0.9.7,<0.10" }]
 
 [[package]]
 name = "langboard-shared"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "src/shared/py" }
 dependencies = [
     { name = "alembic" },

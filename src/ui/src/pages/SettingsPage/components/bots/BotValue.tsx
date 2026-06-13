@@ -1,4 +1,3 @@
-import Alert from "@/components/base/Alert";
 import Box from "@/components/base/Box";
 import Toast from "@/components/base/Toast";
 import useUpdateBot from "@/controllers/api/settings/bots/useUpdateBot";
@@ -14,7 +13,6 @@ import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import { EHttpStatus } from "@langboard/core/enums";
 import { EEditorCollaborationType } from "@langboard/core/constants";
 import { getValueType } from "@/components/bots/BotValueInput/utils";
-import { EBotPlatformRunningType } from "@langboard/core/ai";
 import BotValueInput from "@/components/bots/BotValueInput";
 import { TBotValueDefaultInputRefLike } from "@/components/bots/BotValueInput/types";
 
@@ -113,11 +111,6 @@ const BotValue = memo(() => {
 
     return (
         <Box w="full">
-            {platformRunningType === EBotPlatformRunningType.FlowJson && (
-                <Alert variant="warning" icon="alert-triangle" title={t("common.Warning")} className="mb-2">
-                    {t("settings.The internal flows server should be running to use.")}
-                </Alert>
-            )}
             <BotValueInput
                 collaborationType={EEditorCollaborationType.AppSettings}
                 uid={internalBot.uid}

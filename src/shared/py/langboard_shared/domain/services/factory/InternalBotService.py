@@ -8,6 +8,7 @@ from ....publishers import InternalBotPublisher, ProjectPublisher
 from ...models import InternalBot
 from ...models.BaseBotModel import BotPlatform, BotPlatformRunningType
 from ...models.InternalBot import InternalBotType
+from .GraphApprovalRequestService import GraphApprovalRequestService
 
 
 class InternalBotService(BaseDomainService):
@@ -154,6 +155,10 @@ class InternalBotService(BaseDomainService):
 
         projects = self.repo.project_assigned_internal_bot.get_all_projects_by_internal_bot(internal_bot)
 
+        self._get_service(GraphApprovalRequestService).cancel_pending_by_internal_bot(
+            internal_bot,
+            reason="internal bot deleted",
+        )
         self.repo.project_assigned_internal_bot.reassign_and_delete(internal_bot, default_internal_bot)
 
         for project in projects:

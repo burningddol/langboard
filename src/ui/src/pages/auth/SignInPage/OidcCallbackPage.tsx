@@ -10,6 +10,7 @@ import useOidcCallback from "@/controllers/api/auth/useOidcCallback";
 import { usePageNavigateRef } from "@/core/hooks/usePageNavigate";
 import { useAuth } from "@/core/providers/AuthProvider";
 import { ROUTES } from "@/core/routing/constants";
+import { getAuthStore } from "@/core/stores/AuthStore";
 
 function OidcCallbackPage(): React.JSX.Element {
     const [t] = useTranslation();
@@ -36,13 +37,13 @@ function OidcCallbackPage(): React.JSX.Element {
         if (handledRequestKeyRef.current === requestKey) {
             return;
         }
-        if (sessionStorage.getItem(requestKey) === "pending") {
+        if (getAuthStore().getOidcCallbackRequestStatus(requestKey) === "pending") {
             handledRequestKeyRef.current = requestKey;
             return;
         }
 
         handledRequestKeyRef.current = requestKey;
-        sessionStorage.setItem(requestKey, "pending");
+        getAuthStore().setOidcCallbackRequestStatus(requestKey, "pending");
 
         void mutateAsync({ code, state })
             .then((data) => {
@@ -68,11 +69,11 @@ function OidcCallbackPage(): React.JSX.Element {
                         smooth: true,
                     })
                 );
-                sessionStorage.setItem(requestKey, "done");
+                getAuthStore().setOidcCallbackRequestStatus(requestKey, "done");
             })
             .catch(() => {
                 handledRequestKeyRef.current = null;
-                sessionStorage.removeItem(requestKey);
+                getAuthStore().removeOidcCallbackRequestStatus(requestKey);
                 if (isDisposed) {
                     return;
                 }

@@ -28,9 +28,8 @@ class LangflowRequest extends BaseRequest {
             case EBotPlatformRunningType.Endpoint:
                 url = `${url}/${this.internalBot.value?.startsWith("/") ? this.internalBot.value.slice(1) : this.internalBot.value}`;
                 break;
-            case EBotPlatformRunningType.FlowJson:
-                url = `${url}/api/v1/run/${this.internalBot.id}`;
-                break;
+            default:
+                return null;
         }
 
         url = `${url}?${queryParams.toString()}`;

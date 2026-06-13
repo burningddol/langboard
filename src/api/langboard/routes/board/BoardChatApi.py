@@ -89,7 +89,11 @@ def update_project_chat_session(
         raise ApiException.NotFound_404(ApiErrorCode.NF2021)
     chat_session, _ = session
 
-    service.chat.update_session(chat_session, form.title)
+    service.chat.update_session(
+        chat_session,
+        title=form.title,
+        api_permission_level=form.api_permission_level,
+    )
 
     return JsonResponse()
 

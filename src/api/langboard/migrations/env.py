@@ -2,6 +2,7 @@ from logging.config import fileConfig
 from typing import Any
 from alembic import context
 from alembic.autogenerate.api import AutogenContext
+from alembic.operations import ops
 from langboard_shared.core.db import BaseDbModel
 from langboard_shared.core.db.DbConfigHelper import DbConfigHelper  # type: ignore
 from langboard_shared.Env import Env  # type: ignore
@@ -81,6 +82,47 @@ def compare_type(
     return None
 
 
+def __is_sqlite_id_column_noise(operation: ops.MigrateOperation) -> bool:
+    if not isinstance(operation, ops.AlterColumnOp):
+        return False
+    if operation.column_name != "id":
+        return False
+    if operation.modify_type is not None:
+        return False
+    if operation.modify_name is not None:
+        return False
+    if operation.modify_server_default is not False:
+        return False
+    if operation.modify_comment is not False:
+        return False
+
+    # SQLite reflects BIGINT primary keys inconsistently around nullable and
+    # autoincrement. Snowflake IDs are app-generated, so this is autogen noise.
+    return operation.modify_nullable is not None or "autoincrement" in operation.kw
+
+
+def __filter_sqlite_autogen_noise(container: ops.OpContainer) -> None:
+    filtered_operations: list[ops.MigrateOperation] = []
+    for operation in container.ops:
+        if isinstance(operation, ops.OpContainer):
+            __filter_sqlite_autogen_noise(operation)
+            if not operation.ops:
+                continue
+        if __is_sqlite_id_column_noise(operation):
+            continue
+        filtered_operations.append(operation)
+    container.ops = filtered_operations
+
+
+def process_revision_directives(context: Any, revision: Any, directives: list[Any]) -> None:
+    if DbConfigHelper.get_driver_type(Env.MAIN_DATABASE_URL) != "sqlite":
+        return
+
+    for directive in directives:
+        __filter_sqlite_autogen_noise(directive.upgrade_ops)
+        __filter_sqlite_autogen_noise(directive.downgrade_ops)
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -104,6 +146,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         render_item=render_item,
         compare_type=compare_type,
+        process_revision_directives=process_revision_directives,
         render_as_batch=render_as_batch,
     )
 
@@ -120,6 +163,7 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         render_item=render_item,
         compare_type=compare_type,
+        process_revision_directives=process_revision_directives,
         render_as_batch=render_as_batch,
     )
 

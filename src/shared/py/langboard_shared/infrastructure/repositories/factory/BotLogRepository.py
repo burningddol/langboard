@@ -2,7 +2,7 @@ from typing import TypeVar
 from ....core.db import BaseDbModel, DbSession, SqlBuilder
 from ....core.domain import BaseRepository
 from ....core.schema import TimeBasedPagination
-from ....core.types.ParamTypes import TBotParam
+from ....core.types.ParamTypes import TBaseParam, TBotParam
 from ....domain.models import BotLog
 from ....domain.models.bases import BaseBotLogModel
 from ....helpers import InfraHelper
@@ -19,6 +19,9 @@ class BotLogRepository(BaseRepository[BotLog]):
     @staticmethod
     def name() -> str:
         return "bot_log"
+
+    def get_by_id_like(self, bot_log: BotLog | TBaseParam | None) -> BotLog | None:
+        return InfraHelper.get_by_id_like(BotLog, bot_log)
 
     def get_all_by_scope(
         self,

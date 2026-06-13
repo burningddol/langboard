@@ -117,4 +117,4 @@ export const MAIL_SERVER = getEnv<string>({ key: "MAIL_SERVER" });
 export const MAIL_PORT = getEnv<string>({ key: "MAIL_PORT" });
 export const MAIL_SSL_TLS = getEnv<string>({ key: "MAIL_SSL_TLS" }) == "true";
 
-export const DEFAULT_FLOWS_URL = getEnv<string>({ key: "DEFAULT_FLOWS_URL", defaultValue: "http://127.0.0.1:5019" });
+export const DEFAULT_GRAPH_URL = getEnv<string>({ key: "DEFAULT_GRAPH_URL", defaultValue: "http://127.0.0.1:5020" });

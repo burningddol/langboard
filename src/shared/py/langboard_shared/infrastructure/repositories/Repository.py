@@ -92,6 +92,10 @@ class Repository(Factory):
         return self._create_or_get_product(factory.GlobalCardRelationshipTypeRepository)
 
     @property
+    def graph_approval_request(self):
+        return self._create_or_get_product(factory.GraphApprovalRequestRepository)
+
+    @property
     def activity(self):
         return self._create_or_get_product(factory.ActivityRepository)
 

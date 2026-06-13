@@ -29,11 +29,13 @@ import { SkeletonBoard } from "@/pages/BoardPage/components/board/Board";
 import useBoardAssignedInternalBotChangedHandlers from "@/controllers/socket/board/useBoardAssignedInternalBotChangedHandlers";
 import useInternalBotUpdatedHandlers from "@/controllers/socket/global/useInternalBotUpdatedHandlers";
 import useSwitchSocketHandlers from "@/core/hooks/useSwitchSocketHandlers";
-import { InternalBotModel, Project } from "@/core/models";
+import { GraphApprovalRequestModel, InternalBotModel, Project } from "@/core/models";
+import { EGraphApprovalScopeTable, EGraphApprovalStatus } from "@/core/models/GraphApprovalRequestModel";
 import { EHttpStatus, ESocketTopic } from "@langboard/core/enums";
 import useBoardBotStatusMapHandlers from "@/controllers/socket/board/useBoardBotStatusMapHandlers";
-import { BoardBotScopeList } from "@/pages/BoardPage/components/board/BoardBotScope";
+import { BoardBotScopeList, isBoardBotScopeGraphApprovalOriginType } from "@/pages/BoardPage/components/board/BoardBotScope";
 import useGetProject from "@/controllers/api/board/useGetProject";
+import useGetGraphApprovals from "@/controllers/api/board/graphApprovals/useGetGraphApprovals";
 import BoardActivityDialog from "@/pages/BoardPage/components/board/BoardActivityDialog";
 import { cn } from "@/core/utils/ComponentUtils";
 import useCardRelationshipsUpdatedHandlers from "@/controllers/socket/card/useCardRelationshipsUpdatedHandlers";
@@ -49,6 +51,10 @@ import useBoardBotScopeTriggerConditionsUpdatedHandlers from "@/controllers/sock
 import useBoardBotCronRescheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronRescheduledHandlers";
 import useBoardBotCronScheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronScheduledHandlers";
 import useBoardBotCronUnscheduledHandlers from "@/controllers/socket/board/botSchedules/useBoardBotCronUnscheduledHandlers";
+import useBoardGraphApprovalDeletedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalDeletedHandlers";
+import useBoardGraphApprovalRequestedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalRequestedHandlers";
+import useBoardGraphApprovalUpdatedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalUpdatedHandlers";
+import { getBoardChatStore } from "@/core/stores/BoardChatStore";
 
 const getCurrentPage = (pageRoute?: string): TBoardViewType => {
     switch (pageRoute) {
@@ -64,16 +70,6 @@ const getCurrentPage = (pageRoute?: string): TBoardViewType => {
 };
 
 type TBoardSidePanel = "botScope" | "switchProject";
-
-const getBoardChatVisibleStorageKey = (projectUID: string) => `board:${projectUID}:chat-visible`;
-
-const getStoredBoardChatHidden = (projectUID: string) => {
-    return localStorage.getItem(getBoardChatVisibleStorageKey(projectUID)) === "false";
-};
-
-const saveBoardChatVisible = (projectUID: string, visible: bool) => {
-    localStorage.setItem(getBoardChatVisibleStorageKey(projectUID), visible ? "true" : "false");
-};
 
 const BoardProxy = memo((): React.JSX.Element => {
     const { setPageAliasRef } = usePageHeader();
@@ -176,6 +172,31 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     } = useBoardController();
     const isCardPage = !!pageRoute && !["wiki", "settings"].includes(pageRoute);
     const projectTitle = project.useField("title");
+    const projectUID = project.uid;
+    useGetGraphApprovals(
+        {
+            project_uid: projectUID,
+            status: EGraphApprovalStatus.Pending,
+            limit: 100,
+        },
+        {
+            interceptToast: false,
+        }
+    );
+    const graphApprovalRequestedHandlers = useBoardGraphApprovalRequestedHandlers({ projectUID: project.uid });
+    const graphApprovalUpdatedHandlers = useBoardGraphApprovalUpdatedHandlers({ projectUID: project.uid });
+    const graphApprovalDeletedHandlers = useBoardGraphApprovalDeletedHandlers({ projectUID: project.uid });
+    const pendingGraphApprovals = GraphApprovalRequestModel.Model.useModels(
+        (approval) =>
+            approval.project_uid === projectUID &&
+            approval.status === EGraphApprovalStatus.Pending &&
+            isBoardBotScopeGraphApprovalOriginType(approval.origin_type) &&
+            approval.scope_table === EGraphApprovalScopeTable.Project &&
+            approval.scope_uid === projectUID,
+        [projectUID]
+    );
+    const pendingGraphApprovalCount = pendingGraphApprovals.length;
+    const pendingGraphApprovalBadge = pendingGraphApprovalCount > 99 ? "99+" : pendingGraphApprovalCount || undefined;
     const isBoardChatAvailableHandlers = useMemo(
         () =>
             useIsBoardChatAvailableHandlers({
@@ -198,7 +219,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                             floatingTitle: t("project.Chat with AI"),
                             floatingFullScreen: true,
                             widthCssVariable: "--board-chat-sidebar-width",
-                            hidden: window.innerWidth < ScreenMap.size.md || getStoredBoardChatHidden(project.uid),
+                            hidden: window.innerWidth < ScreenMap.size.md || getBoardChatStore().isChatHidden(project.uid),
                         }));
                     } else {
                         setBoardChat(undefined);
@@ -348,6 +369,9 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             boardBotCronScheduledHandlers,
             boardBotCronRescheduledHandlers,
             boardBotCronUnscheduledHandlers,
+            graphApprovalRequestedHandlers,
+            graphApprovalUpdatedHandlers,
+            graphApprovalDeletedHandlers,
         ],
         [
             isBoardChatAvailableHandlers,
@@ -363,6 +387,9 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
             boardBotCronScheduledHandlers,
             boardBotCronRescheduledHandlers,
             boardBotCronUnscheduledHandlers,
+            graphApprovalRequestedHandlers,
+            graphApprovalUpdatedHandlers,
+            graphApprovalDeletedHandlers,
         ]
     );
 
@@ -405,7 +432,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
 
             return {
                 ...prev,
-                hidden: isMobile ? true : getStoredBoardChatHidden(project.uid),
+                hidden: isMobile ? true : getBoardChatStore().isChatHidden(project.uid),
             };
         });
     }, [isMobile, project.uid, setChatResizableSidebar]);
@@ -467,7 +494,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
 
                               const hidden = !prev.hidden;
                               if (!isMobile) {
-                                  saveBoardChatVisible(project.uid, !hidden);
+                                  getBoardChatStore().setChatVisible(project.uid, !hidden);
                               }
 
                               return { ...prev, hidden };
@@ -490,6 +517,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
         {
             name: t("settings.Bots"),
             icon: "bot",
+            badge: pendingGraphApprovalBadge,
             onClick: toggleBotScope,
             active: isBotScopeOpened,
             hidden: !!selectCardViewType && !!currentUser && currentUser.is_admin,
@@ -583,6 +611,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                                         key: index,
                                         label: nav.name,
                                         icon: nav.icon,
+                                        badge: nav.badge,
                                         active: nav.active,
                                         hidden: nav.hidden,
                                         onClick: nav.onClick,
@@ -767,6 +796,7 @@ function BoardSwitchProjectSidebarItem({
 
 interface IBoardFloatingNavItem extends IHeaderNavItem {
     icon: string;
+    badge?: React.ReactNode;
 }
 
 export default BoardProxy;

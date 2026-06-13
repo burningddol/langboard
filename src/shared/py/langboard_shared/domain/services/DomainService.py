@@ -71,6 +71,10 @@ class DomainService(Factory):
         return self._create_or_get_product(factory.ActivityService)
 
     @property
+    def graph_approval_request(self):
+        return self._create_or_get_product(factory.GraphApprovalRequestService)
+
+    @property
     def app_setting(self):
         return self._create_or_get_product(factory.AppSettingService)
 

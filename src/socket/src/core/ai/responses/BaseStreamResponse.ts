@@ -16,6 +16,7 @@ export interface IStreamRespuestParams {
 
 export interface IStreamResponseCallbackMap {
     onMessage?: (message: string) => void | Promise<void>;
+    onInterrupt?: (interrupt: Record<string, any>) => void | Promise<void>;
     onEnd?: () => void | Promise<void>;
     onError?: (error: Error) => void | Promise<void>;
 }
@@ -31,6 +32,11 @@ abstract class BaseStreamResponse {
 
     public onMessage(callback: (message: string) => void | Promise<void>): this {
         this.registeredCallbacks.onMessage = callback;
+        return this;
+    }
+
+    public onInterrupt(callback: (interrupt: Record<string, any>) => void | Promise<void>): this {
+        this.registeredCallbacks.onInterrupt = callback;
         return this;
     }
 
@@ -51,7 +57,7 @@ abstract class BaseStreamResponse {
 
     public async stream(): Promise<void> {
         const { signal, onEnd, settings } = this.params;
-        const { onMessage, onEnd: onStreamEnd, onError } = this.registeredCallbacks;
+        const { onMessage, onInterrupt, onEnd: onStreamEnd, onError } = this.registeredCallbacks;
         if (signal?.aborted) {
             return;
         }
@@ -80,6 +86,8 @@ abstract class BaseStreamResponse {
                     const parsedMessage = this.parseResponseChunk(jsonChunk, settings);
                     if (Utils.Type.isString(parsedMessage)) {
                         await onMessage?.(parsedMessage);
+                    } else if (Utils.Type.isObject(parsedMessage) && parsedMessage.interrupt) {
+                        await onInterrupt?.(parsedMessage.interrupt);
                     }
                 }
 
@@ -148,8 +156,13 @@ abstract class BaseStreamResponse {
                         }
 
                         if (parsedMessage.error) {
-                            await endStream(new Error(`Langflow stream error: ${parsedMessage.error}`));
+                            await endStream(new Error(`Bot stream error: ${parsedMessage.error}`));
                             break;
+                        }
+
+                        if (parsedMessage.interrupt) {
+                            await onInterrupt?.(parsedMessage.interrupt);
+                            continue;
                         }
 
                         if (parsedMessage.end) {
@@ -174,14 +187,15 @@ abstract class BaseStreamResponse {
                 return;
             }
 
-            await onError?.(
-                Utils.Type.isError(error) ? error : new Error("An unknown error occurred while processing the Langflow stream response.")
-            );
+            await onError?.(Utils.Type.isError(error) ? error : new Error("An unknown error occurred while processing the bot stream response."));
             onEnd?.();
         }
     }
 
-    public abstract parseResponseChunk(chunk: any, settings?: Record<string, any>): string | { end?: true; error?: any } | undefined;
+    public abstract parseResponseChunk(
+        chunk: any,
+        settings?: Record<string, any>
+    ): string | { end?: true; error?: any; interrupt?: Record<string, any> } | undefined;
 
     async #createApi(): Promise<AxiosResponse<NodeJS.ReadableStream, any> | null> {
         const { url, headers, body, signal } = this.params;

@@ -431,7 +431,7 @@ const Markdown = memo(({ message, ...mdProps }: IMarkdownProps): React.JSX.Eleme
             ) : (
                 <code
                     className={cn(
-                        "whitespace-pre-wrap rounded-md bg-neutral-800 px-[0.3em] py-[0.2em] font-mono text-sm [overflow-wrap:anywhere]",
+                        "whitespace-pre-wrap rounded-md bg-foreground/10 px-[0.3em] py-[0.2em] font-mono text-sm text-inherit [overflow-wrap:anywhere]",
                         className
                     )}
                     {...props}
@@ -471,7 +471,7 @@ const Markdown = memo(({ message, ...mdProps }: IMarkdownProps): React.JSX.Eleme
     return (
         <Box
             className={cn(
-                "markdown min-w-0 max-w-full overflow-x-auto [overflow-wrap:anywhere]",
+                "markdown min-w-0 max-w-full overflow-visible [overflow-wrap:anywhere]",
                 "[&_mjx-container]:max-w-full [&_mjx-container]:overflow-x-auto"
             )}
         >

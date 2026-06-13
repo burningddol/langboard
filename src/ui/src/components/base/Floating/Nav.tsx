@@ -7,6 +7,7 @@ export interface IFloatingNavItem {
     key?: React.Key;
     label: React.ReactNode;
     icon: TIconName;
+    badge?: React.ReactNode;
     active?: bool;
     hidden?: bool;
     disabled?: bool;
@@ -65,12 +66,17 @@ function Nav({
                         variant={item.variant ?? (item.active ? "default" : "ghost")}
                         disabled={item.disabled}
                         className={cn(
-                            "h-11 min-w-0 flex-1 gap-1 rounded-xl px-2 md:flex-none md:rounded-full md:px-4",
+                            "relative h-11 min-w-0 flex-1 gap-1 rounded-xl px-2 md:flex-none md:rounded-full md:px-4",
                             itemClassName,
                             item.className
                         )}
                         onClick={item.onClick}
                     >
+                        {item.badge && (
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold leading-none text-destructive-foreground shadow">
+                                {item.badge}
+                            </span>
+                        )}
                         <IconComponent icon={item.icon} size={iconSize} />
                         <span className={cn("truncate text-xs", labelClassName, item.labelClassName)}>{item.label}</span>
                     </Button>

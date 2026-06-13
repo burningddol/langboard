@@ -53,14 +53,15 @@ export const useCreateEditor = (props: TUseCreateEditor) => {
         const pluginList = [...EditorKit, ...(customPlugins ?? EMPTY_PLUGINS)];
         if (!readOnly && socketEvents) {
             const { chatEvents, copilotEvents } = socketEvents;
+            const commonEventData = documentID ? { ...formRef.current, document_name: documentID } : formRef.current;
             pluginList.push(
                 ...DndKit,
-                ...createAiKit({ socket, eventKey: chatEventKey!, events: chatEvents, commonEventData: formRef.current }),
+                ...createAiKit({ socket, eventKey: chatEventKey!, events: chatEvents, commonEventData }),
                 ...createCopilotKit({
                     socket,
                     eventKey: copilotEventKey!,
                     events: copilotEvents,
-                    commonEventData: formRef.current,
+                    commonEventData,
                 })
             );
 

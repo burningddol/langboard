@@ -16,6 +16,38 @@
   "Frozen": "Frozen",
   "Freeze": "Freeze",
   "Unfreeze": "Unfreeze",
+  "Human input required": "Human input required",
+  "Editor approval requested": "Editor approval requested",
+  "Approval request": "Approval request",
+  "Pending approvals": "Pending approvals",
+  "{count} pending approvals": "{{count}} pending approvals",
+  "{count} more in Bots": "+{{count}} more in Bots",
+  "Approve": "Approve",
+  "Reject": "Reject",
+  "Tell graph what to do instead": "Tell graph what to do instead...",
+  "Submitted instruction": "Submitted instruction",
+  "Resuming...": "Resuming...",
+  "Resolved by": "Resolved by {{user}}",
+  "approvalStatuses": {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "expired": "Expired",
+    "cancelled": "Cancelled",
+    "resolved": "Resolved"
+  },
+  "approvalOriginTypes": {
+    "chat": "Chat",
+    "editor": "Editor",
+    "trigger": "Trigger",
+    "schedule": "Schedule",
+    "manual_scope_run": "Manual run"
+  },
+  "approvalPermissions": {
+    "read": "Read",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
   "Search bots": "Search bots",
   "Search bots...": "Search bots...",
   "Select running type": "Select running type",
@@ -26,13 +58,13 @@
   },
   "platformRunningTypes": {
     "default": "Default",
-    "endpoint": "Endpoint",
-    "flow_json": "Flow JSON"
+    "endpoint": "Endpoint"
   },
   "target_tables": {
     "project": "Project",
     "project_column": "Project column",
-    "card": "Card"
+    "card": "Card",
+    "project_wiki": "Project wiki"
   },
   "schedules": {
     "Schedule": "Schedule",

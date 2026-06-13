@@ -51,7 +51,7 @@ class BaseBotRequest(ABC):
         await self.request(request_data, headers, bot_log)
 
     @abstractmethod
-    def create_request_data(self, bot_log: tuple[BotLog, BaseBotLogModel | None]) -> RequestData: ...
+    def create_request_data(self, bot_log: tuple[BotLog, BaseBotLogModel | None]) -> RequestData | None: ...
 
     async def request(
         self,
@@ -161,8 +161,6 @@ class BaseBotRequest(ABC):
         if self._bot.platform == BotPlatform.Default:
             return BotLogType.Info
         elif self._bot.platform == BotPlatform.Langflow:
-            if self._bot.platform_running_type == BotPlatformRunningType.FlowJson:
-                return BotLogType.Info
             if self._bot.platform_running_type == BotPlatformRunningType.Endpoint:
                 return BotLogType.Success
         elif self._bot.platform == BotPlatform.N8N:

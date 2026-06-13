@@ -16,6 +16,7 @@ from langboard_shared.core.types import SafeDateTime
 from langboard_shared.core.types.BotRelatedTypes import AVAILABLE_BOT_TARGET_TABLES
 from langboard_shared.domain.models import Project, ProjectRole
 from langboard_shared.domain.models.BotSchedule import BotScheduleRunningType
+from langboard_shared.domain.models.GraphApprovalRequest import GraphApprovalOriginType
 from langboard_shared.domain.models.ProjectRole import ProjectRoleAction
 from langboard_shared.domain.services import DomainService
 from langboard_shared.filter import RoleFilter
@@ -205,6 +206,14 @@ def unschedule_bot_crons(
             project = service.project.get_by_id_like(target_model.project_id)
 
         if project:
+            service.graph_approval_request.cancel_pending_by_scope(
+                project,
+                form.target_table,
+                target_model.get_uid(),
+                origin_type=GraphApprovalOriginType.Schedule,
+                bot=bot,
+                reason="bot schedule deleted",
+            )
             ProjectBotPublisher.unscheduled(project, schedule_model)
 
     return JsonResponse()

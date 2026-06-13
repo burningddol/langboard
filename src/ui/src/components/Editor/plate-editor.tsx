@@ -17,9 +17,25 @@ import { MarkdownPlugin } from "@platejs/markdown";
 import { useSocket } from "@/core/providers/SocketProvider";
 import { EEditorType } from "@langboard/core/constants";
 import { ESocketTopic } from "@langboard/core/enums";
+import { Utils } from "@langboard/core/utils";
 import type { TSocketScopedTopic } from "@/core/stores/socket/types";
 import { useTranslation } from "react-i18next";
 import SyncBlocker from "@/components/Collaborative/SyncBlocker";
+import Badge from "@/components/base/Badge";
+import Box from "@/components/base/Box";
+import Button from "@/components/base/Button";
+import Flex from "@/components/base/Flex";
+import IconComponent from "@/components/base/IconComponent";
+import useApproveGraphApproval from "@/controllers/api/board/graphApprovals/useApproveGraphApproval";
+import useGetGraphApprovals from "@/controllers/api/board/graphApprovals/useGetGraphApprovals";
+import useRejectGraphApproval from "@/controllers/api/board/graphApprovals/useRejectGraphApproval";
+import useBoardGraphApprovalDeletedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalDeletedHandlers";
+import useBoardGraphApprovalRequestedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalRequestedHandlers";
+import useBoardGraphApprovalUpdatedHandlers from "@/controllers/socket/board/graphApprovals/useBoardGraphApprovalUpdatedHandlers";
+import useSwitchSocketHandlers from "@/core/hooks/useSwitchSocketHandlers";
+import { GraphApprovalRequestModel } from "@/core/models";
+import { EGraphApprovalOriginType, EGraphApprovalStatus } from "@/core/models/GraphApprovalRequestModel";
+import { useGraphApprovalSummary, useGraphApprovalTitle } from "@/pages/BoardPage/components/board/GraphApprovalUtils";
 
 interface IEditorSyncRichPatchRequest {
     document_name: string;
@@ -39,10 +55,6 @@ type TEditorOnChange = () => void;
 
 const isYjsSelectionMismatchError = (error: unknown) => {
     return error instanceof Error && error.message.includes(YJS_SELECTION_MISMATCH_ERROR);
-};
-
-const isEditorOnChange = (value: unknown): value is TEditorOnChange => {
-    return typeof value === "function";
 };
 
 interface IBasePlateEditorProps extends Omit<TUseCreateEditor, "plugins"> {
@@ -121,6 +133,7 @@ function EditorWrapper({
     const mounted = useMounted();
     const socket = useSocket();
     const { documentID, editorType, form } = useEditorData();
+    const projectUID = Utils.Type.isString(form?.project_uid) ? form.project_uid : undefined;
     const isWaitingForCollaborativeReady = !readOnly && !!documentID && !isCollaborativeReady;
     const valueRef = useRef(value);
     const deserializedValueRef = useRef(deserializedValue);
@@ -318,7 +331,7 @@ function EditorWrapper({
 
         setIsCollaborativeReady(false);
         const originalOnChange = editor.onChange;
-        if (!isEditorOnChange(originalOnChange)) {
+        if (!Utils.Type.isFunction<TEditorOnChange>(originalOnChange)) {
             return;
         }
 
@@ -397,7 +410,7 @@ function EditorWrapper({
                 return;
             }
 
-            if (typeof editorComponentRef === "function") {
+            if (Utils.Type.isFunction(editorComponentRef)) {
                 editorComponentRef(node);
                 return;
             }
@@ -421,8 +434,127 @@ function EditorWrapper({
                             onAction={showSyncUnavailable ? () => setCollaborativeRetryKey((prev) => prev + 1) : undefined}
                         />
                     )}
+                    <EditorGraphApprovalBanner projectUID={projectUID} documentID={documentID} />
                 </div>
             </Plate>
         </FocusScope>
+    );
+}
+
+function EditorGraphApprovalBanner({ projectUID, documentID }: { projectUID?: string; documentID?: string }): React.JSX.Element | null {
+    const socket = useSocket();
+    const effectiveProjectUID = projectUID || "";
+    const isEnabled = !!projectUID && !!documentID;
+    useGetGraphApprovals(
+        {
+            project_uid: effectiveProjectUID,
+            status: EGraphApprovalStatus.Pending,
+            origin_type: EGraphApprovalOriginType.Editor,
+            limit: 100,
+        },
+        {
+            enabled: isEnabled,
+            interceptToast: false,
+        }
+    );
+    const graphApprovalRequestedHandlers = useBoardGraphApprovalRequestedHandlers({ projectUID: effectiveProjectUID });
+    const graphApprovalUpdatedHandlers = useBoardGraphApprovalUpdatedHandlers({ projectUID: effectiveProjectUID });
+    const graphApprovalDeletedHandlers = useBoardGraphApprovalDeletedHandlers({ projectUID: effectiveProjectUID });
+    const graphApprovalHandlers = useMemo(
+        () => [graphApprovalRequestedHandlers, graphApprovalUpdatedHandlers, graphApprovalDeletedHandlers],
+        [graphApprovalRequestedHandlers, graphApprovalUpdatedHandlers, graphApprovalDeletedHandlers]
+    );
+    useSwitchSocketHandlers({ socket, handlers: graphApprovalHandlers, dependencies: [graphApprovalHandlers] });
+    const approvals = GraphApprovalRequestModel.Model.useModels((approval) => {
+        return (
+            isEnabled &&
+            approval.project_uid === projectUID &&
+            approval.origin_type === EGraphApprovalOriginType.Editor &&
+            approval.status === EGraphApprovalStatus.Pending &&
+            approval.document_name === documentID
+        );
+    });
+    const approval = approvals[0];
+    const approveMutation = useApproveGraphApproval({ interceptToast: true });
+    const rejectMutation = useRejectGraphApproval({ interceptToast: true });
+
+    if (!approval) {
+        return null;
+    }
+
+    return (
+        <EditorGraphApprovalBannerContent
+            approval={approval}
+            effectiveProjectUID={effectiveProjectUID}
+            approveMutation={approveMutation}
+            rejectMutation={rejectMutation}
+        />
+    );
+}
+
+function EditorGraphApprovalBannerContent({
+    approval,
+    effectiveProjectUID,
+    approveMutation,
+    rejectMutation,
+}: {
+    approval: GraphApprovalRequestModel.TModel;
+    effectiveProjectUID: string;
+    approveMutation: ReturnType<typeof useApproveGraphApproval>;
+    rejectMutation: ReturnType<typeof useRejectGraphApproval>;
+}): React.JSX.Element {
+    const [t] = useTranslation();
+    const approvalUID = approval.useField("uid");
+    const title = useGraphApprovalTitle(approval, t("bot.Editor approval requested"));
+    const summary = useGraphApprovalSummary(approval);
+
+    return (
+        <Flex
+            direction="col"
+            gap="2"
+            className="absolute inset-x-3 top-3 z-20 rounded-xl border border-primary/30 bg-background/95 p-3 shadow-lg backdrop-blur"
+        >
+            <Flex items="start" gap="2">
+                <Box className="mt-0.5 rounded-full bg-primary/10 p-1.5 text-primary">
+                    <IconComponent icon="hand" size="4" />
+                </Box>
+                <Box className="min-w-0 flex-1">
+                    <Flex items="center" gap="1.5" wrap={true}>
+                        <Box textSize="sm" weight="semibold" className="break-words">
+                            {title}
+                        </Box>
+                        <Badge variant="secondary" className="px-2 py-0 text-[11px]">
+                            {t("bot.Human input required")}
+                        </Badge>
+                    </Flex>
+                    {summary && (
+                        <Box textSize="xs" className="mt-1 line-clamp-3 break-words text-muted-foreground">
+                            {summary}
+                        </Box>
+                    )}
+                </Box>
+            </Flex>
+            <Flex items="center" justify="end" gap="1.5">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-3"
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    onClick={() => rejectMutation.mutate({ project_uid: effectiveProjectUID, approval_uid: approvalUID })}
+                >
+                    {t("bot.Reject")}
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 px-3"
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    onClick={() => approveMutation.mutate({ project_uid: effectiveProjectUID, approval_uid: approvalUID })}
+                >
+                    {t("bot.Approve")}
+                </Button>
+            </Flex>
+        </Flex>
     );
 }

@@ -1,4 +1,4 @@
-﻿# Langboard
+# Langboard
 
 Langboard is an **AI Agent Orchestration Platform** that helps organizations run AI workflows with operational control and human oversight.
 
@@ -57,16 +57,17 @@ Langboard's mission is to enable enterprises to harness AI efficiency without sa
 
 3. **AI-assisted work execution**
    - Project bots and internal bots can run tasks, schedules, and scoped automations.
-   - Editor chat/copilot flows are available for card and wiki writing workflows.
+   - Editor chat/copilot graph execution is available for card and wiki writing workflows.
 
 ---
 
-## 🤖 AI Orchestration with Langflow
+## 🤖 AI Orchestration with LangGraph
 
 - Supported bot platforms: `default`, `Langflow`, `n8n`.
-- Langflow running modes: `endpoint` and `flow_json`.
-- Flow execution endpoints: `/api/v1/run/{anypath}` and `/api/v1/webhook/{anypath}`.
-- Built-in packaged flows include `default`, `ollama`, and `lm_studio`.
+- The built-in `default` platform runs on LangGraph.
+- External Langflow remains supported through user-provided endpoint bots.
+- Graph execution endpoints: `/api/v1/graph/run/{bot_id}`, `/api/v1/graph/resume/{thread_id}`, and `/api/v1/graph/status/{thread_id}`.
+- Built-in graph execution supports human-in-the-loop interrupt/resume, bot triggers, schedules, freeze state, and scoped project/card context.
 
 ---
 
@@ -103,7 +104,7 @@ Langboard combines five operational layers:
 
 - **Workspace layer**: board-centric collaboration and AI-assisted editing UI.
 - **Application layer**: API and Socket services for orchestration and real-time events.
-- **Flow layer**: Langflow runtime service for flow execution and webhooks.
+- **Graph layer**: LangGraph runtime service for internal graph execution, checkpoints, and resumable human-in-the-loop events.
 - **Tool layer**: MCP gateway with role-aware tool access and tool-group boundaries.
 - **Data and security layer**: PostgreSQL (+ replica/PgBouncer), Redis, Kafka, and KeyVault providers.
 
@@ -111,7 +112,7 @@ Langboard combines five operational layers:
 
 ## 🚚 Deployment Options
 
-Langboard ships as a containerized stack with core services for `server`, `ui`, `api`, `socket`, `flows`, and `celeryworker`.
+Langboard ships as a containerized stack with core services for `server`, `ui`, `api`, `socket`, `graph`, and `celeryworker`.
 
 - Data and messaging services: PostgreSQL, PgBouncer, Redis, Kafka.
 - Optional services: OpenBao (`KEY_PROVIDER_TYPE=openbao-local`) and Ollama CPU/GPU profiles.
@@ -121,7 +122,7 @@ Langboard ships as a containerized stack with core services for `server`, `ui`, 
 ## 🆚 Differentiation
 
 - **vs raw AI libraries**: Langboard adds a collaborative workspace and governance controls, not just SDK primitives.
-- **vs standalone flow builders**: Langboard keeps Langflow compatibility while adding user roles, API key governance, and MCP policy boundaries.
+- **vs standalone graph builders**: Langboard keeps external Langflow compatibility while adding internal LangGraph execution, user roles, API key governance, and MCP policy boundaries.
 - **vs generic automation tools**: Langboard is built around board collaboration plus AI execution, not only background jobs.
 
 ---
