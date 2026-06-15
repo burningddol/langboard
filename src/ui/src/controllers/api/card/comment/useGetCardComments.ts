@@ -34,7 +34,7 @@ const useGetCardComments = (params: IGetCardCommentsForm, options?: TQueryOption
         };
     };
 
-    const result = query([`get-card-comments-${params.card_uid}`], getCardComments, {
+    const result = query([`get-card-comments-${params.project_uid}-${params.card_uid}`], getCardComments, {
         ...options,
         retry: 0,
         refetchInterval: Infinity,

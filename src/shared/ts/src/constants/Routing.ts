@@ -77,6 +77,7 @@ const API = {
         IS_AVAILABLE: "/board/{uid}/available",
         IS_PROJECT_ASSIGNEE: "/board/{uid}/is-assigned/{assignee_uid}",
         GET_CARDS: "/board/{uid}/cards",
+        MEMBER_CANDIDATES: "/board/{uid}/member-candidates",
         UPDATE_ASSIGNED_USERS: "/board/{uid}/assigned-users",
         UNASSIGN_ASSIGNEE: "/board/{uid}/unassign/{assignee_uid}",
         ACCEPT_INVITATION: "/project/invite/accept",

@@ -242,6 +242,10 @@ class ProjectInvitationService(BaseDomainService):
             self.repo.project_invitation.delete(invitation)
 
         self.repo.project_assigned_user.ensure_assigned(project, user)
+        project_users = self.repo.project_assigned_user.get_all_by_project(project)
+        self.repo.project_user_relationship.ensure_project_relationships(
+            project, [assigned_user.id for assigned_user, _ in project_users]
+        )
         self.repo.role.project.grant_default(user_id=user.id, project_id=project.id)
         ProjectPublisher.assigned_to_users(project, [user])
 

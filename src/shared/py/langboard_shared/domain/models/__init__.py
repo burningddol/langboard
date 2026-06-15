@@ -53,6 +53,7 @@ from .ProjectColumnBotScope import ProjectColumnBotScope
 from .ProjectInvitation import ProjectInvitation
 from .ProjectLabel import ProjectLabel
 from .ProjectRole import ProjectRole
+from .ProjectUserRelationship import ProjectUserRelationship
 from .ProjectWiki import ProjectWiki
 from .ProjectWikiActivity import ProjectWikiActivity
 from .ProjectWikiAssignedUser import ProjectWikiAssignedUser
@@ -131,6 +132,7 @@ __all__ = [
     "ProjectInvitation",
     "ProjectLabel",
     "ProjectRole",
+    "ProjectUserRelationship",
     "ProjectWiki",
     "ProjectWikiActivity",
     "ProjectWikiAssignedUser",

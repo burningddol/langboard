@@ -333,6 +333,7 @@ export interface IFormProps {
     originalAssignees: TAssigneeValue[];
     createSearchKeywords: (item: TAssigneeValue) => string[];
     createLabel: (item: TAssigneeValue) => string;
+    onSearchChange?: (search: string) => void;
     placeholder?: string;
     useEditorProps?: {
         canAddNew?: bool;
@@ -358,6 +359,7 @@ const Form = memo(
         decorateSelectItem,
         createSearchKeywords,
         createLabel,
+        onSearchChange,
         placeholder,
         useEditorProps,
     }: IFormProps) => {
@@ -484,6 +486,7 @@ const Form = memo(
                         canAddNew={useEditorProps?.canAddNew}
                         validateNewItem={useEditorProps?.validateNewItem}
                         createNewItemLabel={useEditorProps?.createNewItemLabel}
+                        onSearchChange={onSearchChange}
                     >
                         <SelectEditorContent>
                             <SelectEditorInput

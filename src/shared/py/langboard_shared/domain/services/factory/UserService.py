@@ -291,6 +291,16 @@ class UserService(BaseDomainService):
         user_id = InfraHelper.convert_id(user)
         return self.repo.role.setting.get_one(user_id=user_id)
 
+    def can_search_all_users(self, user: User) -> bool:
+        if user.email in Env.FULL_ADMIN_ACCESS_EMAILS:
+            return True
+
+        if not user.is_admin:
+            return False
+
+        role = self.get_setting_role(user)
+        return bool(role and role.is_granted(SettingRoleAction.UserRead))
+
     def grant_setting_roles(
         self,
         user: TUserParam,

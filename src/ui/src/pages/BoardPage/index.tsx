@@ -129,7 +129,11 @@ const BoardProxy = memo((): React.JSX.Element => {
         };
     }, [data, isFetching, pageRoute, projectUID]);
 
-    return <>{data && <BoardProxyDisplay project={data.project} pageRoute={pageRoute} isFetching={isFetching} />}</>;
+    if (!data || data.project.uid !== projectUID) {
+        return <SkeletonBoard />;
+    }
+
+    return <BoardProxyDisplay project={data.project} pageRoute={pageRoute} isFetching={isFetching} />;
 });
 
 interface IBoardProxyDisplayProps {
@@ -172,10 +176,9 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     } = useBoardController();
     const isCardPage = !!pageRoute && !["wiki", "settings"].includes(pageRoute);
     const projectTitle = project.useField("title");
-    const projectUID = project.uid;
     useGetGraphApprovals(
         {
-            project_uid: projectUID,
+            project_uid: project.uid,
             status: EGraphApprovalStatus.Pending,
             limit: 100,
         },
@@ -188,12 +191,12 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
     const graphApprovalDeletedHandlers = useBoardGraphApprovalDeletedHandlers({ projectUID: project.uid });
     const pendingGraphApprovals = GraphApprovalRequestModel.Model.useModels(
         (approval) =>
-            approval.project_uid === projectUID &&
+            approval.project_uid === project.uid &&
             approval.status === EGraphApprovalStatus.Pending &&
             isBoardBotScopeGraphApprovalOriginType(approval.origin_type) &&
             approval.scope_table === EGraphApprovalScopeTable.Project &&
-            approval.scope_uid === projectUID,
-        [projectUID]
+            approval.scope_uid === project.uid,
+        [project]
     );
     const pendingGraphApprovalCount = pendingGraphApprovals.length;
     const pendingGraphApprovalBadge = pendingGraphApprovalCount > 99 ? "99+" : pendingGraphApprovalCount || undefined;
@@ -435,7 +438,7 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                 hidden: isMobile ? true : getBoardChatStore().isChatHidden(project.uid),
             };
         });
-    }, [isMobile, project.uid, setChatResizableSidebar]);
+    }, [isMobile, project, setChatResizableSidebar]);
 
     const headerNavs: IHeaderNavItem[] = [
         {
@@ -569,17 +572,20 @@ function BoardProxyDisplay({ pageRoute, isFetching, project }: IBoardProxyDispla
                         position="relative"
                         w="full"
                         h="full"
-                        className="h-[calc(100dvh_-_theme(spacing.16))] min-h-[calc(100dvh_-_theme(spacing.16))] overflow-hidden"
+                        className={cn(
+                            "h-[calc(100dvh_-_theme(spacing.16))] min-h-[calc(100dvh_-_theme(spacing.16))]",
+                            pageRoute === "settings" ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden"
+                        )}
                     >
                         {!selectCardViewType && (
                             <BoardSidePanel
                                 activePanel={activeSidePanel}
                                 currentProjectUID={project.uid}
                                 project={project}
-                                onSelectProject={(projectUID) => {
+                                onSelectProject={(selectedProjectUID) => {
                                     setActiveSidePanel(undefined);
                                     setBoardViewType("board");
-                                    navigate(ROUTES.BOARD.MAIN(projectUID), { smooth: true });
+                                    navigate(ROUTES.BOARD.MAIN(selectedProjectUID), { smooth: true });
                                 }}
                             />
                         )}

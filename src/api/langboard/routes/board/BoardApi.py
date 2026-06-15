@@ -124,6 +124,25 @@ def get_project_assigned_users(project_uid: str, service: DomainService = Domain
 
 @AppRouter.schema(permission=ApiPermission.Read)
 @AppRouter.api.get(
+    "/board/{project_uid}/member-candidates",
+    tags=["Board"],
+    description="Search project member invite candidates.",
+    responses=OpenApiSchema().suc({"users": [User]}).auth().forbidden().err(404, ApiErrorCode.NF2001).get(),
+)
+@RoleFilter.add(ProjectRole, [ProjectRoleAction.Read], RoleFinder.project)
+@AuthFilter.add("user")
+def search_project_member_candidates(
+    project_uid: str, query: str = "", user: User = Auth.scope("user"), service: DomainService = DomainService.scope()
+) -> JsonResponse:
+    users = service.project.search_member_candidates(user, project_uid, query)
+    if users is None:
+        raise ApiException.NotFound_404(ApiErrorCode.NF2001)
+
+    return JsonResponse(content={"users": users})
+
+
+@AppRouter.schema(permission=ApiPermission.Read)
+@AppRouter.api.get(
     "/board/{project_uid}/columns",
     tags=["Board"],
     description="Get project columns.",

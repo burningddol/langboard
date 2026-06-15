@@ -1,6 +1,8 @@
+from sqlalchemy import func, or_, select
 from ....core.db import DbSession, SqlBuilder
 from ....core.domain import BaseRepository
-from ....domain.models import User, UserEmail, UserProfile
+from ....core.types.ParamTypes import TUserParam
+from ....domain.models import ProjectAssignedUser, ProjectUserRelationship, User, UserEmail, UserProfile
 from ....helpers import InfraHelper
 
 
@@ -63,3 +65,49 @@ class UserRepository(BaseRepository[User]):
             )
             record = result.first() or (None, None)
         return record
+
+    def search_project_member_candidates(
+        self, user: TUserParam, query: str, can_search_all_users: bool, limit: int = 20
+    ) -> list[User]:
+        user_id = InfraHelper.convert_id(user)
+        query = query.strip().lower()
+        if len(query) < 2:
+            return []
+
+        search = f"%{query}%"
+        search_clause = or_(
+            func.lower(User.column("email")).like(search),
+            func.lower(User.column("firstname")).like(search),
+            func.lower(User.column("lastname")).like(search),
+            func.lower(User.column("username")).like(search),
+        )
+
+        sql = (
+            SqlBuilder.select.table(User)
+            .where(User.column("id") != user_id)
+            .where(search_clause)
+            .order_by(User.column("firstname").asc(), User.column("lastname").asc(), User.column("id").asc())
+            .limit(limit)
+        )
+
+        if not can_search_all_users:
+            related_project_ids = select(ProjectAssignedUser.column("project_id")).where(
+                ProjectAssignedUser.column("user_id") == user_id
+            )
+            current_related_user_exists = (
+                select(ProjectAssignedUser.column("id"))
+                .where(ProjectAssignedUser.column("user_id") == User.column("id"))
+                .where(ProjectAssignedUser.column("project_id").in_(related_project_ids))
+                .exists()
+            )
+            historical_related_user_exists = (
+                select(ProjectUserRelationship.column("id"))
+                .where(ProjectUserRelationship.column("user_id") == user_id)
+                .where(ProjectUserRelationship.column("related_user_id") == User.column("id"))
+                .exists()
+            )
+            sql = sql.where(current_related_user_exists | historical_related_user_exists)
+
+        with DbSession.use(readonly=True) as db:
+            result = db.exec(sql)
+            return result.all()

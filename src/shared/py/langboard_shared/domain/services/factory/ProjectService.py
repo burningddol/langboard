@@ -57,6 +57,21 @@ class ProjectService(BaseDomainService):
         users = [user.api_response() for user, _ in raw_users]
         return users
 
+    def search_member_candidates(
+        self, user: User, project: TProjectParam | None, query: str
+    ) -> list[dict[str, Any]] | None:
+        project = InfraHelper.get_by_id_like(Project, project)
+        if not project:
+            return None
+
+        user_service = self._get_service_by_name("user")
+        users = self.repo.user.search_project_member_candidates(
+            user,
+            query,
+            can_search_all_users=user_service.can_search_all_users(user),
+        )
+        return [user.api_response() for user in users]
+
     def get_user_role_actions_by_project(self, user: User, project: Project) -> list[str]:
         if user.is_admin:
             return [ALL_GRANTED]
@@ -291,6 +306,9 @@ class ProjectService(BaseDomainService):
             return False
 
         old_assigned_users = self.repo.project_assigned_user.get_all_by_project(project)
+        self.repo.project_user_relationship.ensure_project_relationships(
+            project, [assigned_user.id for assigned_user, _ in old_assigned_users]
+        )
 
         invitation_service: "ProjectInvitationService" = self._get_service_by_name("project_invitation")
         invitation_related_data = invitation_service.get_invitation_related_data(project, emails)
@@ -302,6 +320,9 @@ class ProjectService(BaseDomainService):
         result = invitation_service.invite_emails(user, project, invitation_related_data)
 
         new_assigned_users = self.repo.project_assigned_user.get_all_by_project(project)
+        self.repo.project_user_relationship.ensure_project_relationships(
+            project, [assigned_user.id for assigned_user, _ in new_assigned_users]
+        )
         old_assigned_user_ids = {assigned_user.id for assigned_user, _ in old_assigned_users}
         newly_assigned_users = [
             assigned_user for assigned_user, _ in new_assigned_users if assigned_user.id not in old_assigned_user_ids

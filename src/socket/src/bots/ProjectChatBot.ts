@@ -74,6 +74,7 @@ class ProjectChatBot extends BaseBot {
         return await this.uploadFile(options);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private createSessionId(data: Record<string, any>): string {
         return data.session_uid || `${new SnowflakeID(data.user_id).toShortCode()}-${data.project_uid}`;
     }

@@ -60,7 +60,7 @@ const useGetCardDetails = (params: IGetCardDetailsForm, options?: TQueryOptions<
         };
     };
 
-    const result = query([`get-card-details-${params.card_uid}`], getCardDetails, {
+    const result = query([`get-card-details-${params.project_uid}-${params.card_uid}`], getCardDetails, {
         ...options,
         retry: 0,
         refetchInterval: Infinity,

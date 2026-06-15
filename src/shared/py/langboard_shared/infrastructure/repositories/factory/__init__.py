@@ -36,6 +36,7 @@ from .ProjectColumnRepository import ProjectColumnRepository
 from .ProjectInvitationRepository import ProjectInvitationRepository
 from .ProjectLabelRepository import ProjectLabelRepository
 from .ProjectRepository import ProjectRepository
+from .ProjectUserRelationshipRepository import ProjectUserRelationshipRepository
 from .ProjectWikiAssignedUserRepository import ProjectWikiAssignedUserRepository
 from .ProjectWikiAttachmentRepository import ProjectWikiAttachmentRepository
 from .ProjectWikiRepository import ProjectWikiRepository
@@ -94,6 +95,7 @@ __all__ = [
     "ProjectInvitationRepository",
     "ProjectLabelRepository",
     "ProjectRepository",
+    "ProjectUserRelationshipRepository",
     "ProjectWikiAssignedUserRepository",
     "ProjectWikiAttachmentRepository",
     "ProjectWikiRepository",

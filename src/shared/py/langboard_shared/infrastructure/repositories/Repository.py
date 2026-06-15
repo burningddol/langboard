@@ -136,6 +136,10 @@ class Repository(Factory):
         return self._create_or_get_product(factory.ProjectAssignedUserRepository)
 
     @property
+    def project_user_relationship(self):
+        return self._create_or_get_product(factory.ProjectUserRelationshipRepository)
+
+    @property
     def user_group_assigned_email(self):
         return self._create_or_get_product(factory.UserGroupAssignedEmailRepository)
 

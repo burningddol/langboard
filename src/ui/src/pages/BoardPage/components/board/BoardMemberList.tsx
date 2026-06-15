@@ -2,14 +2,16 @@ import MultiSelectAssignee, { IFormProps, TSaveHandler } from "@/components/Mult
 import Toast from "@/components/base/Toast";
 import { EMAIL_REGEX } from "@/constants";
 import useUpdateProjectAssignedUsers from "@/controllers/api/board/useUpdateProjectAssignedUsers";
+import { api } from "@/core/helpers/Api";
 import setupApiErrorHandler from "@/core/helpers/setupApiErrorHandler";
 import { BotModel, User } from "@/core/models";
 import { TUserLikeModel } from "@/core/models/ModelRegistry";
 import { ProjectRole } from "@/core/models/roles";
 import { useBoard } from "@/core/providers/BoardProvider";
 import { cn } from "@/core/utils/ComponentUtils";
+import { Routing } from "@langboard/core/constants";
 import { Utils } from "@langboard/core/utils";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export interface IBoardMemberListProps {
@@ -24,12 +26,29 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
     const allMemebers = project.useForeignFieldArray("all_members");
     const invitedMemberUIDs = project.useField("invited_member_uids");
     const currentUserUID = currentUser.useField("uid");
+    const canEditMembers = canEdit || ownerUID === currentUserUID;
     const groups = currentUser.useForeignFieldArray("user_groups");
+    const [candidateSearchInput, setCandidateSearchInput] = useState("");
+    const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
+    const [memberCandidates, setMemberCandidates] = useState<User.TModel[]>([]);
     const visibleMembers = useMemo(() => allMemebers.filter((model) => !model.isDeletedUser()), [allMemebers]);
-    const allSelectables = useMemo(
-        () => visibleMembers.filter((model) => model.uid !== ownerUID && model.uid !== currentUserUID),
-        [currentUserUID, ownerUID, visibleMembers]
-    );
+    const allSelectables = useMemo(() => {
+        const userMap = new Map<string, User.TModel>();
+
+        for (const user of [...visibleMembers, ...memberCandidates]) {
+            if (!user.isValidUser() && !user.isPresentableUnknownUser()) {
+                continue;
+            }
+
+            if (user.uid === ownerUID || user.uid === currentUserUID) {
+                continue;
+            }
+
+            userMap.set(user.uid, user);
+        }
+
+        return [...userMap.values()];
+    }, [currentUserUID, memberCandidates, ownerUID, visibleMembers]);
     const showableAssignees = useMemo(
         () => [...visibleMembers.filter((model) => model.isValidUser() && !invitedMemberUIDs.includes(model.uid))].slice(0, 6),
         [invitedMemberUIDs, visibleMembers]
@@ -44,6 +63,108 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
         [currentUserUID, selectedAssignees]
     );
     const { mutateAsync: updateProjectAssignedUsersMutateAsync } = useUpdateProjectAssignedUsers({ interceptToast: true });
+    const memberInvitePlaceholder = t("myAccount.Add an email...");
+    const isCandidateSearchPlaceholder = useCallback(
+        (search: string) => {
+            const trimmedSearch = search.trim();
+
+            return trimmedSearch === memberInvitePlaceholder || trimmedSearch === "Add an email...";
+        },
+        [memberInvitePlaceholder]
+    );
+    const normalizeCandidateSearch = useCallback(
+        (search: string) => {
+            return isCandidateSearchPlaceholder(search) ? "" : search;
+        },
+        [isCandidateSearchPlaceholder]
+    );
+    const updateCandidateSearchInput = useCallback(
+        (search: string) => {
+            setCandidateSearchInput(normalizeCandidateSearch(search));
+        },
+        [normalizeCandidateSearch]
+    );
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setCandidateSearchQuery(normalizeCandidateSearch(candidateSearchInput).trim());
+        }, 250);
+
+        return () => {
+            window.clearTimeout(timeout);
+        };
+    }, [candidateSearchInput, normalizeCandidateSearch]);
+
+    useEffect(() => {
+        const updateSearchFromEditor = () => {
+            window.setTimeout(() => {
+                const textbox = document.querySelector<HTMLElement>("[data-member-invite-popover='true'] [role='textbox']");
+                const search = textbox?.textContent ?? "";
+                updateCandidateSearchInput(search);
+            }, 0);
+        };
+        let observer: MutationObserver | undefined;
+        const observerInterval = window.setInterval(() => {
+            const textbox = document.querySelector<HTMLElement>("[data-member-invite-popover='true'] [role='textbox']");
+            updateSearchFromEditor();
+
+            if (!textbox || observer) {
+                return;
+            }
+
+            observer = new MutationObserver(updateSearchFromEditor);
+            observer.observe(textbox, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+            updateSearchFromEditor();
+        }, 50);
+
+        document.addEventListener("input", updateSearchFromEditor, true);
+        document.addEventListener("keyup", updateSearchFromEditor, true);
+        document.addEventListener("compositionend", updateSearchFromEditor, true);
+
+        return () => {
+            observer?.disconnect();
+            window.clearInterval(observerInterval);
+            document.removeEventListener("input", updateSearchFromEditor, true);
+            document.removeEventListener("keyup", updateSearchFromEditor, true);
+            document.removeEventListener("compositionend", updateSearchFromEditor, true);
+        };
+    }, [updateCandidateSearchInput]);
+
+    useEffect(() => {
+        if (!canEditMembers || candidateSearchQuery.length < 2 || isCandidateSearchPlaceholder(candidateSearchQuery)) {
+            setMemberCandidates([]);
+            return;
+        }
+
+        let cancelled = false;
+        const url = Utils.String.format(Routing.API.BOARD.MEMBER_CANDIDATES, {
+            uid: project.uid,
+        });
+
+        api.get(url, {
+            params: {
+                query: candidateSearchQuery,
+            },
+        })
+            .then((res) => {
+                if (!cancelled) {
+                    setMemberCandidates(User.Model.fromArray(res.data.users ?? [], true));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setMemberCandidates([]);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [canEditMembers, candidateSearchQuery, isCandidateSearchPlaceholder, project]);
 
     const save = (items: (string | User.TModel)[]) => {
         const mergedItems = hiddenCurrentUserAssignee ? [...items, hiddenCurrentUserAssignee] : items;
@@ -82,15 +203,18 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
                 className: cn("size-8 xs:size-10", isSelectCardView ? "hidden" : ""),
                 title: t("project.Assign members"),
             }}
-            popoverContentProps={{
-                className: cn(
-                    "max-w-[calc(100vw_-_theme(spacing.20))]",
-                    "sm:max-w-[calc(theme(screens.sm)_-_theme(spacing.60))]",
-                    "lg:max-w-[calc(theme(screens.md)_-_theme(spacing.60))]",
-                    "min-w-[min(theme(spacing.20),100%)]"
-                ),
-                align: "start",
-            }}
+            popoverContentProps={
+                {
+                    className: cn(
+                        "max-w-[calc(100vw_-_theme(spacing.20))]",
+                        "sm:max-w-[calc(theme(screens.sm)_-_theme(spacing.60))]",
+                        "lg:max-w-[calc(theme(screens.md)_-_theme(spacing.60))]",
+                        "min-w-[min(theme(spacing.20),100%)]"
+                    ),
+                    align: "start",
+                    "data-member-invite-popover": "true",
+                } as Record<string, unknown>
+            }
             userAvatarListProps={{
                 maxVisible: 6,
                 size: { initial: "sm", xs: "default" },
@@ -155,14 +279,15 @@ const BoardMemberList = memo(({ isSelectCardView }: IBoardMemberListProps) => {
                     return `${item.email} ${invitedText}`;
                 }
             }}
-            placeholder={t("myAccount.Add an email...")}
+            onSearchChange={updateCandidateSearchInput}
+            placeholder={memberInvitePlaceholder}
             canAddNew
             validateNewItem={(value) => !!value && EMAIL_REGEX.test(value)}
             saveOnChange
             save={save as TSaveHandler}
             withUserGroups
             groups={groups}
-            canEdit={canEdit || ownerUID === currentUser.uid}
+            canEdit={canEditMembers}
         />
     );
 });

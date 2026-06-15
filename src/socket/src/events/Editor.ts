@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import BotRunner from "@/core/ai/BotRunner";
 import EventManager, { TEventContext } from "@/core/server/EventManager";
 import SnowflakeID from "@/core/db/SnowflakeID";
